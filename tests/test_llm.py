@@ -137,19 +137,31 @@ def test_opciones_que_no_vienen_del_glosario_preguntan():
 
 def test_redaccion_llm_aceptada_si_no_anade_nada():
     cli = ClienteFalso([extraccion(grado="304"), "Perfecto. ¿Qué espesor necesitas, en milímetros?"])
-    r = interpretar(H, cliente=cli, catalogo=CAT)
+    r = interpretar(H, cliente=cli, catalogo=CAT, redactar_con_llm=True)
     assert r.pregunta == "Perfecto. ¿Qué espesor necesitas, en milímetros?"
 
 
 def test_redaccion_llm_rechazada_si_anade_un_valor():
     cli = ClienteFalso([extraccion(grado="304"), "¿Lo quieres de 2 mm o de 3 mm?"])
-    r = interpretar(H, cliente=cli, catalogo=CAT)
+    r = interpretar(H, cliente=cli, catalogo=CAT, redactar_con_llm=True)
     assert r.pregunta == "¿Qué espesor necesitas, en milímetros?"
 
 
 def test_redaccion_llm_falla_y_usa_plantilla():
     cli = ClienteFalso([extraccion(grado="304"), ErrorLLM("caído")])
-    r = interpretar(H, cliente=cli, catalogo=CAT)
+    r = interpretar(H, cliente=cli, catalogo=CAT, redactar_con_llm=True)
+    assert r.pregunta == "¿Qué espesor necesitas, en milímetros?"
+
+
+def test_redaccion_llm_rechazada_si_pierde_una_opcion():
+    cli = ClienteFalso([extraccion(espesor_mm=2), "¿Qué grado necesitas, 304 o 316?"])
+    r = interpretar(H, cliente=cli, catalogo=CAT, redactar_con_llm=True)
+    assert r.pregunta == "¿Qué grado necesitas? Por ejemplo: 304, 304L y 316."
+
+
+def test_redaccion_llm_rechazada_si_saluda():
+    cli = ClienteFalso([extraccion(grado="304"), "Hola, ¿qué espesor necesitas, en milímetros?"])
+    r = interpretar(H, cliente=cli, catalogo=CAT, redactar_con_llm=True)
     assert r.pregunta == "¿Qué espesor necesitas, en milímetros?"
 
 
@@ -161,24 +173,34 @@ BULTOS = [{"id": "B-1023", "grado": "304", "acabado": "2B", "espesor_mm": 2.0, "
 
 def test_pregunta_tras_busqueda_por_el_dato_que_distingue():
     esp = Especificacion(grado="304", espesor_mm=2.0)
-    p = pregunta_tras_busqueda(esp, BULTOS, catalogo=CAT, redactar_con_llm=False)
+    p = pregunta_tras_busqueda(esp, BULTOS)
     assert p == "Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?"
 
 
 def test_no_pregunta_si_el_dato_ya_se_dio():
     esp = Especificacion(grado="304", acabado="BA", espesor_mm=2.0)
-    assert pregunta_tras_busqueda(esp, BULTOS[1:] * 2, catalogo=CAT, redactar_con_llm=False) is None
+    assert pregunta_tras_busqueda(esp, BULTOS[1:] * 2) is None
 
 
 def test_no_pregunta_con_un_solo_bulto():
-    assert pregunta_tras_busqueda({"grado": "304"}, BULTOS[:1], catalogo=CAT, redactar_con_llm=False) is None
+    assert pregunta_tras_busqueda({"grado": "304"}, BULTOS[:1]) is None
 
 
 def test_prioriza_campo_con_opciones():
     esp = Especificacion(espesor_mm=2.0, opciones={"grado": ["316", "316L"]})
     bultos = [dict(BULTOS[0], grado="316"), dict(BULTOS[1], grado="316L")]
-    p = pregunta_tras_busqueda(esp, bultos, catalogo=CAT, redactar_con_llm=False)
+    p = pregunta_tras_busqueda(esp, bultos)
     assert "en 316 y en 316L" in p
+
+
+def test_pregunta_tras_busqueda_no_usa_el_llm(monkeypatch):
+    import llm.interprete as interprete
+
+    def sin_llm():
+        raise AssertionError("pregunta_tras_busqueda no debe llamar al LLM")
+    monkeypatch.setattr(interprete, "_cliente_defecto", sin_llm)
+    esp = Especificacion(grado="304", espesor_mm=2.0)
+    assert pregunta_tras_busqueda(esp, BULTOS) == "Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?"
 
 
 # ---------------------------------------------------------------- responder
@@ -207,35 +229,183 @@ def test_plantilla_incluye_todo():
 
 def test_un_solo_bulto_no_llama_al_llm():
     cli = ClienteFalso([])
-    responder({"exactos": RES["exactos"]}, cliente=cli, catalogo=CAT)
+    responder({"exactos": RES["exactos"]}, cliente=cli, catalogo=CAT, usar_llm=True)
     assert cli.llamadas == []
 
 
 def test_llm_valido_se_acepta():
     texto = ("Tienes el bulto B-1023, 304 BA de 2 × 1250 mm y 520 kg en Nave 3. "
              "También puedes adaptar el B-0877 cortando el ancho de 1500 a 1250 mm, con 40 kg de merma.")
-    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT) == texto
+    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT, usar_llm=True) == texto
 
 
 def test_llm_que_inventa_un_peso_se_rechaza():
     texto = "Tienes el B-1023 con 900 kg y el B-0877 adaptable."
-    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT) == responder(RES, usar_llm=False)
+    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT, usar_llm=True) == responder(RES, usar_llm=False)
 
 
 def test_llm_que_inventa_un_bulto_se_rechaza():
     texto = "Tienes el B-1023, el B-0877 y también el B-5555."
-    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT) == responder(RES, usar_llm=False)
+    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT, usar_llm=True) == responder(RES, usar_llm=False)
 
 
 def test_llm_que_omite_un_bulto_se_rechaza():
     texto = "Tienes el B-1023 en Nave 3."
-    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT) == responder(RES, usar_llm=False)
+    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT, usar_llm=True) == responder(RES, usar_llm=False)
 
 
 def test_llm_que_inventa_un_grado_se_rechaza():
     texto = "Tienes el B-1023 y el B-0877, ambos en 316."
-    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT) == responder(RES, usar_llm=False)
+    assert responder(RES, cliente=ClienteFalso([texto]), catalogo=CAT, usar_llm=True) == responder(RES, usar_llm=False)
 
 
 def test_llm_caido_usa_plantilla():
-    assert responder(RES, cliente=ClienteFalso([ErrorLLM("x")]), catalogo=CAT) == responder(RES, usar_llm=False)
+    assert responder(RES, cliente=ClienteFalso([ErrorLLM("x")]), catalogo=CAT, usar_llm=True) == responder(RES, usar_llm=False)
+
+
+# ---------------------------------------------------------------- escenarios de la batería
+
+# P1: «me da igual» y no repetir preguntas
+def test_indiferente_no_se_pregunta_tras_buscar():
+    esp = Especificacion(grado="304", espesor_mm=2.0, indiferentes=["acabado"])
+    assert pregunta_tras_busqueda(esp, BULTOS) is None
+
+
+def test_indiferente_no_cuenta_como_falta_y_quita_opciones():
+    r, _ = interp(extraccion(espesor_mm=2, indiferentes=["grado", "acabado"], opciones={"acabado": ["BA", "2R"]}))
+    assert r.tipo == "especificacion"
+    assert r.especificacion.indiferentes == ["grado", "acabado"] and r.especificacion.faltan == []
+    assert r.especificacion.opciones == {}
+
+
+def test_indiferente_invalido_se_ignora():
+    r, _ = interp(extraccion(grado="304", espesor_mm=2, indiferentes=["grado", "color", 7]))
+    assert r.especificacion.indiferentes == []
+
+
+def test_no_repite_la_misma_pregunta_tras_buscar():
+    esp = Especificacion(grado="304", espesor_mm=2.0)
+    pregunta = "Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?"
+    historial = [{"rol": "comercial", "texto": "304 de 2 mm"}, {"rol": "asistente", "texto": pregunta},
+                 {"rol": "comercial", "texto": "el brillante"}]
+    assert pregunta_tras_busqueda(esp, BULTOS, historial=historial) is None
+    assert pregunta_tras_busqueda(esp, BULTOS, historial=historial[:1]) == pregunta
+
+
+# P2 y P6: textos veraces
+def test_combinacion_imposible_no_dice_que_el_grado_no_existe():
+    # 430 existe en el catálogo, pero no en 2B de 2 mm
+    r, _ = interp(extraccion(grado="430", acabado="2B", espesor_mm=2))
+    assert r.tipo == "pregunta"
+    assert "no existe 430 de 2 mm en 2B" in r.pregunta
+    assert "no hay grado 430" not in r.pregunta
+
+
+def test_dos_productos_de_uno_en_uno():
+    r, _ = interp(extraccion(espesor_mm=2, contradicciones=[{"campo": "grado", "valores": ["304", "316L"]}]))
+    assert r.tipo == "pregunta" and "uno en uno" in r.pregunta and "304 y 316L" in r.pregunta
+
+
+# P3: cantidad
+EXACTO = {"id": "B-2001", "grado": "316L", "acabado": "2B", "espesor_mm": 2.0, "peso_kg": 610}
+
+
+def test_cantidad_en_toneladas_que_no_llega():
+    esp = {"grado": "316L", "cantidad": {"valor": 2, "unidad": "t"}}
+    texto = responder({"exactos": [EXACTO]}, esp, usar_llm=False)
+    assert "Pides 2 t y lo que cumple suma 610 kg." in texto
+
+
+def test_cantidad_en_bultos_que_no_llega():
+    esp = {"grado": "316L", "cantidad": {"valor": 3, "unidad": "bultos"}}
+    assert "Pides 3 bultos y hay 1 que cumple." in responder({"exactos": [EXACTO]}, esp, usar_llm=False)
+    dos = [EXACTO, dict(EXACTO, id="B-2002")]
+    assert "Pides 3 bultos y hay 2 que cumplen." in responder({"exactos": dos}, esp, usar_llm=False)
+
+
+def test_cantidad_cubierta_no_anade_nada():
+    esp = {"grado": "316L", "cantidad": {"valor": 500, "unidad": "kg"}}
+    assert "Pides" not in responder({"exactos": [EXACTO]}, esp, usar_llm=False)
+
+
+# P4: intenciones con respuesta fija (sin pasar por el LLM)
+@pytest.mark.parametrize("intencion, esperado", [
+    ("saludo", "¡Hola!"),
+    ("agradecimiento", "De nada"),
+    ("reserva", "No puedo reservar bultos"),
+    ("plazo", "plazos de entrega"),
+    ("fuera_de_tema", "inventario"),
+])
+def test_intenciones_con_respuesta_fija(intencion, esperado):
+    r, cli = interp(extraccion(intencion=intencion))
+    assert r.tipo == "pregunta" and esperado in r.pregunta
+    assert len(cli.llamadas) == 1  # solo la extracción
+
+
+def test_precio_ofrece_buscar_lo_entendido_y_conserva_la_especificacion():
+    r, _ = interp(extraccion(intencion="precio", grado="304", acabado="BA", espesor_mm=2))
+    assert "No tengo información de precios" in r.pregunta and "304 de 2 mm en BA" in r.pregunta
+    assert r.especificacion.grado == "304"
+
+
+def test_consulta_tecnica_solo_cita_usos_del_catalogo():
+    r, _ = interp(extraccion(intencion="consulta_tecnica"))
+    assert "No puedo comparar propiedades" in r.pregunta
+    assert "ambiente marino o industria alimentaria" in r.pregunta
+
+
+def test_intencion_desconocida_se_trata_como_pedido():
+    r, _ = interp(extraccion(intencion="inventada", grado="304", espesor_mm=2))
+    assert r.tipo == "especificacion"
+
+
+# P5: mensaje vacío
+def test_mensaje_vacio_no_llama_al_llm():
+    cli = ClienteFalso([])  # lanzaría ErrorLLM si se le llamara
+    r = interpretar([{"rol": "comercial", "texto": "   "}], cliente=cli, catalogo=CAT)
+    assert r.tipo == "pregunta" and r.pregunta == "¿Qué material necesitas?"
+    assert cli.llamadas == [] and r.especificacion.faltan == ["grado", "espesor_mm"]
+
+
+def test_mensaje_vacio_con_contexto_usa_el_resto_del_historial():
+    cli = ClienteFalso([extraccion(grado="304", espesor_mm=2)])
+    h = [{"rol": "comercial", "texto": "304 de 2 mm"}, {"rol": "comercial", "texto": ""}]
+    r = interpretar(h, cliente=cli, catalogo=CAT, redactar_con_llm=False)
+    assert r.tipo == "especificacion" and "Comercial: \n" not in cli.llamadas[0][1]
+
+
+# ---------------------------------------------------------------- parte 5: respuesta
+
+def test_varios_bultos_por_defecto_no_llama_al_llm():
+    cli = ClienteFalso([])
+    t = responder(RES, cliente=cli, catalogo=CAT)
+    assert cli.llamadas == [] and t == responder(RES, usar_llm=False)
+
+
+def test_cita_la_fuente_del_uso():
+    esp = {"uso": "ambiente marino", "fuente_uso": "Catálogo p. 12", "opciones": {"grado": ["316", "316L"]}}
+    t = responder({"exactos": [EXACTO]}, esp, catalogo=CAT)
+    assert "Para ambiente marino, el catálogo indica 316 y 316L (fuente: Catálogo p. 12)." in t
+
+
+def test_sin_uso_no_cita_nada():
+    assert "catálogo indica" not in responder({"exactos": [EXACTO]}, {"grado": "316L"}, catalogo=CAT)
+
+
+def test_criterio_de_orden_si_lo_manda_el_backend():
+    res = dict(RES, criterio="sin transformar primero; después, menor merma y menos operaciones")
+    assert "Orden: sin transformar primero; después, menor merma y menos operaciones." in responder(res)
+    assert "Orden:" not in responder(RES)
+
+
+def test_transformable_con_resultado_dice_como_queda():
+    t = {"id": "B-1030", "acciones": ["Cortar ancho 1500 → 1250 mm"], "merma_kg": 150,
+         "resultado": {"grado": "304", "acabado": "2B", "espesor_mm": 3.0, "ancho_mm": 1250}}
+    texto = responder({"exactos": [], "transformables": [t]})
+    assert "B-1030 (Cortar ancho 1500 → 1250 mm; merma 150 kg; queda 304 2B, 3 × 1250 mm)" in texto
+
+
+def test_por_defecto_una_sola_llamada_al_llm():
+    cli = ClienteFalso([extraccion(grado="304")])  # sin segunda respuesta: fallaría si se redactara
+    r = interpretar(H, cliente=cli, catalogo=CAT)
+    assert r.pregunta == "¿Qué espesor necesitas, en milímetros?" and len(cli.llamadas) == 1

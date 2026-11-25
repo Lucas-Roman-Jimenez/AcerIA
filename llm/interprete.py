@@ -15,7 +15,7 @@ from typing import Any, Optional, Sequence
 from . import prompts
 from .catalogo import Catalogo
 from .contrato import CAMPOS_NUMERO, CAMPOS_TEXTO, Cantidad, Especificacion, ResultadoInterpretacion
-from .control import fmt_num, lista_y, no_inventa
+from .control import conserva_datos, fmt_num, lista_o, lista_y, no_inventa
 from .proveedores import ClienteLLM, ErrorLLM, crear_cliente
 
 # Datos mínimos para poder buscar. PENDIENTE DE CONFIRMAR CON EL MENTOR.
@@ -82,9 +82,10 @@ def _num(v) -> Optional[float]:
 def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion, dict[str, Any]]:
     """Devuelve la especificación limpia y los problemas detectados (para decidir la pregunta)."""
     esp = Especificacion()
+    intencion = bruto.get("intencion") or ("fuera_de_tema" if bruto.get("fuera_de_tema") else "pedido")
     problemas: dict[str, Any] = {"invalidos": [], "contradiccion": None, "combinacion": None,
                                  "uso_desconocido": None, "opciones_dudosas": None,
-                                 "fuera_de_tema": bool(bruto.get("fuera_de_tema"))}
+                                 "intencion": intencion if intencion in INTENCIONES else "pedido"}
 
     for campo in CAMPOS_TEXTO:
         v = bruto.get(campo)
@@ -141,6 +142,12 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         else:
             problemas["uso_desconocido"] = str(uso_txt)
             esp.avisos.append(f"El catálogo no indica qué grado es adecuado para «{uso_txt}».")
+
+    # Campos que al comercial le dan igual: no se preguntan ni cuentan como «faltan».
+    indif = bruto.get("indiferentes") or []
+    esp.indiferentes = [c for c in indif if isinstance(c, str)
+                        and c in CAMPOS_TEXTO + CAMPOS_NUMERO and getattr(esp, c) is None]
+    esp.opciones = {c: v for c, v in esp.opciones.items() if c not in esp.indiferentes}
 
     contr = [c for c in (bruto.get("contradicciones") or []) if isinstance(c, dict) and c.get("campo")]
     if contr:
@@ -203,8 +210,10 @@ def _comprobar_combinacion(esp: Especificacion, catalogo: Catalogo) -> Optional[
     for campo in ("espesor_mm", "ancho_mm", "acabado", "formato", "grado"):
         if not esp.tiene(campo) or not _hay_combinacion(esp, catalogo, ignorar=campo):
             continue
-        prods = [p for p in catalogo.productos
-                 if all(getattr(esp, c) in (None, p.get(c)) or c == campo for c in CAMPOS_TEXTO)]
+        # Lo que hay en el catálogo con el resto de datos (sin tener en cuenta `campo`).
+        otros = {c: (None if c == campo else getattr(esp, c))
+                 for c in ("grado", "acabado", "formato", "espesor_mm", "ancho_mm")}
+        prods = catalogo.productos_compatibles(**otros)
         if campo in CAMPOS_NUMERO:
             rangos = [p[campo] for p in prods if campo in p]
             if not rangos:
@@ -216,47 +225,78 @@ def _comprobar_combinacion(esp: Especificacion, catalogo: Catalogo) -> Optional[
             if not disponibles:
                 continue
             disp = lista_y(disponibles)
-        actual = getattr(esp, campo)
-        actual_txt = f"{fmt_num(actual)} mm" if campo in CAMPOS_NUMERO else (actual or lista_y(esp.opciones[campo]))
         return {"campo": campo, "disponible": disp,
-                "aviso": f"Con esos datos no hay {NOMBRE_CAMPO[campo]} {actual_txt} en el catálogo; "
-                         f"existe {disp}."}
+                "aviso": f"En el catálogo no existe {_describir(esp)}. "
+                         f"Con el resto de datos hay {NOMBRE_CAMPO[campo]} {disp}."}
     return {"campo": None, "disponible": "", "aviso": "Esa combinación no existe en el catálogo."}
 
 
 # ------------------------------------------------------------------ preguntas
 
+def _valor_o_opciones(esp: Especificacion, campo: str) -> Optional[str]:
+    if getattr(esp, campo):
+        return getattr(esp, campo)
+    return lista_o(esp.opciones[campo]) if esp.opciones.get(campo) else None
+
+
 def _describir(esp: Especificacion, sin: str = "") -> str:
     partes = []
-    if esp.formato and sin != "formato":
-        partes.append(esp.formato)
-    if esp.grado and sin != "grado":
-        partes.append(esp.grado)
+    formato, grado, acabado = (_valor_o_opciones(esp, c) for c in ("formato", "grado", "acabado"))
+    if formato and sin != "formato":
+        partes.append(formato)
+    if grado and sin != "grado":
+        partes.append(grado)
     if esp.espesor_mm and sin != "espesor_mm":
         partes.append(f"de {fmt_num(esp.espesor_mm)} mm")
-    if esp.acabado and sin != "acabado":
-        partes.append(f"en {esp.acabado}")
+    if acabado and sin != "acabado":
+        partes.append(f"en {acabado}")
     return " ".join(partes) or "material"
+
+
+INTENCIONES = ("pedido", "saludo", "agradecimiento", "precio", "plazo", "reserva", "consulta_tecnica",
+               "fuera_de_tema")
+
+
+def _calcular_faltan(esp: Especificacion, minimos: Sequence[str]) -> None:
+    """Se calcula siempre, aunque se pregunte por otra cosa, para el panel del frontend (RF-18)."""
+    esp.faltan = [c for c in minimos if not esp.tiene(c) and c not in esp.indiferentes]
+
+
+def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo) -> Optional[str]:
+    """Respuesta fija para mensajes que no son un pedido (RF-09). No pasa por el LLM."""
+    hay_datos = _describir(esp) != "material"
+    buscar = f"¿Quieres que busque {_describir(esp)}?" if hay_datos else "¿Qué material necesitas?"
+    usos = [u["uso"] for u in catalogo.usos]
+    ejemplo_usos = f" (por ejemplo, {lista_o(usos)})" if usos else ""
+    return {
+        "saludo": "¡Hola! ¿Qué material necesita tu cliente? Dime grado, acabado, espesor o para qué lo quiere.",
+        "agradecimiento": "De nada. ¿Necesitas buscar algo más?",
+        "precio": f"No tengo información de precios: solo puedo decirte qué stock hay disponible. {buscar}",
+        "plazo": f"No tengo información de plazos de entrega: solo puedo decirte qué stock hay disponible. {buscar}",
+        "reserva": ("No puedo reservar bultos: solo propongo los disponibles. "
+                    "La reserva se hace en el sistema de AcerIA. ¿Necesitas algo más?"),
+        "consulta_tecnica": ("No puedo comparar propiedades de los materiales: solo uso lo que indica el catálogo. "
+                             f"Si me dices para qué es{ejemplo_usos}, te digo qué grados indica."),
+        "fuera_de_tema": "Solo puedo ayudarte a buscar material en el inventario. ¿Qué necesita tu cliente?",
+    }.get(intencion)
 
 
 def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: Catalogo,
                       minimos: Sequence[str]) -> Optional[str]:
     """Pregunta ANTES de buscar, o None si ya se puede buscar."""
-    # Se calcula siempre, aunque se pregunte por otra cosa, para el panel del frontend (RF-18).
-    esp.faltan = [c for c in minimos if not esp.tiene(c)]
-    if problemas["fuera_de_tema"]:
-        return "Solo puedo ayudarte a buscar material en el inventario. ¿Qué necesita tu cliente?"
+    _calcular_faltan(esp, minimos)
     if problemas["contradiccion"]:
         c = problemas["contradiccion"]
         vals = [fmt_num(v) + " mm" if c["campo"] in CAMPOS_NUMERO else str(v) for v in c.get("valores", [])]
-        return f"Has indicado {lista_y(vals)} de {NOMBRE_CAMPO.get(c['campo'], c['campo'])}. ¿Cuál de los dos necesitas?"
+        return (f"Has indicado {lista_y(vals)} de {NOMBRE_CAMPO.get(c['campo'], c['campo'])}. "
+                "Si son pedidos distintos, vamos de uno en uno: ¿con cuál empezamos?")
     if problemas["invalidos"]:
         campo, valor = problemas["invalidos"][0]
         ejemplos = lista_y(catalogo.valores(campo)[:4], "")
         return f"No encuentro «{valor}» como {NOMBRE_CAMPO[campo]} en el catálogo. ¿Te refieres a alguno de estos: {ejemplos}?"
     if problemas["opciones_dudosas"]:
         campo, vals = problemas["opciones_dudosas"]
-        return f"No tengo claro qué {NOMBRE_CAMPO[campo]} necesitas. ¿Es {', '.join(vals[:-1])} o {vals[-1]}?"
+        return f"No tengo claro qué {NOMBRE_CAMPO[campo]} necesitas. ¿Es {lista_o(vals)}?"
     if problemas["combinacion"]:
         comb = problemas["combinacion"]
         if comb["campo"]:
@@ -283,7 +323,9 @@ def _redactar(plantilla: str, cliente: Optional[ClienteLLM], catalogo: Catalogo)
     except ErrorLLM:
         return plantilla
     if (not texto or "?" not in texto or len(texto) > 2 * len(plantilla) + 60
-            or not no_inventa(texto, plantilla, catalogo, conteos_permitidos=0)):
+            or texto.lower().startswith(("hola", "buenas", "buenos"))
+            or not no_inventa(texto, plantilla, catalogo, conteos_permitidos=0)
+            or not conserva_datos(texto, plantilla, catalogo)):
         return plantilla
     return texto
 
@@ -291,17 +333,27 @@ def _redactar(plantilla: str, cliente: Optional[ClienteLLM], catalogo: Catalogo)
 # ------------------------------------------------------------------ API pública
 
 def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[ClienteLLM] = None,
-                catalogo: Optional[Catalogo] = None, redactar_con_llm: bool = True,
+                catalogo: Optional[Catalogo] = None, redactar_con_llm: bool = False,
                 minimos: Sequence[str] = CAMPOS_MINIMOS) -> ResultadoInterpretacion:
     """historial: [{"rol": "comercial" | "asistente", "texto": "..."}], en orden.
 
     Lanza ErrorLLM si el proveedor falla; el backend debe capturarlo y mostrar
     un error con opción de reintentar (RNF-14).
+
+    Hace una sola llamada al LLM (la extracción). Las preguntas salen de plantillas;
+    con redactar_con_llm=True el LLM las reescribe (una llamada más, ~1-4 s, RNF-05).
     """
+    # Los mensajes vacíos del comercial no aportan nada; si no queda ninguno, no se llama al LLM.
+    historial = [m for m in historial if m.get("rol") != "comercial" or str(m.get("texto") or "").strip()]
+    if not any(m.get("rol") == "comercial" for m in historial):
+        return ResultadoInterpretacion("pregunta", Especificacion(faltan=list(minimos)), "¿Qué material necesitas?")
     cliente = cliente or _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
     bruto = _extraer(historial, cliente, catalogo)
     esp, problemas = _validar(bruto, catalogo)
+    if problemas["intencion"] != "pedido":
+        _calcular_faltan(esp, minimos)
+        return ResultadoInterpretacion("pregunta", esp, _respuesta_intencion(esp, problemas["intencion"], catalogo))
     plantilla = _plantilla_previa(esp, problemas, catalogo, minimos)
     if plantilla is None:
         return ResultadoInterpretacion("especificacion", esp)
@@ -313,19 +365,24 @@ ORDEN_DISTINGUIR = ("acabado", "grado", "formato", "espesor_mm", "ancho_mm", "la
 
 
 def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequence[dict[str, Any]], *,
-                           cliente: Optional[ClienteLLM] = None, catalogo: Optional[Catalogo] = None,
-                           redactar_con_llm: bool = True, max_opciones: int = 4) -> Optional[str]:
+                           historial: Optional[Sequence[dict[str, str]]] = None,
+                           max_opciones: int = 4) -> Optional[str]:
     """Llamar DESPUÉS de buscar con los bultos que cumplen (los «exactos»).
 
     Devuelve la pregunta por el dato que el comercial no ha dado y que distingue
     entre los bultos encontrados, o None si no hace falta preguntar.
+    No usa el LLM: es la pregunta de la demo (RF-07) y debe salir siempre igual y rápida.
+
+    `historial` es opcional: si se pasa y la última pregunta del asistente ya era esta,
+    no se repite (el comercial no la ha resuelto) y se devuelve None para mostrar todos los bultos.
     """
     esp = especificacion if isinstance(especificacion, Especificacion) else Especificacion.desde_dict(especificacion)
     if len(bultos) < 2:
         return None
+    ultima = next((m.get("texto") for m in reversed(historial or []) if m.get("rol") == "asistente"), None)
     campos = [c for c in esp.opciones] + [c for c in ORDEN_DISTINGUIR if c not in esp.opciones]
     for campo in campos:
-        if getattr(esp, campo, None) is not None:
+        if getattr(esp, campo, None) is not None or campo in esp.indiferentes:
             continue
         valores = sorted({b.get(campo) for b in bultos if b.get(campo) is not None},
                          key=lambda v: (isinstance(v, str), v))
@@ -336,11 +393,5 @@ def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequen
                          f"{lista_y([fmt_num(v) for v in valores])} mm. ¿Cuál prefieres?")
         else:
             plantilla = f"Tengo {_describir(esp, sin=campo)} {lista_y(valores, 'en ')}. ¿Cuál prefieres?"
-        catalogo = catalogo or _catalogo_defecto()
-        if redactar_con_llm and cliente is None:
-            try:
-                cliente = _cliente_defecto()
-            except ErrorLLM:
-                cliente = None
-        return _redactar(plantilla, cliente if redactar_con_llm else None, catalogo)
+        return None if plantilla == ultima else plantilla
     return None
