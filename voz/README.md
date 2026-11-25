@@ -32,3 +32,19 @@ Pruebas desde la raíz del proyecto.
 python -m pytest tests/test_normalizacion.py -q
 node --test tests/test_microfono.mjs
 ```
+
+## Medir reconocimiento con micrófono
+
+Dicta cada frase de `tests/casos_voz.json` en el chat. Copia lo que aparece
+en la caja de texto antes de editarlo y guárdalo como JSON por ID
+(`{"VOZ-01": "Necesito acabado 2B."}`). Usa `""` si el dictado acaba sin
+texto. Omite un ID únicamente si todavía no has intentado ese dictado.
+
+```bash
+node tests/evaluar_voz.mjs transcripciones.json
+node --test tests/test_evaluar_voz.mjs
+```
+
+Se cuenta un acierto si aparecen todos los códigos esperados del dictado.
+El objetivo deseable de RNF-08 es el 90 %. El informe da el porcentaje al
+completar los diez dictados e identifica los códigos que se perdieron.
