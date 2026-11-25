@@ -1,0 +1,13 @@
+{
+  "_aviso": "DATOS DE EJEMPLO. Lucas los sustituye por equivalencias validadas con el catálogo o el mentor.",
+  "terminos": [
+    {"termino": "brillante", "campo": "acabado", "valores": ["BA", "2R"]},
+    {"termino": "espejo", "campo": "acabado", "valores": ["BA"]},
+    {"termino": "mate", "campo": "acabado", "valores": ["2B", "2D"]},
+    {"termino": "satinado", "campo": "acabado", "valores": ["4"]},
+    {"termino": "inox normal", "campo": "grado", "valores": ["304"]},
+    {"termino": "dieciocho ocho", "campo": "grado", "valores": ["304"]},
+    {"termino": "plancha", "campo": "formato", "valores": ["chapa"]},
+    {"termino": "rollo", "campo": "formato", "valores": ["bobina"]}
+  ]
+}

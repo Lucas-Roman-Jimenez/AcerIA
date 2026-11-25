@@ -1,93 +1,93 @@
-# gitignore-template
+# AcerIA · Asistente de inventario AcerIA
 
+IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto que interpreta peticiones de acero inoxidable, busca bultos reales en el inventario y propone transformaciones permitidas por las reglas de AcerIA.
 
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Estructura del repositorio
 
 ```
-cd existing_repo
-git remote add origin repositorio original
-git branch -M main
-git push -uf origin main
+llm/             Nacho (P2)  interpretación, validación contra catálogo, preguntas y respuesta
+tests/           tests del módulo llm (python -m pytest -q)
+demo_consola.py  prueba real del módulo llm con búsqueda simulada
+datos_ejemplo/   catálogo, glosario e inventario inventados para desarrollar
+backend/         Alonso (P1) FastAPI + SQLite, buscador, transformables, ranking, orquestación
+frontend/        Stanis (P3) chat, tarjetas, panel «Lo que he entendido», voz alta
+datos/           Lucas (P4)  catalogo.json y glosario.json reales
+reglas/          Lucas (P4)  motor de reglas del TXT
+voz/             Lucas (P4)  entrada por voz
+evaluacion/      Lucas (P4)  conjunto de pruebas y script de evaluación
+docs/            documentación del proyecto
 ```
 
-## Integrate with your tools
+---
 
-- [ ] [Set up project integrations](repositorio original)
+## Módulo LLM (Nacho)
 
-## Collaborate with your team
+Convierte lo que dice el comercial en una especificación validada contra el catálogo, decide si hay que preguntar algo y redacta la respuesta final. **El LLM solo traduce: qué valores existen y qué hay que preguntar lo decide el código.**
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+### Puesta en marcha
 
-## Test and Deploy
+```bash
+pip install -r requirements.txt
+cp .env.example .env        # y rellena la clave del proveedor
+python -m pytest -q         # 31 tests, sin conexión ni clave
+python demo_consola.py      # prueba real con el LLM (búsqueda simulada)
+```
 
-Use the built-in continuous integration in GitLab.
+El proveedor se elige con `LLM_PROVEEDOR=anthropic|openai` en el `.env`.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+### Cómo lo usa el backend (Alonso)
 
-***
+```python
+from llm import interpretar, pregunta_tras_busqueda, responder, ErrorLLM
 
-# Editing this README
+try:
+    r = interpretar(historial)          # [{"rol": "comercial"|"asistente", "texto": "..."}]
+except ErrorLLM:
+    ...                                 # mostrar error y permitir reintentar (RNF-14)
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+if r.tipo == "pregunta":                # 1.er momento: faltan datos, valor inválido, combinación imposible...
+    devolver(r.pregunta, r.especificacion)
+else:
+    resultado = buscar(r.especificacion)                       # Alonso + motor de reglas de Lucas
+    p = pregunta_tras_busqueda(r.especificacion, resultado["exactos"])
+    if p:                               # 2.º momento: las opciones reales se distinguen por un dato no dado
+        devolver(p, r.especificacion)
+    else:
+        devolver(responder(resultado, r.especificacion), r.especificacion)
+```
 
-## Suggestions for a good README
+`responder()` nunca lanza excepción: si el LLM falla o su texto añade algo que no está en el resultado, usa una plantilla.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### Contrato ampliado (avisar a Alonso y Stanis)
 
-## Name
-Choose a self-explaining name for your project.
+La especificación añade estos campos al contrato original:
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+| Campo | Para qué | Requisito |
+| --- | --- | --- |
+| `largo_mm` | Medida que faltaba | RF-04 |
+| `cantidad` | `{"valor": 500, "unidad": "kg" \| "t" \| "bultos"}` | RF-04 |
+| `opciones` | Valores posibles de un término ambiguo, p. ej. `{"acabado": ["BA", "2R"]}`. **El buscador debe aceptar cualquiera de ellos.** | RF-05 |
+| `uso` y `fuente_uso` | Uso reconocido por el catálogo y su fuente, para citarla | RF-26 |
+| `avisos` | Mensajes para el usuario (valores descartados, combinaciones inexistentes). Stanis puede mostrarlos en el panel | RF-06 |
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+El resultado de búsqueda que espera `responder()` admite en cada bulto `peso_kg` y `ubicacion`, en cada transformable `merma_kg`, y una lista opcional `alternativas` (RF-29).
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### Decisiones pendientes
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+- `CAMPOS_MINIMOS` en `llm/interprete.py`: ahora es grado + espesor. **Confirmar con el mentor** qué datos son imprescindibles para buscar.
+- Los ficheros de `datos_ejemplo/` son inventados para desarrollar. Lucas los sustituye por los reales (`catalogo.json`, `glosario.json`) con el mismo formato.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### Estructura
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+```
+llm/
+  contrato.py     Especificacion, Cantidad, ResultadoInterpretacion
+  catalogo.py     valores válidos, combinaciones, usos y glosario
+  prompts.py      prompts de extracción, redacción de preguntas y respuesta
+  interprete.py   interpretar() y pregunta_tras_busqueda()
+  respuesta.py    responder() con plantilla de respaldo
+  control.py      control anti-invención de cifras, valores y bultos
+  proveedores.py  Anthropic, OpenAI y ClienteFalso para tests
+tests/test_llm.py
+demo_consola.py
+```

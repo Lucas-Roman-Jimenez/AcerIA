@@ -1,0 +1,10 @@
+{
+  "_aviso": "INVENTARIO DE EJEMPLO solo para la demo de consola. El inventario real lo carga Alonso.",
+  "bultos": [
+    {"id": "B-1023", "grado": "304", "acabado": "BA", "formato": "chapa", "espesor_mm": 2.0, "ancho_mm": 1250, "peso_kg": 520, "estado": "disponible", "ubicacion": "Nave 3"},
+    {"id": "B-1024", "grado": "304", "acabado": "2R", "formato": "chapa", "espesor_mm": 2.0, "ancho_mm": 1250, "peso_kg": 480, "estado": "disponible", "ubicacion": "Nave 1"},
+    {"id": "B-1030", "grado": "304", "acabado": "2B", "formato": "chapa", "espesor_mm": 3.0, "ancho_mm": 1500, "peso_kg": 900, "estado": "disponible", "ubicacion": "Nave 2"},
+    {"id": "B-2001", "grado": "316L", "acabado": "2B", "formato": "chapa", "espesor_mm": 2.0, "ancho_mm": 1500, "peso_kg": 610, "estado": "disponible", "ubicacion": "Nave 1"},
+    {"id": "B-2002", "grado": "316", "acabado": "2B", "formato": "chapa", "espesor_mm": 2.0, "ancho_mm": 1500, "peso_kg": 640, "estado": "reservado", "ubicacion": "Nave 4"}
+  ]
+}

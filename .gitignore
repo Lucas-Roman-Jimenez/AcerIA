@@ -11,3 +11,10 @@
 **/*.tar.gz
 **/*.zip
 **/*.test
+# Python
+.env
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+venv/

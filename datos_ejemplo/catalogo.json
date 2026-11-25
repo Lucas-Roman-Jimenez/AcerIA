@@ -1,0 +1,21 @@
+{
+  "_aviso": "DATOS DE EJEMPLO para desarrollar y probar. Lucas los sustituye por los extraídos del catálogo real de AcerIA.",
+  "grados": ["304", "304L", "316", "316L", "430"],
+  "acabados": ["2B", "BA", "2R", "2D", "4"],
+  "formatos": ["chapa", "bobina", "fleje"],
+  "productos": [
+    {"grado": "304",  "acabado": "2B", "formato": "chapa",  "espesor_mm": [0.5, 6.0], "ancho_mm": [1000, 2000]},
+    {"grado": "304",  "acabado": "BA", "formato": "chapa",  "espesor_mm": [0.4, 3.0], "ancho_mm": [1000, 1500]},
+    {"grado": "304",  "acabado": "2R", "formato": "chapa",  "espesor_mm": [0.4, 3.0], "ancho_mm": [1000, 1500]},
+    {"grado": "304",  "acabado": "2B", "formato": "bobina", "espesor_mm": [0.5, 4.0], "ancho_mm": [1000, 1500]},
+    {"grado": "304L", "acabado": "2B", "formato": "chapa",  "espesor_mm": [0.8, 6.0], "ancho_mm": [1000, 2000]},
+    {"grado": "316",  "acabado": "2B", "formato": "chapa",  "espesor_mm": [0.5, 6.0], "ancho_mm": [1000, 2000]},
+    {"grado": "316L", "acabado": "2B", "formato": "chapa",  "espesor_mm": [0.8, 6.0], "ancho_mm": [1000, 2000]},
+    {"grado": "316L", "acabado": "2D", "formato": "fleje",  "espesor_mm": [0.3, 2.0], "ancho_mm": [20, 600]},
+    {"grado": "430",  "acabado": "BA", "formato": "bobina", "espesor_mm": [0.4, 1.5], "ancho_mm": [1000, 1250]}
+  ],
+  "usos": [
+    {"uso": "ambiente marino", "grados": ["316", "316L"], "fuente": "EJEMPLO – catálogo, página por confirmar"},
+    {"uso": "industria alimentaria", "grados": ["304", "316"], "fuente": "EJEMPLO – catálogo, página por confirmar"}
+  ]
+}
