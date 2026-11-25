@@ -18,9 +18,15 @@ from .proveedores import ClienteLLM, ErrorLLM
 _ID = re.compile(r"\b[A-Z]{1,4}-\d{2,}\b")
 
 
-def _caracteristicas(b: dict[str, Any]) -> list[str]:
+def _id(b: dict[str, Any]) -> str:
+    """ID del bulto. El backend de Alonso pone los transformables como {"bulto": {"id": ...}, ...}."""
+    return str(b.get("id") or (b.get("bulto") or {}).get("id") or "?")
+
+
+def _caracteristicas(b: dict[str, Any], con_formato: bool = False) -> list[str]:
     partes = []
-    tipo = " ".join(str(b[k]) for k in ("grado", "acabado") if b.get(k))
+    claves = ("formato", "grado", "acabado") if con_formato else ("grado", "acabado")
+    tipo = " ".join(str(b[k]) for k in claves if b.get(k))
     if tipo:
         partes.append(tipo)
     medidas = [fmt_num(b[k]) for k in ("espesor_mm", "ancho_mm", "largo_mm") if b.get(k)]
@@ -28,6 +34,8 @@ def _caracteristicas(b: dict[str, Any]) -> list[str]:
         partes.append(" × ".join(medidas) + " mm")
     if b.get("peso_kg"):
         partes.append(f"{fmt_num(b['peso_kg'])} kg")
+    if b.get("piezas"):
+        partes.append(f"{fmt_num(b['piezas'])} piezas")
     if b.get("ubicacion"):
         partes.append(str(b["ubicacion"]))
     return partes
@@ -35,16 +43,21 @@ def _caracteristicas(b: dict[str, Any]) -> list[str]:
 
 def _describir_bulto(b: dict[str, Any]) -> str:
     partes = _caracteristicas(b)
-    return f"{b['id']} ({', '.join(partes)})" if partes else str(b["id"])
+    return f"{_id(b)} ({', '.join(partes)})" if partes else _id(b)
 
 
 def _describir_transformable(t: dict[str, Any]) -> str:
-    detalle = list(t.get("acciones") or [])
+    """Acepta {"id": ..., "acciones": ...} y el formato del backend {"bulto": {...}, "acciones": ...}."""
+    detalle = []
+    if isinstance(t.get("bulto"), dict) and _caracteristicas(t["bulto"], con_formato=True):
+        detalle.append(", ".join(_caracteristicas(t["bulto"], con_formato=True)))  # antes (RF-20)
+    detalle += list(t.get("acciones") or [])
     if t.get("merma_kg") is not None:
-        detalle.append(f"merma {fmt_num(t['merma_kg'])} kg")
-    if isinstance(t.get("resultado"), dict) and _caracteristicas(t["resultado"]):
-        detalle.append("queda " + ", ".join(_caracteristicas(t["resultado"])))  # RF-13
-    return f"{t['id']} ({'; '.join(detalle)})" if detalle else str(t["id"])
+        pct = f" ({fmt_num(t['merma_pct'])} %)" if t.get("merma_pct") is not None else ""
+        detalle.append(f"merma {fmt_num(t['merma_kg'])} kg{pct}")
+    if isinstance(t.get("resultado"), dict) and _caracteristicas(t["resultado"], con_formato=True):
+        detalle.append("queda " + ", ".join(_caracteristicas(t["resultado"], con_formato=True)))  # RF-13
+    return f"{_id(t)} ({'; '.join(detalle)})" if detalle else _id(t)
 
 
 def plantilla(resultado: dict[str, Any]) -> str:
@@ -103,7 +116,7 @@ def _nota_uso(esp: Optional[Especificacion], catalogo: Optional[Catalogo]) -> st
 
 def _nota_criterio(resultado: dict[str, Any]) -> str:
     """Criterio de ordenación que manda el backend (RNF-09). Si no viene, no se dice nada."""
-    criterio = str(resultado.get("criterio") or "").strip().rstrip(".")
+    criterio = str(resultado.get("criterio") or resultado.get("criterio_orden") or "").strip().rstrip(".")
     return f"Orden: {criterio}." if criterio else ""
 
 
@@ -112,7 +125,7 @@ def _con_nota(texto: str, *notas: str) -> str:
 
 
 def _texto_valido(texto: str, resultado: dict[str, Any], fuente: Any, catalogo: Catalogo) -> bool:
-    ids = {str(b["id"]) for k in ("exactos", "transformables", "alternativas") for b in resultado.get(k) or []}
+    ids = {_id(b) for k in ("exactos", "transformables", "alternativas") for b in resultado.get(k) or []}
     if not texto or not no_inventa(texto, fuente, catalogo):
         return False
     if not ids <= set(_ID.findall(texto)) | {i for i in ids if i in texto}:

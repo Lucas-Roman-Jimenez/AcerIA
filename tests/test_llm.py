@@ -409,3 +409,34 @@ def test_por_defecto_una_sola_llamada_al_llm():
     cli = ClienteFalso([extraccion(grado="304")])  # sin segunda respuesta: fallaría si se redactara
     r = interpretar(H, cliente=cli, catalogo=CAT)
     assert r.pregunta == "¿Qué espesor necesitas, en milímetros?" and len(cli.llamadas) == 1
+
+
+# ---------------------------------------------------------------- integración con el backend de Alonso
+
+TRANSF_BACKEND = {
+    "bulto": {"id": "334", "grado": "304L/304", "acabado": "2B", "formato": "bobina",
+              "espesor_mm": 2.0, "ancho_mm": 1500, "largo_mm": None, "peso_kg": 745},
+    "acciones": ["Cortar bobina 2 × 1500 mm a chapa 2 × 1250 × 2500 mm"],
+    "resultado": {"formato": "chapa", "acabado": "2B", "espesor_mm": 2.0,
+                  "ancho_mm": 1250, "largo_mm": 2500, "piezas": 12},
+    "merma_kg": 152.5, "merma_pct": 20.5, "num_operaciones": 1, "merma_estimada": True, "avisos": [],
+}
+
+
+def test_transformable_con_formato_del_backend():
+    texto = responder({"exactos": [], "transformables": [TRANSF_BACKEND]})
+    assert ("334 (bobina 304L/304 2B, 2 × 1500 mm, 745 kg; Cortar bobina 2 × 1500 mm a chapa 2 × 1250 × 2500 mm; "
+            "merma 152,5 kg (20,5 %); queda chapa 2B, 2 × 1250 × 2500 mm, 12 piezas)") in texto
+
+
+def test_criterio_orden_del_backend():
+    res = {"exactos": [EXACTO], "criterio_orden": "exactos > % de merma > nº de operaciones"}
+    assert "Orden: exactos > % de merma > nº de operaciones." in responder(res)
+
+
+def test_llm_valida_ids_del_formato_del_backend():
+    res = {"exactos": [EXACTO], "transformables": [TRANSF_BACKEND]}
+    texto = "Tienes el B-2001 (316L 2B) y puedes cortar el 334 con 152,5 kg de merma."
+    assert responder(res, cliente=ClienteFalso([texto]), catalogo=CAT, usar_llm=True) == texto
+    sin_334 = "Tienes el B-2001 (316L 2B)."
+    assert responder(res, cliente=ClienteFalso([sin_334]), catalogo=CAT, usar_llm=True) == responder(res)
