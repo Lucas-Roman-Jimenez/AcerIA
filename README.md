@@ -21,7 +21,9 @@ docs/            documentación del proyecto
 
 ## Módulo LLM (Nacho)
 
-Convierte lo que dice el comercial en una especificación validada contra el catálogo, decide si hay que preguntar algo y redacta la respuesta final. **El LLM solo traduce: qué valores existen y qué hay que preguntar lo decide el código.**
+El módulo convierte lo que dice el comercial en una especificación. El LLM
+ayuda a elegir qué dato aclarar entre los candidatos válidos. El código
+valida la especificación contra el catálogo y la disponibilidad contra el stock.
 
 ### Puesta en marcha
 
@@ -48,7 +50,7 @@ if r.tipo == "pregunta":                # 1.er momento: faltan datos, valor inv�
     devolver(r.pregunta, r.especificacion)
 else:
     resultado = buscar(r.especificacion)                       # Alonso + motor de reglas de Lucas
-    p = pregunta_tras_busqueda(r.especificacion, resultado["exactos"])
+    p = pregunta_tras_busqueda(r.especificacion, resultado["exactos"], historial=historial)
     if p:                               # 2.º momento: las opciones reales se distinguen por un dato no dado
         devolver(p, r.especificacion)
     else:

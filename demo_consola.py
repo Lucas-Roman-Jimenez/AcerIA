@@ -62,7 +62,7 @@ def main():
             salida = r.pregunta
         else:
             resultado = buscar_simulado(r.especificacion)
-            salida = (pregunta_tras_busqueda(r.especificacion, resultado["exactos"])
+            salida = (pregunta_tras_busqueda(r.especificacion, resultado["exactos"], historial=historial)
                       or responder(resultado, r.especificacion))
         historial.append({"rol": "asistente", "texto": salida})
         print(f"Asistente> {salida}\n")

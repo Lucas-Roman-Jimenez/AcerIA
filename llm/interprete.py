@@ -2,8 +2,8 @@
 pregunta_tras_busqueda(): pregunta solo por el dato que distingue el stock real (RF-07).
 
 Reparto de responsabilidades:
-- El LLM solo extrae lo que dice el comercial y, opcionalmente, redacta las preguntas.
-- El código valida contra el catálogo y decide si hay que preguntar y qué.
+- El LLM interpreta la petición y elige qué dato aclarar cuando hay varias opciones.
+- El código valida los datos y genera las preguntas a partir del catálogo y del stock.
 """
 from __future__ import annotations
 
@@ -55,8 +55,10 @@ def _parsear_json(texto: str) -> dict[str, Any]:
     return json.loads(texto[ini:fin + 1])
 
 
-def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo) -> dict[str, Any]:
-    sistema = prompts.SISTEMA_EXTRACCION.format(catalogo=catalogo.resumen_para_prompt())
+def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequence[str]) -> dict[str, Any]:
+    sistema = prompts.SISTEMA_EXTRACCION.format(
+        catalogo=catalogo.resumen_para_prompt(), minimos=", ".join(minimos) or "ninguno",
+    )
     usuario = prompts.USUARIO_EXTRACCION.format(conversacion=_conversacion(historial))
     ultimo_error = None
     for _ in range(2):  # un reintento si el JSON llega mal formado
@@ -240,7 +242,7 @@ def _describir(esp: Especificacion, sin: str = "") -> str:
 
 
 def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: Catalogo,
-                      minimos: Sequence[str]) -> Optional[str]:
+                      minimos: Sequence[str], campo_aclaracion: object) -> Optional[str]:
     """Pregunta ANTES de buscar, o None si ya se puede buscar."""
     # Se calcula siempre, aunque se pregunte por otra cosa, para el panel del frontend (RF-18).
     esp.faltan = [c for c in minimos if not esp.tiene(c)]
@@ -267,7 +269,8 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
                 f"¿Qué grado necesitas? Por ejemplo: {lista_y(catalogo.grados[:3])}.")
     faltan = esp.faltan
     if faltan:
-        c = faltan[0]
+        sugerido = isinstance(campo_aclaracion, str) and campo_aclaracion in faltan
+        c = campo_aclaracion if sugerido else faltan[0]
         if c in CAMPOS_TEXTO:
             return f"¿Qué {NOMBRE_CAMPO[c]} necesitas? Por ejemplo: {lista_y(catalogo.valores(c)[:3])}."
         return f"¿Qué {NOMBRE_CAMPO[c]} necesitas, en milímetros?"
@@ -300,9 +303,9 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     """
     cliente = cliente or _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
-    bruto = _extraer(historial, cliente, catalogo)
+    bruto = _extraer(historial, cliente, catalogo, minimos)
     esp, problemas = _validar(bruto, catalogo)
-    plantilla = _plantilla_previa(esp, problemas, catalogo, minimos)
+    plantilla = _plantilla_previa(esp, problemas, catalogo, minimos, bruto.get("campo_aclaracion"))
     if plantilla is None:
         return ResultadoInterpretacion("especificacion", esp)
     pregunta = _redactar(plantilla, cliente if redactar_con_llm else None, catalogo)
@@ -312,18 +315,38 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
 ORDEN_DISTINGUIR = ("acabado", "grado", "formato", "espesor_mm", "ancho_mm", "largo_mm")
 
 
+def _elegir_campo_stock(opciones: dict[str, list], historial: Optional[Sequence[dict[str, str]]],
+                        cliente: Optional[ClienteLLM]) -> str:
+    primero = next(iter(opciones))
+    usuario = json.dumps({
+        "conversacion": _conversacion(historial or []),
+        "opciones_por_campo": opciones,
+    }, ensure_ascii=False)
+    try:
+        modelo = cliente or _cliente_defecto()
+        texto = modelo.completar(prompts.SISTEMA_ELEGIR_ACLARACION, usuario, json=True, max_tokens=500)
+        campo = _parsear_json(texto).get("campo")
+    except (ErrorLLM, ValueError):
+        return primero
+    return campo if isinstance(campo, str) and campo in opciones else primero
+
+
 def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequence[dict[str, Any]], *,
                            cliente: Optional[ClienteLLM] = None, catalogo: Optional[Catalogo] = None,
-                           redactar_con_llm: bool = True, max_opciones: int = 4) -> Optional[str]:
+                           redactar_con_llm: bool = True, max_opciones: int = 4,
+                           historial: Optional[Sequence[dict[str, str]]] = None) -> Optional[str]:
     """Llamar DESPUÉS de buscar con los bultos que cumplen (los «exactos»).
 
     Devuelve la pregunta por el dato que el comercial no ha dado y que distingue
     entre los bultos encontrados, o None si no hace falta preguntar.
+    Si hay varios candidatos, el historial permite que el LLM elija cuál aclarar.
     """
     esp = especificacion if isinstance(especificacion, Especificacion) else Especificacion.desde_dict(especificacion)
     if len(bultos) < 2:
         return None
     campos = [c for c in esp.opciones] + [c for c in ORDEN_DISTINGUIR if c not in esp.opciones]
+    opciones = {}
+    plantillas = {}
     for campo in campos:
         if getattr(esp, campo, None) is not None:
             continue
@@ -336,11 +359,19 @@ def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequen
                          f"{lista_y([fmt_num(v) for v in valores])} mm. ¿Cuál prefieres?")
         else:
             plantilla = f"Tengo {_describir(esp, sin=campo)} {lista_y(valores, 'en ')}. ¿Cuál prefieres?"
-        catalogo = catalogo or _catalogo_defecto()
-        if redactar_con_llm and cliente is None:
-            try:
-                cliente = _cliente_defecto()
-            except ErrorLLM:
-                cliente = None
-        return _redactar(plantilla, cliente if redactar_con_llm else None, catalogo)
-    return None
+        opciones[campo] = valores
+        plantillas[campo] = plantilla
+    ultima = next((m.get("texto") for m in reversed(historial or []) if m.get("rol") == "asistente"), None)
+    if not plantillas or ultima in plantillas.values():
+        return None
+    if redactar_con_llm and len(opciones) > 1 and (historial or cliente is not None):
+        return plantillas[_elegir_campo_stock(opciones, historial, cliente)]
+
+    plantilla = next(iter(plantillas.values()))
+    if not redactar_con_llm:
+        return plantilla
+    try:
+        cliente = cliente or _cliente_defecto()
+    except ErrorLLM:
+        return plantilla
+    return _redactar(plantilla, cliente, catalogo or _catalogo_defecto())

@@ -12,7 +12,8 @@ Hackathon IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto 
 - El LLM solo traduce lenguaje. Qué valores existen, qué bultos hay y qué transformaciones son posibles lo decide el código, nunca el LLM (RNF-02).
 - El bot no inventa productos, propiedades, cifras ni bultos (RNF-01). Todo texto del LLM pasa por `control.no_inventa`; si falla, se usa la plantilla.
 - Se pregunta en dos momentos: antes de buscar, si faltan datos mínimos o hay valores inválidos; después de buscar, solo por el dato que distingue entre el stock real (RF-07).
-- Preguntas en modo mixto: el código decide qué preguntar y el LLM solo lo redacta.
+- El LLM elige qué aclarar entre los candidatos válidos. El código
+  comprueba la elección y usa las preguntas de respaldo cuando hace falta.
 - El conjunto de pruebas de Lucas no se modifica para que los prompts salgan mejor.
 - Las claves van en `.env`, que nunca se sube al repositorio.
 

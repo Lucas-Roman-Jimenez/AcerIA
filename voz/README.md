@@ -3,10 +3,9 @@
 La entrada por voz transcribe lo que dice el comercial en lenguaje natural.
 La integración envía la transcripción completa por el mismo flujo que una
 petición escrita, con el contexto de la conversación. El LLM debe decidir
-qué información es útil y qué aclaración pedir. La validación contra el
-catálogo, el inventario y las reglas de transformación sigue a cargo del
-código. En el intérprete actual, la selección de la pregunta todavía se
-hace en código.
+qué información es útil y puede elegir qué aclaración pedir entre los
+campos válidos. La validación contra el catálogo, el inventario y las
+reglas de transformación sigue a cargo del código.
 
 ## Micrófono en el navegador
 
