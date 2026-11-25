@@ -1,11 +1,19 @@
 # datos/ — Lucas (P4)
 
-Datos reales: `catalogo.json` y `glosario.json` usan el formato de
-`datos_ejemplo/`. El inventario normalizado conserva las columnas de la hoja
-`DATA`.
+## Datos respaldados por los archivos disponibles
 
-Cuando estén el catálogo y el glosario, hay que apuntar `RUTA_DATOS` de
-`llm/catalogo.py` a esta carpeta.
+- `catalogo.json` recoge las combinaciones observadas en la hoja `DATA` con
+  los campos y la normalización del backend. Cada medida se registra como
+  un intervalo de un solo valor para conservar el par observado de espesor y
+  ancho. Las 41 fichas técnicas de AcerIA aportan designaciones y
+  aplicaciones. Cada ficha y aplicación registra su archivo y página.
+- `glosario.json` recoge las equivalencias documentadas de voz, el código
+  `N1` del Word, las designaciones MAT y la denominación `18/8` de MAT 120.
+
+El intérprete carga ambos archivos por defecto. Las fichas consultadas
+carecen de una tabla de fabricación por espesor, ancho, acabado y formato.
+Por eso el intérprete valida los códigos y deja que el buscador compruebe
+si hay una coincidencia o una transformación para las medidas pedidas.
 
 ## Normalizar una copia del inventario
 

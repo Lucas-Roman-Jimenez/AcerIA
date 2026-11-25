@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-RUTA_DATOS = Path(__file__).resolve().parent.parent / "datos_ejemplo"
+RUTA_DATOS = Path(__file__).resolve().parent.parent / "datos"
 
 
 def _norm_texto(v: Any) -> str:
@@ -22,8 +22,14 @@ class Catalogo:
         self.acabados: list[str] = catalogo["acabados"]
         self.formatos: list[str] = catalogo["formatos"]
         self.productos: list[dict[str, Any]] = catalogo.get("productos", [])
+        self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
         self.usos: list[dict[str, Any]] = catalogo.get("usos", [])
         self.terminos: list[dict[str, Any]] = glosario.get("terminos", [])
+        self.grados_en_por_comercial: dict[str, set[str]] = {}
+        for ficha in catalogo.get("fichas", []):
+            grado = ficha.get("grado_comercial")
+            if grado:
+                self.grados_en_por_comercial.setdefault(grado, set()).add(ficha["en"])
 
     @classmethod
     def cargar(cls, carpeta: Path | str = RUTA_DATOS) -> "Catalogo":
@@ -41,11 +47,15 @@ class Catalogo:
         if valor is None:
             return None
         v = _norm_texto(valor)
+        permitidos = self.valores(campo)
+        for permitido in permitidos:
+            if v.lower() == permitido.lower():
+                return permitido
         if campo == "grado":
             v = re.sub(r"^(aisi|en)\s*", "", v, flags=re.I)
         if campo == "acabado":
             v = re.sub(r"^n\.?\s*º?\s*", "", v, flags=re.I)
-        for permitido in self.valores(campo):
+        for permitido in permitidos:
             if v.lower() == permitido.lower():
                 return permitido
         return None
@@ -77,6 +87,9 @@ class Catalogo:
         return any(t["campo"] == campo and set(valores) <= set(t["valores"]) for t in self.terminos)
 
     # ---------- usos ----------
+    def grado_indicado_para_uso(self, grado: str, grados_del_uso: list[str]) -> bool:
+        return grado in grados_del_uso or not self.grados_en_por_comercial.get(grado, set()).isdisjoint(grados_del_uso)
+
     def uso(self, nombre: Optional[str]) -> Optional[dict[str, Any]]:
         if not nombre:
             return None

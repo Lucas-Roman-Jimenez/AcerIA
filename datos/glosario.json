@@ -1,0 +1,379 @@
+{
+  "_aviso": "Equivalencias verificadas en las fichas técnicas, el contrato y el documento de tareas. Los términos pendientes están fuera del glosario operativo.",
+  "terminos": [
+    {
+      "termino": "dos be",
+      "campo": "acabado",
+      "valores": [
+        "2B"
+      ],
+      "fuente": "Tareas_Lucas_Datos.pdf, RF-27"
+    },
+    {
+      "termino": "trescientos dieciséis ele",
+      "campo": "grado",
+      "valores": [
+        "316L"
+      ],
+      "fuente": "Tareas_Lucas_Datos.pdf, RF-27"
+    },
+    {
+      "termino": "N1",
+      "campo": "acabado",
+      "valores": [
+        "NR.1"
+      ],
+      "fuente": "Contrato backend ↔ motor de reglas-2.pdf, página 3"
+    },
+    {
+      "termino": "18/8",
+      "campo": "grado",
+      "valores": [
+        "304"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 120 p. 1"
+    },
+    {
+      "termino": "MAT 060",
+      "campo": "grado",
+      "valores": [
+        "1.4372"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 060 p. 1"
+    },
+    {
+      "termino": "MAT 090",
+      "campo": "grado",
+      "valores": [
+        "1.4318"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 090 p. 1"
+    },
+    {
+      "termino": "MAT 100",
+      "campo": "grado",
+      "valores": [
+        "1.4310"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 100 p. 1"
+    },
+    {
+      "termino": "MAT 110",
+      "campo": "grado",
+      "valores": [
+        "1.4310"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 110 p. 1"
+    },
+    {
+      "termino": "MAT 120",
+      "campo": "grado",
+      "valores": [
+        "1.4301"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 120 p. 1"
+    },
+    {
+      "termino": "MAT 140",
+      "campo": "grado",
+      "valores": [
+        "1.4301"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 140 p. 1"
+    },
+    {
+      "termino": "MAT 150",
+      "campo": "grado",
+      "valores": [
+        "1.4307"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 150 p. 1"
+    },
+    {
+      "termino": "MAT 160",
+      "campo": "grado",
+      "valores": [
+        "1.4307"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 160 p. 1"
+    },
+    {
+      "termino": "MAT 180",
+      "campo": "grado",
+      "valores": [
+        "1.4301"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 180 p. 1"
+    },
+    {
+      "termino": "MAT 200",
+      "campo": "grado",
+      "valores": [
+        "1.4307"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 200 p. 1"
+    },
+    {
+      "termino": "MAT 240",
+      "campo": "grado",
+      "valores": [
+        "1.4404"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 240 p. 1"
+    },
+    {
+      "termino": "MAT 250",
+      "campo": "grado",
+      "valores": [
+        "1.4401"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 250 p. 1"
+    },
+    {
+      "termino": "MAT 260",
+      "campo": "grado",
+      "valores": [
+        "1.4432"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 260 p. 1"
+    },
+    {
+      "termino": "MAT 280",
+      "campo": "grado",
+      "valores": [
+        "1.4571"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 280 p. 1"
+    },
+    {
+      "termino": "MAT 290",
+      "campo": "grado",
+      "valores": [
+        "1.4828"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 290 p. 1"
+    },
+    {
+      "termino": "MAT 300",
+      "campo": "grado",
+      "valores": [
+        "1.4435"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 300 p. 1"
+    },
+    {
+      "termino": "MAT 305",
+      "campo": "grado",
+      "valores": [
+        "1.4539"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 305 p. 1"
+    },
+    {
+      "termino": "MAT 315",
+      "campo": "grado",
+      "valores": [
+        "1.4541"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 315 p. 1"
+    },
+    {
+      "termino": "MAT 325",
+      "campo": "grado",
+      "valores": [
+        "1.4841"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 325 p. 1"
+    },
+    {
+      "termino": "MAT 340",
+      "campo": "grado",
+      "valores": [
+        "1.4833"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 340 p. 1"
+    },
+    {
+      "termino": "MAT 350",
+      "campo": "grado",
+      "valores": [
+        "1.4845"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 350 p. 1"
+    },
+    {
+      "termino": "MAT 360",
+      "campo": "grado",
+      "valores": [
+        "1.4028"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 360 p. 1"
+    },
+    {
+      "termino": "MAT 370",
+      "campo": "grado",
+      "valores": [
+        "1.4034"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 370 p. 1"
+    },
+    {
+      "termino": "MAT 380",
+      "campo": "grado",
+      "valores": [
+        "1.4116"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 380 p. 1"
+    },
+    {
+      "termino": "MAT 390",
+      "campo": "grado",
+      "valores": [
+        "1.4031"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 390 p. 1"
+    },
+    {
+      "termino": "MAT 430",
+      "campo": "grado",
+      "valores": [
+        "1.4021"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 430 p. 1"
+    },
+    {
+      "termino": "MAT 490",
+      "campo": "grado",
+      "valores": [
+        "1.4016"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 490 p. 1"
+    },
+    {
+      "termino": "MAT 500",
+      "campo": "grado",
+      "valores": [
+        "1.4016"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 500 p. 1"
+    },
+    {
+      "termino": "MAT 515",
+      "campo": "grado",
+      "valores": [
+        "1.4510"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 515 p. 1"
+    },
+    {
+      "termino": "MAT 525",
+      "campo": "grado",
+      "valores": [
+        "1.4511"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 525 p. 1"
+    },
+    {
+      "termino": "MAT 535",
+      "campo": "grado",
+      "valores": [
+        "1.4113"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 535 p. 1"
+    },
+    {
+      "termino": "MAT 540",
+      "campo": "grado",
+      "valores": [
+        "1.4513"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 540 p. 1"
+    },
+    {
+      "termino": "MAT 555",
+      "campo": "grado",
+      "valores": [
+        "1.4521"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 555 p. 1"
+    },
+    {
+      "termino": "MAT 560",
+      "campo": "grado",
+      "valores": [
+        "1.4526"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 560 p. 1"
+    },
+    {
+      "termino": "MAT 570",
+      "campo": "grado",
+      "valores": [
+        "1.4521"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 570 p. 1"
+    },
+    {
+      "termino": "MAT 800",
+      "campo": "grado",
+      "valores": [
+        "1.4512"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 800 p. 1"
+    },
+    {
+      "termino": "MAT 845",
+      "campo": "grado",
+      "valores": [
+        "1.4509"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 845 p. 1"
+    },
+    {
+      "termino": "MAT 900",
+      "campo": "grado",
+      "valores": [
+        "1.4462"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 900 p. 1"
+    },
+    {
+      "termino": "MAT 920",
+      "campo": "grado",
+      "valores": [
+        "1.4482"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 920 p. 1"
+    },
+    {
+      "termino": "MAT 930",
+      "campo": "grado",
+      "valores": [
+        "1.4162"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 930 p. 1"
+    },
+    {
+      "termino": "MAT 940",
+      "campo": "grado",
+      "valores": [
+        "1.4362"
+      ],
+      "fuente": "Catálogo AcerIA: MAT 940 p. 1"
+    }
+  ],
+  "pendientes_de_confirmacion": [
+    {
+      "termino": "brillante",
+      "motivo": "Ejemplo del PDF de tareas. El inventario contiene BA y carece de 2R como acabado superior."
+    },
+    {
+      "termino": "inox normal",
+      "motivo": "Ejemplo del PDF de tareas pendiente de respaldo comercial."
+    },
+    {
+      "termino": "para agua salada",
+      "motivo": "Las fichas distinguen ambientes atmosféricos marinos de la exposición a soluciones con cloruros; falta confirmación para traducir esta expresión a un grado concreto."
+    }
+  ]
+}

@@ -132,7 +132,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         if uso:
             esp.uso = uso["uso"]
             esp.fuente_uso = uso.get("fuente")
-            if esp.grado and esp.grado not in uso["grados"]:
+            if esp.grado and not catalogo.grado_indicado_para_uso(esp.grado, uso["grados"]):
                 esp.avisos.append(f"Según el catálogo, para {uso['uso']} se indican {lista_y(uso['grados'])}.")
             if esp.grado is None and "grado" not in esp.opciones:
                 grados = [g for g in uso["grados"] if g in catalogo.grados]
@@ -150,7 +150,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         if contr[0]["campo"] in CAMPOS_TEXTO + CAMPOS_NUMERO:
             setattr(esp, contr[0]["campo"], None)
 
-    if not problemas["invalidos"]:
+    if catalogo.validar_combinaciones and not problemas["invalidos"]:
         _recortar_opciones(esp, catalogo)
         problemas["combinacion"] = _comprobar_combinacion(esp, catalogo)
         if problemas["combinacion"]:
