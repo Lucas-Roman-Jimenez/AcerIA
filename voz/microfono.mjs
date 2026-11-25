@@ -19,9 +19,13 @@ export function transcribirVoz() {
   microfono.interimResults = false;
 
   let activo = true;
+  let deteniendo = false;
+  let finalizar;
   const texto = new Promise((resolver, rechazar) => {
     let transcripcion = "";
+    finalizar = resolver;
     microfono.onresult = ({ results }) => {
+      if (!activo) return;
       transcripcion = Array.from(results)
         .filter((resultado) => resultado.isFinal)
         .map((resultado) => resultado[0].transcript)
@@ -47,8 +51,16 @@ export function transcribirVoz() {
   return {
     texto,
     detener() {
-      if (activo) {
+      if (activo && !deteniendo) {
+        deteniendo = true;
         microfono.stop();
+      }
+    },
+    cancelar() {
+      if (activo) {
+        activo = false;
+        finalizar("");
+        microfono.abort();
       }
     },
   };

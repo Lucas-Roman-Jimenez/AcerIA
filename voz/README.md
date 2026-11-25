@@ -13,14 +13,16 @@ hace en código.
 `microfono.mjs` usa la [Web Speech API](https://wicg.github.io/speech-api/).
 El chat puede llamar a `microfonoDisponible()` para comprobar si el
 navegador ofrece reconocimiento. Desde el botón de micrófono, llama a
-`transcribirVoz()`, que devuelve `{ texto, detener }`. `texto` es una
+`transcribirVoz()`, que devuelve `{ texto, detener, cancelar }`. `texto` es una
 promesa con la transcripción final en español. Si el navegador no reconoce
 voz, la promesa puede resolverse con una cadena vacía. Si ocurre un error
 de permisos o del servicio, la promesa se rechaza.
 
 El punto de entrada del frontend en `frontend/src/voz.js` conecta el botón
-del chat con este adaptador. Coloca el dictado en la caja de texto para
-revisarlo o editarlo antes de enviarlo.
+del chat con este adaptador. Puedes detener la escucha pulsando el mismo
+botón. El chat añade el dictado a la caja de texto para revisarlo o
+editarlo antes de enviarlo. Cambiar de conversación descarta el dictado
+en curso.
 
 El navegador aplica las equivalencias de RF-27 documentadas en «Tareas de
 Lucas» («dos be» → `2B` y «trescientos dieciséis ele» → `316L`). La tabla

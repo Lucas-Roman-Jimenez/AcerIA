@@ -14,10 +14,13 @@ export default function App() {
   const [texto, setTexto] = useState('')
   const [pensando, setPensando] = useState(false)
   const [vozActiva, setVozActiva] = useState(false)
+  const [estadoDictado, setEstadoDictado] = useState(null)
+  const [mensajeDictado, setMensajeDictado] = useState('')
   const [detalle, setDetalle] = useState(null)
   const [stock, setStock] = useState([])
   const finRef = useRef(null)
   const entradaRef = useRef(null)
+  const dictadoRef = useRef(null)
   const sugerencias = sugerir(texto, stock)
 
   function elegir(s) {
@@ -27,6 +30,48 @@ export default function App() {
 
   useEffect(() => { resumenStock().then(setStock).catch(() => setStock([])) }, [])
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando])
+  useEffect(() => () => descartarDictado(dictadoRef), [])
+
+  function cancelarDictado() {
+    descartarDictado(dictadoRef)
+    setEstadoDictado(null)
+    setMensajeDictado('')
+  }
+
+  async function alternarDictado() {
+    if (estadoDictado === 'procesando') return
+    if (dictadoRef.current) {
+      setEstadoDictado('procesando')
+      dictadoRef.current.detener()
+      return
+    }
+
+    setMensajeDictado('')
+    window.speechSynthesis?.cancel()
+    let dictado
+    try {
+      dictado = escuchar()
+      dictadoRef.current = dictado
+      setEstadoDictado('escuchando')
+      const transcripcion = await dictado.texto
+      if (dictadoRef.current !== dictado) return
+      if (transcripcion) {
+        setTexto(anterior => [anterior.trimEnd(), transcripcion].filter(Boolean).join(' '))
+        entradaRef.current?.focus()
+      } else {
+        setMensajeDictado('No se reconoció voz. Prueba otra vez o escribe la petición.')
+      }
+    } catch (error) {
+      if (dictadoRef.current === dictado || !dictado) {
+        setMensajeDictado(`${error.message} Puedes escribir la petición.`)
+      }
+    } finally {
+      if (dictadoRef.current === dictado || !dictado) {
+        dictadoRef.current = null
+        setEstadoDictado(null)
+      }
+    }
+  }
 
   const guardar = conv => {
     setActual(conv)
@@ -36,6 +81,7 @@ export default function App() {
   async function enviar(msg, conv = actual) {
     const limpio = msg.trim()
     if (!limpio || pensando) return
+    cancelarDictado()
     setTexto('')
     const base = { ...conv, mensajes: [...conv.mensajes, { rol: 'comercial', texto: limpio }] }
     guardar(base)
@@ -59,6 +105,7 @@ export default function App() {
   }
 
   function nuevaConsulta() {
+    cancelarDictado()
     window.speechSynthesis?.cancel()
     setActual({ id: nuevoId(), mensajes: [], ultima: null })
     setTexto('')
@@ -104,7 +151,7 @@ export default function App() {
           <div className="lateral-titulo">Recientes ⌄</div>
           {conversaciones.map(c => (
             <button key={c.id} className={`reciente ${c.id === actual.id ? 'activa' : ''}`}
-              onClick={() => { setActual(c); setDetalle(null) }}>
+              onClick={() => { cancelarDictado(); setActual(c); setDetalle(null) }}>
               {c.mensajes[0]?.texto}
             </button>
           ))}
@@ -166,16 +213,28 @@ export default function App() {
           <form className="entrada" onSubmit={e => { e.preventDefault(); enviar(texto) }}>
             <input ref={entradaRef} value={texto} onChange={e => setTexto(e.target.value)} placeholder="«bobina 304 BA de 2 mm»"
               aria-label="Escribe tu petición" disabled={pensando} />
-            <button type="button" className="icono" title="Hablar"
-              onClick={() => escuchar(t => setTexto(t), msg => alert(msg))}>🎙</button>
+            <button type="button" className="icono" title={estadoDictado ? 'Detener dictado' : 'Hablar'}
+              aria-label={estadoDictado ? 'Detener dictado' : 'Hablar'}
+              aria-pressed={Boolean(estadoDictado)} disabled={pensando || estadoDictado === 'procesando'}
+              onClick={alternarDictado}>{estadoDictado ? '■' : '🎙'}</button>
             <button type="submit" className="icono" title="Enviar" disabled={pensando || !texto.trim()}>→</button>
           </form>
+          <div className="estado-dictado" role="status">
+            {estadoDictado === 'escuchando' ? 'Escuchando…' :
+              estadoDictado === 'procesando' ? 'Transcribiendo…' : mensajeDictado}
+          </div>
         </main>
       </div>
 
       {detalle && <Detalle item={detalle} onCerrar={() => setDetalle(null)} />}
     </div>
   )
+}
+
+function descartarDictado(ref) {
+  const dictado = ref.current
+  ref.current = null
+  dictado?.cancelar()
 }
 
 function Resultados({ r, onAbrir }) {
