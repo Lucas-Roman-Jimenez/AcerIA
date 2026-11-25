@@ -30,8 +30,11 @@ python -m tests.evaluar_api --base-url http://127.0.0.1:8000 > informe_evaluacio
 El informe JSON incluye el porcentaje y los fallos de cada métrica:
 
 - **Resultados** (`POST /buscar`): busca el ID de referencia entre las
-  coincidencias exactas de los 16 casos de stock. El conjunto aporta una
-  coincidencia comprobada por caso, sin fijar todas las coincidencias ni su orden.
+  coincidencias exactas de los 16 casos de stock. Comprueba que los
+  transformables estén ordenados por `merma_pct` ascendente y, en caso de
+  empate, por `num_operaciones` ascendente. El conjunto aporta una
+  coincidencia exacta comprobada por caso, sin fijar todas las coincidencias
+  exactas ni su orden.
 - **Interpretación** (`POST /chat`): comprueba los campos de la especificación
   o el campo que requiere aclaración en 24 peticiones, cada una con su propia
   conversación.

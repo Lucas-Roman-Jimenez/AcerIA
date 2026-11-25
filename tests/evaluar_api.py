@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import math
 from pathlib import Path
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -45,10 +46,31 @@ def _post(base_url, endpoint, datos, timeout):
 
 def _resultado_stock(respuesta, referencia):
     ids = [str(bulto["id"]) for bulto in respuesta.get("exactos", [])]
+    transformables = respuesta.get("transformables", [])
+    ranking = [_criterio_transformable(item) for item in transformables]
+    orden_correcto = None not in ranking and ranking == sorted(ranking)
     return (
-        respuesta.get("estado") == "resultados" and str(referencia) in ids,
-        {"estado": respuesta.get("estado"), "ids_exactos": ids},
+        respuesta.get("estado") == "resultados" and str(referencia) in ids and orden_correcto,
+        {
+            "estado": respuesta.get("estado"),
+            "ids_exactos": ids,
+            "orden_transformables_correcto": orden_correcto,
+            "transformables": [
+                {campo: item.get(campo) for campo in ("bulto_id", "merma_pct", "num_operaciones")}
+                for item in transformables
+            ],
+        },
     )
+
+
+def _criterio_transformable(item):
+    porcentaje = item.get("merma_pct")
+    operaciones = item.get("num_operaciones")
+    if type(porcentaje) not in (int, float) or not math.isfinite(porcentaje):
+        return None
+    if type(operaciones) is not int:
+        return None
+    return porcentaje, operaciones
 
 
 def _interpretacion_exacta(respuesta, especificacion):

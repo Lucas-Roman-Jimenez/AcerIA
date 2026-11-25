@@ -2,7 +2,44 @@ import json
 from pathlib import Path
 from urllib.error import URLError
 
+import pytest
+
 from evaluar_api import evaluar
+
+
+@pytest.mark.parametrize(
+    "orden,correcto",
+    [((0, 1, 2), True), ((1, 0, 2), False), ((0, 2, 1), False), ((0, 1, 2, 3), False)],
+    ids=["porcentaje-antes-que-kilos", "porcentaje-incorrecto", "desempate-incorrecto",
+         "porcentaje-ausente"],
+)
+def test_resultados_comprueba_el_orden_de_transformables(orden, correcto):
+    archivo = Path(__file__).with_name("casos_evaluacion.json")
+    caso = json.loads(archivo.read_text(encoding="utf-8"))[0]
+    transformables = [
+        {"bulto_id": "10", "merma_kg": 100, "merma_pct": 5, "num_operaciones": 2},
+        {"bulto_id": "11", "merma_kg": 10, "merma_pct": 10, "num_operaciones": 1},
+        {"bulto_id": "12", "merma_kg": 5, "merma_pct": 10, "num_operaciones": 2},
+        {"bulto_id": "13", "merma_kg": 10, "num_operaciones": 1},
+    ]
+
+    def enviar(ruta, datos):
+        if ruta == "/buscar":
+            return {
+                "estado": "resultados", "exactos": [{"id": "1276"}],
+                "transformables": [transformables[i] for i in orden],
+            }
+        return {"estado": "sin_stock"}
+
+    resultados = evaluar([caso], enviar)["resultados"]
+
+    assert resultados["aciertos"] == int(correcto)
+    if not correcto:
+        [fallo] = resultados["fallos"]
+        assert fallo["orden_transformables_correcto"] is False
+        assert [item["bulto_id"] for item in fallo["transformables"]] == [
+            transformables[i]["bulto_id"] for i in orden
+        ]
 
 
 def test_evaluar_separa_metricas_y_fallos_de_las_reglas_locales():
