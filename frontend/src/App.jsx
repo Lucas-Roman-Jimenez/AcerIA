@@ -3,13 +3,8 @@ import { enviarMensaje, resumenStock } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Panel } from './Panel.jsx'
 import { Tarjeta, Detalle } from './Tarjetas.jsx'
-
-const SUGERENCIAS = [
-  { tipo: 'Chapa', texto: 'Chapa brillante de 2 mm, 1000 × 2000' },
-  { tipo: 'Bobina', texto: 'Rollo de inox marino de 1,5 mm' },
-  { tipo: 'Fleje', texto: 'Tira de 316L de 300 mm de ancho' },
-  { tipo: 'Dúplex', texto: 'Dúplex en caliente de 6 mm' },
-]
+import { Acero } from './Acero.jsx'
+import { sugerir, completar } from './sugerencias.js'
 
 const nuevoId = () => `c-${Date.now().toString(36)}`
 
@@ -22,6 +17,13 @@ export default function App() {
   const [detalle, setDetalle] = useState(null)
   const [stock, setStock] = useState([])
   const finRef = useRef(null)
+  const entradaRef = useRef(null)
+  const sugerencias = sugerir(texto, stock)
+
+  function elegir(s) {
+    setTexto(completar(texto, s))
+    entradaRef.current?.focus()
+  }
 
   useEffect(() => { resumenStock().then(setStock).catch(() => setStock([])) }, [])
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando])
@@ -114,12 +116,14 @@ export default function App() {
               <div>
                 <h1>¿Qué quieres buscar?</h1>
                 <div className="sugerencias">
-                  {SUGERENCIAS.map(s => (
-                    <button key={s.texto} className="sugerencia" onClick={() => enviar(s.texto)}>
+                  {sugerencias.map(s => (
+                    <button key={s.tipo + s.texto} type="button" className="sugerencia" onClick={() => elegir(s)}>
                       <span className="sug-tipo">{s.tipo}</span>
                       {s.texto}
+                      {s.detalle && <span className="sug-detalle">{s.detalle}</span>}
                     </button>
                   ))}
+                  {!sugerencias.length && <p className="tenue">No hay nada parecido en stock ni en el catálogo. Sigue escribiendo.</p>}
                 </div>
               </div>
               <div className="bobina" aria-hidden>
@@ -139,6 +143,7 @@ export default function App() {
                     {m.rol === 'asistente' && !m.error && (
                       <button className="altavoz" onClick={() => leerEnAlto(m.texto)} title="Leer en voz alta">🔊</button>
                     )}
+                    {m.respuesta?.especificacion && <Acero esp={m.respuesta.especificacion} id={i} />}
                     {m.respuesta && <Resultados r={m.respuesta} onAbrir={setDetalle} />}
                   </div>
                 ))}
@@ -149,8 +154,17 @@ export default function App() {
             </section>
           )}
 
+          {!vacio && texto.trim() && sugerencias.length > 0 && (
+            <div className="chips">
+              {sugerencias.map(s => (
+                <button key={s.tipo + s.texto} type="button" className="chip" onClick={() => elegir(s)} title={s.detalle}>
+                  {s.texto}
+                </button>
+              ))}
+            </div>
+          )}
           <form className="entrada" onSubmit={e => { e.preventDefault(); enviar(texto) }}>
-            <input value={texto} onChange={e => setTexto(e.target.value)} placeholder="«rollo de inox marino de 1,5 mm»"
+            <input ref={entradaRef} value={texto} onChange={e => setTexto(e.target.value)} placeholder="«bobina 304 BA de 2 mm»"
               aria-label="Escribe tu petición" disabled={pensando} />
             <button type="button" className="icono" title="Hablar"
               onClick={() => escuchar(t => setTexto(t), msg => alert(msg))}>🎙</button>

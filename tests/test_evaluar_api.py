@@ -4,7 +4,49 @@ from urllib.error import URLError
 
 import pytest
 
-from evaluar_api import evaluar
+from evaluar_api import CASOS_TRANSFORMABLES, evaluar
+
+
+@pytest.mark.parametrize("fallo", [None, "sin_bulto", "orden_reglas", "merma"])
+def test_evaluar_verifica_la_ruta_de_transformacion_del_bulto(fallo):
+    caso = json.loads(CASOS_TRANSFORMABLES.read_text(encoding="utf-8"))[1]
+    acciones = [{"regla": "LAMINACION"}, {"regla": "CORTE_BOBINA_CHAPA"}]
+    if fallo == "orden_reglas":
+        acciones.reverse()
+    candidato = {
+        "bulto_id": "23", "acciones": acciones, "num_operaciones": 2,
+        "merma_kg": 687.2 if fallo != "merma" else 687,
+        "merma_pct": 17.1, "merma_estimada": True,
+        "resultado": {"formato": "chapa", "acabado": "2B", "espesor_mm": 1,
+                      "ancho_mm": 1250, "largo_mm": 2500, "piezas": 135},
+    }
+
+    def enviar(ruta, datos):
+        assert ruta == "/buscar"
+        assert datos == caso["esperado"]["especificacion"]
+        return {"estado": "resultados", "transformables": [] if fallo == "sin_bulto" else [candidato]}
+
+    informe = evaluar([caso], enviar, solo_resultados=True)
+    assert informe["resultados"]["total"] == 0
+    metricas = informe["transformables_api"]
+    assert metricas["aciertos"] == int(fallo is None)
+    if fallo is not None:
+        assert metricas["fallos"][0]["bulto_id"] == "23"
+
+
+def test_solo_resultados_omite_chat_y_la_metrica_de_interpretacion():
+    archivo = Path(__file__).with_name("casos_evaluacion.json")
+    casos = [caso for caso in json.loads(archivo.read_text(encoding="utf-8"))
+             if caso["id"] in ("EX-1276", "CL-01", "RE-01")]
+
+    def enviar(ruta, datos):
+        assert ruta == "/buscar"
+        return {"estado": "resultados", "exactos": [{"id": "1276"}]}
+
+    informe = evaluar(casos, enviar, solo_resultados=True)
+    assert "interpretacion" not in informe
+    assert informe["resultados"]["aciertos"] == 1
+    assert informe["reglas_locales"]["aciertos"] == 1
 
 
 @pytest.mark.parametrize(

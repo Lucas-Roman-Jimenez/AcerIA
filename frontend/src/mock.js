@@ -1,18 +1,42 @@
 // API falsa con el formato de docs/contrato.md §6. Solo para desarrollar sin backend.
 import datos from '../../datos_ejemplo/inventario.json'
+import fichas from './fichas_aceria.json'
 
 const BULTOS = datos.bultos.filter(b => b.estado !== 'reservado')
 const GLOSARIO = { brillante: ['BA', '2R'], mate: ['2B'], 'en caliente': ['1D'] }
 const historiales = {}
 
+const normaliza = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/mat\s*/g, 'mat ')
+const nombreGrado = f => f.aisi?.replace(' DDQ', '') ?? f.mat
+const escapa = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// Cada designación del catálogo (AISI, EN, MAT) apunta a su grado; las más largas primero.
+const DESIGNACIONES = fichas.flatMap(f => [f.aisi, f.aisi?.replace(' DDQ', ''), f.en, f.mat]
+  .filter(Boolean).map(d => [normaliza(d), nombreGrado(f)]))
+  .sort((a, b) => b[0].length - a[0].length)
+const FAMILIAS = { austenitico: 'austenítico', duplex: 'dúplex', ferritico: 'ferrítico', martensitico: 'martensítico' }
+const unicos = xs => [...new Set(xs)]
+
 function interpretar(textos) {
-  const t = textos.join(' ').toLowerCase()
+  const t = normaliza(textos.join(' '))
   const esp = {
     grado: null, acabado: null, formato: null, espesor_mm: null, ancho_mm: null,
     largo_mm: null, cantidad: null, uso: null, fuente_uso: null, opciones: {}, faltan: [], avisos: [],
   }
-  const grado = t.match(/\b(316l|304l?|316|321|430|2205)\b/)
-  if (grado) esp.grado = grado[1].toUpperCase()
+  const grado = DESIGNACIONES.find(([d]) => new RegExp(`(?<![\\w.])${escapa(d)}(?![\\w.])`).test(t))
+  if (grado) esp.grado = grado[1]
+  const familia = Object.keys(FAMILIAS).find(f => t.includes(f.slice(0, -1)))
+  if (!esp.grado && familia) {
+    esp.opciones.grado = unicos(fichas.filter(f => f.familia === FAMILIAS[familia]).map(nombreGrado))
+  }
+  const conUso = fichas.flatMap(f => f.aplicaciones.map(a => [normaliza(a.replace(/\.$/, '')), a.replace(/\.$/, ''), f]))
+    .filter(([a]) => t.includes(a))
+  if (conUso.length) {
+    esp.uso = conUso[0][1]
+    const fuentes = conUso.filter(([a]) => a === conUso[0][0]).map(([, , f]) => f)
+    esp.fuente_uso = `Fichas ${unicos(fuentes.map(f => f.mat)).join(', ')}`
+    if (!esp.grado && !esp.opciones.grado) esp.opciones.grado = unicos(fuentes.map(nombreGrado))
+  }
   const acabado = t.match(/\b(ba|2r|2b|2d|1d)\b/)
   if (acabado) esp.acabado = acabado[1].toUpperCase()
   else for (const [k, v] of Object.entries(GLOSARIO)) if (t.includes(k)) esp.opciones.acabado = v
@@ -27,8 +51,7 @@ function interpretar(textos) {
   if (ancho) esp.ancho_mm = +ancho[1]
   const kg = t.match(/(\d+)\s*kg/)
   if (kg) esp.cantidad = { valor: +kg[1], unidad: 'kg' }
-  if (t.includes('marino')) { esp.uso = 'ambiente marino'; esp.fuente_uso = 'Catálogo de ejemplo' }
-  if (!esp.grado) esp.faltan.push('grado')
+  if (!esp.grado && !esp.opciones.grado) esp.faltan.push('grado')
   if (!esp.espesor_mm) esp.faltan.push('espesor_mm')
   return esp
 }
@@ -37,14 +60,16 @@ function cumple(b, esp) {
   for (const k of ['grado', 'acabado', 'formato', 'espesor_mm', 'ancho_mm']) {
     if (esp[k] != null && b[k] !== esp[k]) return false
   }
-  if (esp.opciones.acabado && !esp.opciones.acabado.includes(b.acabado)) return false
+  for (const [k, vs] of Object.entries(esp.opciones)) if (!vs.includes(b[k])) return false
   return true
 }
+
+const gradoValido = (b, esp) => esp.grado ? b.grado === esp.grado : esp.opciones.grado?.includes(b.grado)
 
 function buscar(esp) {
   const exactos = BULTOS.filter(b => cumple(b, esp))
   const transformables = BULTOS
-    .filter(b => !exactos.includes(b) && b.grado === esp.grado && esp.ancho_mm && b.ancho_mm > esp.ancho_mm
+    .filter(b => !exactos.includes(b) && gradoValido(b, esp) && esp.ancho_mm && b.ancho_mm > esp.ancho_mm
       && (esp.espesor_mm == null || b.espesor_mm === esp.espesor_mm))
     .map(b => ({
       id: b.id,
@@ -54,7 +79,7 @@ function buscar(esp) {
       resultado: { ...b, ancho_mm: esp.ancho_mm, peso_kg: Math.round(b.peso_kg * esp.ancho_mm / b.ancho_mm) },
     }))
   const alternativas = exactos.length || transformables.length ? []
-    : BULTOS.filter(b => b.grado === esp.grado).slice(0, 2)
+    : BULTOS.filter(b => gradoValido(b, esp)).slice(0, 2)
   return { exactos, transformables, alternativas }
 }
 

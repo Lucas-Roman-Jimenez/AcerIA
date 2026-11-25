@@ -1,0 +1,30 @@
+[
+  {
+    "id": "TR-334",
+    "categoria": "transformable_api",
+    "peticion": "Necesito chapa 304 con acabado 2B, espesor 2 mm, ancho 1250 mm y largo 2500 mm.",
+    "esperado": {
+      "especificacion": {"grado": "304", "acabado": "2B", "formato": "chapa", "espesor_mm": 2, "ancho_mm": 1250, "largo_mm": 2500},
+      "bulto_id": "334",
+      "reglas": ["CORTE_BOBINA_CHAPA"],
+      "piezas": 12,
+      "merma_kg": 152.5,
+      "merma_pct": 20.5,
+      "merma_estimada": true
+    }
+  },
+  {
+    "id": "TR-23",
+    "categoria": "transformable_api",
+    "peticion": "Busco chapa 304 en 2B, de 1 mm de espesor, 1250 mm de ancho y 2500 mm de largo.",
+    "esperado": {
+      "especificacion": {"grado": "304", "acabado": "2B", "formato": "chapa", "espesor_mm": 1, "ancho_mm": 1250, "largo_mm": 2500},
+      "bulto_id": "23",
+      "reglas": ["LAMINACION", "CORTE_BOBINA_CHAPA"],
+      "piezas": 135,
+      "merma_kg": 687.2,
+      "merma_pct": 17.1,
+      "merma_estimada": true
+    }
+  }
+]

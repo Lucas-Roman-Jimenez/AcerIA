@@ -18,13 +18,13 @@ promesa con la transcripción final en español. Si el navegador no reconoce
 voz, la promesa puede resolverse con una cadena vacía. Si ocurre un error
 de permisos o del servicio, la promesa se rechaza.
 
-El adaptador devuelve el texto libre para mostrarlo en el compositor y
-poder revisarlo o editarlo antes de enviarlo a la conversación.
+El punto de entrada del frontend en `frontend/src/voz.js` conecta el botón
+del chat con este adaptador. Coloca el dictado en la caja de texto para
+revisarlo o editarlo antes de enviarlo.
 
-`normalizacion.normalizar_transcripcion(texto)` aplica las equivalencias de
-RF-27 documentadas en «Tareas de Lucas»: «dos be» → `2B` y «trescientos
-dieciséis ele» → `316L`. Se puede aplicar a la transcripción en Python
-antes de pasarla al intérprete.
+El navegador aplica las equivalencias de RF-27 documentadas en «Tareas de
+Lucas» («dos be» → `2B` y «trescientos dieciséis ele» → `316L`). La tabla
+`equivalencias.json` se comparte con el normalizador de Python.
 
 Pruebas desde la raíz del proyecto.
 

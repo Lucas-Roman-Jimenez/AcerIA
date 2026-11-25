@@ -35,8 +35,12 @@ El informe JSON incluye el porcentaje y los fallos de cada métrica:
   empate, por `num_operaciones` ascendente. El conjunto aporta una
   coincidencia exacta comprobada por caso, sin fijar todas las coincidencias
   exactas ni su orden.
+- **Transformables API** (`POST /buscar`): comprueba el corte del bulto
+  `334` y la laminación seguida de corte del bulto `23`, según los
+  [casos del contrato](casos_transformables_api.json). Verifica el orden
+  de las acciones, las medidas finales, las piezas y la merma.
 - **Interpretación** (`POST /chat`): comprueba los campos de la especificación
-  o el campo que requiere aclaración en 24 peticiones, cada una con su propia
+  o el campo que requiere aclaración en 26 peticiones, cada una con su propia
   conversación.
 - **Reglas locales**: ejecuta los 8 casos referidos a una operación y un
   bulto de origen del Word o del PDF. Estos casos carecen de un ID de stock
@@ -44,3 +48,6 @@ El informe JSON incluye el porcentaje y los fallos de cada métrica:
 
 El comando devuelve un código de error si alguna métrica de la API queda por
 debajo del 85 % o falla alguna comprobación local.
+
+Añade `--solo-resultados` para medir el buscador y las reglas locales
+mientras la interpretación de `/chat` no esté disponible.
