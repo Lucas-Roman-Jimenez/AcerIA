@@ -17,3 +17,4 @@ DENSIDAD_KG_DM3 = 7.9
 # Tolerancias de búsqueda. POR CONFIRMAR.
 TOL_ESPESOR_MM = 0.0
 TOL_ANCHO_MM = 0.0
+TOL_LARGO_MM = 0.0
