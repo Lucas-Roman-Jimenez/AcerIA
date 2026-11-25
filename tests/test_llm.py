@@ -297,7 +297,7 @@ def test_combinacion_imposible_no_dice_que_el_grado_no_existe():
     # 430 existe en el catálogo, pero no en 2B de 2 mm
     r, _ = interp(extraccion(grado="430", acabado="2B", espesor_mm=2))
     assert r.tipo == "pregunta"
-    assert "no existe 430 de 2 mm en 2B" in r.pregunta
+    assert "no existe 430 2B de 2 mm" in r.pregunta
     assert "no hay grado 430" not in r.pregunta
 
 
@@ -344,7 +344,7 @@ def test_intenciones_con_respuesta_fija(intencion, esperado):
 
 def test_precio_ofrece_buscar_lo_entendido_y_conserva_la_especificacion():
     r, _ = interp(extraccion(intencion="precio", grado="304", acabado="BA", espesor_mm=2))
-    assert "No tengo información de precios" in r.pregunta and "304 de 2 mm en BA" in r.pregunta
+    assert "No tengo información de precios" in r.pregunta and "304 BA de 2 mm" in r.pregunta
     assert r.especificacion.grado == "304"
 
 
@@ -430,7 +430,7 @@ def test_transformable_con_formato_del_backend():
 
 
 def test_criterio_orden_del_backend():
-    res = {"exactos": [EXACTO], "criterio_orden": "exactos > % de merma > nº de operaciones"}
+    res = {"exactos": [EXACTO, dict(EXACTO, id="B-2002")], "criterio_orden": "exactos > % de merma > nº de operaciones"}
     assert "Orden: exactos > % de merma > nº de operaciones." in responder(res)
 
 
@@ -440,3 +440,51 @@ def test_llm_valida_ids_del_formato_del_backend():
     assert responder(res, cliente=ClienteFalso([texto]), catalogo=CAT, usar_llm=True) == texto
     sin_334 = "Tienes el B-2001 (316L 2B)."
     assert responder(res, cliente=ClienteFalso([sin_334]), catalogo=CAT, usar_llm=True) == responder(res)
+
+
+# ---------------------------------------------------------------- inventario real
+
+CAT_REAL = Catalogo(
+    {"grados": ["304", "304L", "316L", "316TI", "409L", "430"],
+     "acabados": ["2B", "BA", "NR.1", "N4-G-180", "SCOTCH BRITE"],
+     "formatos": ["chapa", "bobina", "fleje"],
+     "productos": [{"grado": "409L", "acabado": "NR.1", "formato": "fleje", "espesor_mm": [6, 6]},
+                   {"grado": "304", "acabado": "N4-G-180", "formato": "chapa", "espesor_mm": [1, 1]}],
+     "usos": []},
+    {"terminos": [{"termino": "satinado", "campo": "acabado", "valores": ["4"]}]})
+
+
+def test_normalizar_no_se_come_la_n_de_los_acabados_reales():
+    assert CAT_REAL.normalizar("acabado", "NR.1") == "NR.1"
+    assert CAT_REAL.normalizar("acabado", "n4-g-180") == "N4-G-180"
+    assert CAT.normalizar("acabado", "n.º 4") == "4"   # el prefijo se sigue quitando si va antes de un número
+    assert CAT.normalizar("grado", "AISI-304") == "304"
+
+
+def test_sugiere_valores_parecidos():
+    r = interpretar(H, cliente=ClienteFalso([extraccion(grado="316", espesor_mm=2)]), catalogo=CAT_REAL)
+    assert "316L y 316TI" in r.pregunta
+
+
+def test_termino_sin_ningun_valor_en_el_catalogo_pregunta():
+    r = interpretar(H, cliente=ClienteFalso([extraccion(grado="304", espesor_mm=1, opciones={"acabado": ["4"]})]),
+                    catalogo=CAT_REAL)
+    assert r.tipo == "pregunta" and "«satinado»" in r.pregunta
+
+
+def test_pregunta_por_formato_bien_redactada():
+    esp = Especificacion(grado="304", acabado="2B", espesor_mm=2.0)
+    bultos = [dict(BULTOS[0], formato=f) for f in ("bobina", "chapa", "fleje")]
+    assert pregunta_tras_busqueda(esp, bultos) == "Tengo 304 2B de 2 mm en bobina, chapa y fleje. ¿Qué formato prefieres?"
+
+
+def test_como_mucho_cinco_bultos_en_el_texto():
+    muchos = [dict(EXACTO, id=f"B-{i:04d}") for i in range(271)]
+    texto = responder({"exactos": muchos})
+    assert texto.startswith("Hay 271 bultos que cumplen la petición: B-0000")
+    assert "B-0004" in texto and "B-0005" not in texto and "y 266 más (ver las tarjetas)" in texto
+
+
+def test_sin_propuestas_no_dice_el_criterio():
+    sin_stock = {"exactos": [], "transformables": [], "criterio_orden": "exactos > % de merma"}
+    assert "Orden:" not in responder(sin_stock)

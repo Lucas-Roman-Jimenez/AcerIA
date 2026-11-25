@@ -4,6 +4,7 @@ Aquí se decide qué valores y combinaciones existen. El LLM nunca lo decide (RN
 """
 from __future__ import annotations
 
+import difflib
 import json
 import re
 from pathlib import Path
@@ -41,13 +42,32 @@ class Catalogo:
         if valor is None:
             return None
         v = _norm_texto(valor)
+        candidatos = [v]                       # primero el valor tal cual: «NR.1» y «N4-G-180» existen así
         if campo == "grado":
-            v = re.sub(r"^(aisi|en)\s*", "", v, flags=re.I)
-        if campo == "acabado":
-            v = re.sub(r"^n\.?\s*º?\s*", "", v, flags=re.I)
-        for permitido in self.valores(campo):
-            if v.lower() == permitido.lower():
-                return permitido
+            candidatos.append(re.sub(r"^(aisi|en)[\s-]*", "", v, flags=re.I))
+        if campo == "acabado":                 # «n.º 4», «nº 4», «no. 4» -> «4» (solo si sigue un número)
+            candidatos.append(re.sub(r"^n(?:\.?\s*º|o\.)?\s*(?=\d)", "", v, flags=re.I))
+        for c in candidatos:
+            for permitido in self.valores(campo):
+                if c.lower() == permitido.lower():
+                    return permitido
+        return None
+
+    def parecidos(self, campo: str, valor: Any, n: int = 4) -> list[str]:
+        """Valores del catálogo más parecidos a uno que no existe (316 -> 316L, 316TI), para sugerirlos."""
+        v = _norm_texto(valor).lower()
+        valores = self.valores(campo)
+        prefijo = [p for p in valores if p.lower().startswith(v) or v.startswith(p.lower())]
+        cercanos = difflib.get_close_matches(v, [p.lower() for p in valores], n=n, cutoff=0.6)
+        por_minuscula = {p.lower(): p for p in valores}
+        res = list(dict.fromkeys(prefijo + [por_minuscula[c] for c in cercanos]))[:n]
+        return res or valores[:n]
+
+    def termino(self, campo: str, valores: list[str]) -> Optional[str]:
+        """Término coloquial del glosario que corresponde a esos valores (satinado -> ['4']), si lo hay."""
+        for t in self.terminos:
+            if t["campo"] == campo and set(t["valores"]) == set(valores):
+                return t["termino"]
         return None
 
     # ---------- combinaciones ----------

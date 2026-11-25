@@ -60,6 +60,15 @@ def _describir_transformable(t: dict[str, Any]) -> str:
     return f"{_id(t)} ({'; '.join(detalle)})" if detalle else _id(t)
 
 
+MAX_EN_TEXTO = 5  # el texto (y la lectura en voz alta) nombra como mucho 5; las tarjetas reciben todos
+
+
+def _lista(items: list[dict[str, Any]], describir) -> str:
+    texto = "; ".join(describir(b) for b in items[:MAX_EN_TEXTO])
+    resto = len(items) - MAX_EN_TEXTO
+    return texto + (f"; y {resto} más (ver las tarjetas)" if resto > 0 else "")
+
+
 def plantilla(resultado: dict[str, Any]) -> str:
     exactos = resultado.get("exactos") or []
     transf = resultado.get("transformables") or []
@@ -68,15 +77,15 @@ def plantilla(resultado: dict[str, Any]) -> str:
     if exactos:
         n = len(exactos)
         frases.append(f"{'Hay 1 bulto que cumple' if n == 1 else f'Hay {n} bultos que cumplen'} la petición: "
-                      + "; ".join(_describir_bulto(b) for b in exactos) + ".")
+                      + _lista(exactos, _describir_bulto) + ".")
     if transf:
         inicio = "También se pueden adaptar" if exactos else "No hay ningún bulto que cumpla directamente, pero se pueden adaptar"
-        frases.append(f"{inicio}: " + "; ".join(_describir_transformable(t) for t in transf) + ".")
+        frases.append(f"{inicio}: " + _lista(transf, _describir_transformable) + ".")
     if not exactos and not transf:
         frases.append("No hay stock que cumpla la petición ni bultos que se puedan transformar para cumplirla.")
         if alts:
             frases.append("Como alternativa, sin cumplir exactamente lo pedido, hay: "
-                          + "; ".join(_describir_bulto(b) for b in alts) + ".")
+                          + _lista(alts, _describir_bulto) + ".")
     return " ".join(frases)
 
 
@@ -115,7 +124,9 @@ def _nota_uso(esp: Optional[Especificacion], catalogo: Optional[Catalogo]) -> st
 
 
 def _nota_criterio(resultado: dict[str, Any]) -> str:
-    """Criterio de ordenación que manda el backend (RNF-09). Si no viene, no se dice nada."""
+    """Criterio de ordenación que manda el backend (RNF-09). Solo si hay 2 o más propuestas que ordenar."""
+    if len(resultado.get("exactos") or []) + len(resultado.get("transformables") or []) < 2:
+        return ""
     criterio = str(resultado.get("criterio") or resultado.get("criterio_orden") or "").strip().rstrip(".")
     return f"Orden: {criterio}." if criterio else ""
 

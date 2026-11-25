@@ -111,6 +111,12 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         if campo not in CAMPOS_TEXTO or getattr(esp, campo) is not None:
             continue
         validos = [n for n in dict.fromkeys(catalogo.normalizar(campo, v) for v in valores or []) if n]
+        if valores and not validos:
+            # Ninguno de los valores existe (p. ej. «satinado» -> «4» y no hay «4»): se pregunta, no se ignora.
+            nombre = catalogo.termino(campo, [str(v) for v in valores]) or str(valores[0])
+            problemas["invalidos"].append((campo, nombre))
+            esp.avisos.append(f"«{nombre}» no corresponde a ningún {NOMBRE_CAMPO[campo]} del catálogo.")
+            continue
         for v in valores or []:
             if not catalogo.normalizar(campo, v):
                 esp.avisos.append(f"«{v}» no es un {NOMBRE_CAMPO[campo]} del catálogo.")
@@ -246,10 +252,10 @@ def _describir(esp: Especificacion, sin: str = "") -> str:
         partes.append(formato)
     if grado and sin != "grado":
         partes.append(grado)
+    if acabado and sin != "acabado":
+        partes.append(acabado)
     if esp.espesor_mm and sin != "espesor_mm":
         partes.append(f"de {fmt_num(esp.espesor_mm)} mm")
-    if acabado and sin != "acabado":
-        partes.append(f"en {acabado}")
     return " ".join(partes) or "material"
 
 
@@ -292,7 +298,7 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
                 "Si son pedidos distintos, vamos de uno en uno: ¿con cuál empezamos?")
     if problemas["invalidos"]:
         campo, valor = problemas["invalidos"][0]
-        ejemplos = lista_y(catalogo.valores(campo)[:4], "")
+        ejemplos = lista_y(catalogo.parecidos(campo, valor), "")
         return f"No encuentro «{valor}» como {NOMBRE_CAMPO[campo]} en el catálogo. ¿Te refieres a alguno de estos: {ejemplos}?"
     if problemas["opciones_dudosas"]:
         campo, vals = problemas["opciones_dudosas"]
@@ -391,6 +397,8 @@ def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequen
         if campo in CAMPOS_NUMERO:
             plantilla = (f"Tengo {_describir(esp, sin=campo)} con {NOMBRE_CAMPO[campo]} de "
                          f"{lista_y([fmt_num(v) for v in valores])} mm. ¿Cuál prefieres?")
+        elif campo == "formato":
+            plantilla = f"Tengo {_describir(esp, sin=campo)} en {lista_y(valores)}. ¿Qué formato prefieres?"
         else:
             plantilla = f"Tengo {_describir(esp, sin=campo)} {lista_y(valores, 'en ')}. ¿Cuál prefieres?"
         return None if plantilla == ultima else plantilla
