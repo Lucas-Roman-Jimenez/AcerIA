@@ -12,6 +12,7 @@ from reglas.laminacion import permite_laminacion
 
 
 CASOS = Path(__file__).with_name("casos_evaluacion.json")
+CASOS_TRANSFORMABLES = CASOS.with_name("casos_transformables_api.json")
 UMBRAL = 85
 REGLAS = {"corte": cumple_condiciones_corte, "laminacion": permite_laminacion}
 _MEDIDAS = {
@@ -47,8 +48,7 @@ def _post(base_url, endpoint, datos, timeout):
 def _resultado_stock(respuesta, referencia):
     ids = [str(bulto["id"]) for bulto in respuesta.get("exactos", [])]
     transformables = respuesta.get("transformables", [])
-    ranking = [_criterio_transformable(item) for item in transformables]
-    orden_correcto = None not in ranking and ranking == sorted(ranking)
+    orden_correcto = _orden_correcto(transformables)
     return (
         respuesta.get("estado") == "resultados" and str(referencia) in ids and orden_correcto,
         {
@@ -63,6 +63,11 @@ def _resultado_stock(respuesta, referencia):
     )
 
 
+def _orden_correcto(transformables):
+    ranking = [_criterio_transformable(item) for item in transformables]
+    return None not in ranking and ranking == sorted(ranking)
+
+
 def _criterio_transformable(item):
     porcentaje = item.get("merma_pct")
     operaciones = item.get("num_operaciones")
@@ -71,6 +76,47 @@ def _criterio_transformable(item):
     if type(operaciones) is not int:
         return None
     return porcentaje, operaciones
+
+
+def _resultado_transformable(respuesta, esperado):
+    transformables = respuesta.get("transformables", [])
+    referencia = esperado["bulto_id"]
+    orden_correcto = _orden_correcto(transformables)
+    objetivo = esperado["especificacion"]
+    resultado_esperado = {
+        **{campo: objetivo[campo] for campo in ("formato", "acabado", *_MEDIDAS)},
+        "piezas": esperado["piezas"],
+    }
+    casos_bulto = []
+    for item in transformables:
+        if str(item.get("bulto_id")) != referencia:
+            continue
+        resultado = item.get("resultado") or {}
+        observado = {
+            **{campo: item.get(campo) for campo in ("merma_kg", "merma_pct", "merma_estimada")},
+            "num_operaciones": item.get("num_operaciones"),
+            "reglas": [
+                accion.get("regla") if isinstance(accion, dict) else None
+                for accion in item.get("acciones", [])
+            ],
+            "resultado": {campo: resultado.get(campo) for campo in resultado_esperado},
+        }
+        casos_bulto.append(observado)
+
+    transformacion_esperada = {
+        **{campo: esperado[campo] for campo in ("merma_kg", "merma_pct", "merma_estimada", "reglas")},
+        "num_operaciones": len(esperado["reglas"]),
+        "resultado": resultado_esperado,
+    }
+    estado = respuesta.get("estado")
+    valido = estado == "resultados" and orden_correcto and transformacion_esperada in casos_bulto
+    return valido, {
+        "estado": estado,
+        "bulto_id": referencia,
+        "orden_transformables_correcto": orden_correcto,
+        "esperado": transformacion_esperada,
+        "recibido": casos_bulto,
+    }
 
 
 def _interpretacion_exacta(respuesta, especificacion):
@@ -117,7 +163,7 @@ def _resumir(anotaciones):
 
 
 def evaluar(casos, enviar, *, solo_resultados=False):
-    interpretacion, resultados, reglas_locales = [], [], []
+    interpretacion, resultados, transformables, reglas_locales = [], [], [], []
     for caso in casos:
         esperado = caso["esperado"]
         detalle = {"id": caso["id"], "peticion": caso["peticion"]}
@@ -136,6 +182,13 @@ def evaluar(casos, enviar, *, solo_resultados=False):
                 enviar, "/buscar", especificacion, _resultado_stock, referencia,
             )
             resultados.append((acierto, dict(detalle, id_referencia_excel=referencia, **observado)))
+            comprobar, objetivo = _interpretacion_exacta, especificacion
+        elif categoria == "transformable_api":
+            especificacion = esperado["especificacion"]
+            acierto, observado = _evaluar_peticion(
+                enviar, "/buscar", especificacion, _resultado_transformable, esperado,
+            )
+            transformables.append((acierto, dict(detalle, **observado)))
             comprobar, objetivo = _interpretacion_exacta, especificacion
         elif categoria == "aclaracion":
             campo = esperado["pedir_aclaracion_sobre"]
@@ -158,6 +211,8 @@ def evaluar(casos, enviar, *, solo_resultados=False):
     }
     if not solo_resultados:
         informe["interpretacion"] = _resumir(interpretacion)
+    if transformables:
+        informe["transformables_api"] = _resumir(transformables)
     return informe
 
 
@@ -172,13 +227,17 @@ def main():
         parser.error("--timeout debe ser positivo")
     with CASOS.open(encoding="utf-8") as archivo:
         casos = json.load(archivo)
+    with CASOS_TRANSFORMABLES.open(encoding="utf-8") as archivo:
+        casos.extend(json.load(archivo))
 
     def enviar(endpoint, datos):
         return _post(args.base_url, endpoint, datos, args.timeout)
 
     informe = evaluar(casos, enviar, solo_resultados=args.solo_resultados)
     print(json.dumps(informe, ensure_ascii=False, indent=2))
-    metricas = ("resultados",) if args.solo_resultados else ("resultados", "interpretacion")
+    metricas = ["resultados", "transformables_api"]
+    if not args.solo_resultados:
+        metricas.append("interpretacion")
     correcto = all(informe[metrica]["cumple_umbral"] for metrica in metricas)
     return 0 if correcto and not informe["reglas_locales"]["fallos"] else 1
 
