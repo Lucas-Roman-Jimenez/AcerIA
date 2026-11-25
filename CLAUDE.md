@@ -25,6 +25,13 @@ Hackathon IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto 
 - Sustituir `datos_ejemplo/` por los datos reales de Lucas.
 - Probar los prompts con el LLM real usando `demo_consola.py`.
 
+## Normas de equipo
+- Carpetas acordadas: `backend/`, `llm/`, `frontend/`, `voz/` y `tests/`. Cada persona en su rama, con merge frecuente a `main`.
+- El contrato JSON no se cambia sin avisar a los cuatro.
+- Los fallos van a issues, asignados a quien le toque.
+- A partir de las 12:00 del día 3, nada de funcionalidades nuevas: solo arreglar fallos.
+- Requisitos, análisis y reparto: ver `docs/README.md`.
+
 ## Forma de trabajar
 - Antes de cualquier decisión importante (cambiar el contrato, añadir dependencias, cambiar la arquitectura), preguntar a Nacho.
 - Ejecutar `python -m pytest -q` después de cada cambio.
@@ -32,5 +39,5 @@ Hackathon IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto 
 
 ## Estructura del repositorio
 - Raíz: `llm/` (módulo de Nacho), `tests/`, `demo_consola.py`, `datos_ejemplo/`.
-- Carpetas de cada miembro: `backend/` (Alonso), `frontend/` (Stanis), `datos/`, `reglas/`, `voz/`, `evaluacion/` (Lucas), `docs/`.
+- Carpetas de cada miembro: `backend/` (Alonso), `frontend/` (Stanis), `datos/`, `reglas/`, `voz/` (Lucas), `docs/`. `tests/` es común: tests de cada pieza, conjunto de pruebas y script de evaluación.
 - Comandos desde la raíz del repo: `python -m pytest -q`, `python demo_consola.py`.

@@ -6,15 +6,14 @@ IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto que interp
 
 ```
 llm/             Nacho (P2)  interpretación, validación contra catálogo, preguntas y respuesta
-tests/           tests del módulo llm (python -m pytest -q)
+tests/           tests de llm, reglas y buscador; conjunto de pruebas y evaluación (Lucas)
 demo_consola.py  prueba real del módulo llm con búsqueda simulada
 datos_ejemplo/   catálogo, glosario e inventario inventados para desarrollar
 backend/         Alonso (P1) FastAPI + SQLite, buscador, transformables, ranking, orquestación
 frontend/        Stanis (P3) chat, tarjetas, panel «Lo que he entendido», voz alta
 datos/           Lucas (P4)  catalogo.json y glosario.json reales
-reglas/          Lucas (P4)  motor de reglas del TXT
+reglas/          Lucas (P4)  motor de reglas del TXT (determinista, sin LLM)
 voz/             Lucas (P4)  entrada por voz
-evaluacion/      Lucas (P4)  conjunto de pruebas y script de evaluación
 docs/            documentación del proyecto
 ```
 
