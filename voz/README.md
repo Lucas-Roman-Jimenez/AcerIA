@@ -9,5 +9,5 @@ dieciséis ele» → `316L`.
 Desde la raíz del proyecto:
 
 ```bash
-python -m unittest voz.test_normalizacion -v
+python -m pytest tests/test_normalizacion.py -q
 ```

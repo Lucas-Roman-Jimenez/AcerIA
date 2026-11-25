@@ -19,5 +19,5 @@ el grado, el acabado y el espesor.
 Desde la raíz del proyecto:
 
 ```bash
-python -m unittest discover -s reglas -v
+python -m pytest tests/test_laminacion.py tests/test_corte_sustitucion.py -q
 ```
