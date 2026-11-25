@@ -4,6 +4,7 @@ Aquí se decide qué valores y combinaciones existen. El LLM nunca lo decide (RN
 """
 from __future__ import annotations
 
+import difflib
 import json
 import re
 from pathlib import Path
@@ -22,9 +23,11 @@ class Catalogo:
         self.acabados: list[str] = catalogo["acabados"]
         self.formatos: list[str] = catalogo["formatos"]
         self.productos: list[dict[str, Any]] = catalogo.get("productos", [])
-        self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
         self.usos: list[dict[str, Any]] = catalogo.get("usos", [])
         self.terminos: list[dict[str, Any]] = glosario.get("terminos", [])
+        # Catálogo real (Lucas): se puede desactivar la validación de combinaciones y cada ficha
+        # relaciona el grado comercial (AISI, p. ej. 304) con su designación EN (1.4301).
+        self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
         self.grados_en_por_comercial: dict[str, set[str]] = {}
         for ficha in catalogo.get("fichas", []):
             grado = ficha.get("grado_comercial")
@@ -47,17 +50,32 @@ class Catalogo:
         if valor is None:
             return None
         v = _norm_texto(valor)
-        permitidos = self.valores(campo)
-        for permitido in permitidos:
-            if v.lower() == permitido.lower():
-                return permitido
+        candidatos = [v]                       # primero el valor tal cual: «NR.1» y «N4-G-180» existen así
         if campo == "grado":
-            v = re.sub(r"^(aisi|en)\s*", "", v, flags=re.I)
-        if campo == "acabado":
-            v = re.sub(r"^n\.?\s*º?\s*", "", v, flags=re.I)
-        for permitido in permitidos:
-            if v.lower() == permitido.lower():
-                return permitido
+            candidatos.append(re.sub(r"^(aisi|en)[\s-]*", "", v, flags=re.I))
+        if campo == "acabado":                 # «n.º 4», «nº 4», «no. 4» -> «4» (solo si sigue un número)
+            candidatos.append(re.sub(r"^n(?:\.?\s*º|o\.)?\s*(?=\d)", "", v, flags=re.I))
+        for c in candidatos:
+            for permitido in self.valores(campo):
+                if c.lower() == permitido.lower():
+                    return permitido
+        return None
+
+    def parecidos(self, campo: str, valor: Any, n: int = 4) -> list[str]:
+        """Valores del catálogo más parecidos a uno que no existe (316 -> 316L, 316TI), para sugerirlos."""
+        v = _norm_texto(valor).lower()
+        valores = self.valores(campo)
+        prefijo = [p for p in valores if p.lower().startswith(v) or v.startswith(p.lower())]
+        cercanos = difflib.get_close_matches(v, [p.lower() for p in valores], n=n, cutoff=0.6)
+        por_minuscula = {p.lower(): p for p in valores}
+        res = list(dict.fromkeys(prefijo + [por_minuscula[c] for c in cercanos]))[:n]
+        return res or valores[:n]
+
+    def termino(self, campo: str, valores: list[str]) -> Optional[str]:
+        """Término coloquial del glosario que corresponde a esos valores (satinado -> ['4']), si lo hay."""
+        for t in self.terminos:
+            if t["campo"] == campo and set(t["valores"]) == set(valores):
+                return t["termino"]
         return None
 
     # ---------- combinaciones ----------
@@ -86,10 +104,11 @@ class Catalogo:
         """True si algún término del glosario admite todos esos valores para ese campo (RF-05)."""
         return any(t["campo"] == campo and set(valores) <= set(t["valores"]) for t in self.terminos)
 
-    # ---------- usos ----------
     def grado_indicado_para_uso(self, grado: str, grados_del_uso: list[str]) -> bool:
+        """True si el grado, o su designación EN, está entre los que el catálogo indica para un uso."""
         return grado in grados_del_uso or not self.grados_en_por_comercial.get(grado, set()).isdisjoint(grados_del_uso)
 
+    # ---------- usos ----------
     def uso(self, nombre: Optional[str]) -> Optional[dict[str, Any]]:
         if not nombre:
             return None

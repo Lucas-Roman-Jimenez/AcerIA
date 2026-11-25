@@ -25,6 +25,12 @@ def lista_y(items: Iterable[str], prefijo: str = "") -> str:
     return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " y " + xs[-1]
 
 
+def lista_o(items: Iterable[str]) -> str:
+    """['2B','BA','2D'] -> '2B, BA o 2D'."""
+    xs = [str(i) for i in items]
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " o " + xs[-1]
+
+
 def numeros(texto: str) -> set[float]:
     return {float(n.replace(",", ".")) for n in _NUM.findall(texto)}
 
@@ -44,6 +50,14 @@ def valores_catalogo(texto: str, catalogo: Catalogo) -> set[str]:
         if re.search(rf"(?<![\w]){re.escape(v)}(?![\w])", texto, flags=re.I if v.islower() else 0):
             encontrados.add(v)
     return encontrados
+
+
+def conserva_datos(texto: str, original: str, catalogo: Catalogo) -> bool:
+    """True si el texto mantiene todos los números, valores del catálogo y textos entre «» del original."""
+    citas = re.findall(r"«([^»]+)»", original)
+    return (numeros(original) <= numeros(texto)
+            and valores_catalogo(original, catalogo) <= valores_catalogo(texto, catalogo)
+            and all(c in texto for c in citas))
 
 
 def no_inventa(texto_llm: str, fuente: Any, catalogo: Catalogo, conteos_permitidos: int = 10) -> bool:

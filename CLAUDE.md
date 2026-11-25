@@ -12,19 +12,25 @@ Hackathon IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto 
 - El LLM solo traduce lenguaje. Qué valores existen, qué bultos hay y qué transformaciones son posibles lo decide el código, nunca el LLM (RNF-02).
 - El bot no inventa productos, propiedades, cifras ni bultos (RNF-01). Todo texto del LLM pasa por `control.no_inventa`; si falla, se usa la plantilla.
 - Se pregunta en dos momentos: antes de buscar, si faltan datos mínimos o hay valores inválidos; después de buscar, solo por el dato que distingue entre el stock real (RF-07).
-- El LLM elige qué aclarar entre los candidatos válidos. El código
-  comprueba la elección y usa las preguntas de respaldo cuando hace falta.
+- El código decide qué preguntar. Por defecto la pregunta sale de una plantilla; el LLM solo la redacta si se activa `redactar_con_llm=True`, y aun así se valida con `no_inventa` y `conserva_datos`.
 - El conjunto de pruebas de Lucas no se modifica para que los prompts salgan mejor.
 - Las claves van en `.env`, que nunca se sube al repositorio.
 
 ## Decisiones tomadas
 - Python, proveedor de LLM intercambiable (`LLM_PROVEEDOR=anthropic|openai`).
-- Contrato ampliado con `largo_mm`, `cantidad`, `opciones`, `uso`, `fuente_uso` y `avisos` (ver README).
+- Contrato ampliado con `largo_mm`, `cantidad`, `opciones`, `uso`, `fuente_uso`, `avisos` e `indiferentes` (ver `docs/contrato.md`).
+- El LLM solo hace la extracción (una llamada por mensaje). Las preguntas y las respuestas salen de plantillas por defecto, por velocidad (RNF-05) y para que no inventen (RNF-01). `pregunta_tras_busqueda()` no usa nunca el LLM. No cambiar esto sin preguntar a Nacho.
+- LLM del hackathon: Claude por el AI Gateway de Databricks. El modelo se llama `system.ai.claude-sonnet-5-5` (sin el prefijo `system.ai.` da 403).
+- Los mensajes que no son un pedido (saludo, gracias, precio, plazo, reserva, consulta técnica, fuera de tema) tienen respuesta fija, sin LLM.
 
 ## Pendiente
+- **Catálogo real de Lucas** (`datos/catalogo.json` y `glosario.json`): en cuanto esté, cambiar `RUTA_DATOS` en `llm/catalogo.py`. Es lo que más limita: con el catálogo de ejemplo la evaluación de Lucas da 37,5 % de interpretación; con un catálogo sacado del inventario real, 95,8 % (umbral RNF-03: 85 %).
+- Después, repetir `tests/bateria_llm.py`, la evaluación de Lucas (`tests/evaluar_api.py`) y `docs/guion_demo.md` con los datos reales.
+- Decidir con Lucas el caso CL-08 («304 brillante de 2 mm»): su caso espera que se pregunte siempre ante un término ambiguo (RF-05); el módulo busca con las opciones y solo pregunta si el stock se distingue (RF-07).
+- Alonso: conectar `/chat` al módulo (sigue con respuestas de prueba), pasar `historial` a `pregunta_tras_busqueda()` y decidir el formato de las opciones para botones.
+- Stanis: pintar `indiferentes` («Cualquiera») y, si se quiere, `criterio_orden` encima de las tarjetas (RNF-09).
+- Merge request !1 (`nacho/llm` → `main`) pendiente de aceptar.
 - Confirmar con el mentor `CAMPOS_MINIMOS` (ahora grado + espesor) y las tolerancias.
-- Sustituir `datos_ejemplo/` por los datos reales de Lucas.
-- Probar los prompts con el LLM real usando `demo_consola.py`.
 
 ## Normas de equipo
 - Carpetas acordadas: `backend/`, `llm/`, `frontend/`, `voz/` y `tests/`. Cada persona en su rama, con merge frecuente a `main`.
