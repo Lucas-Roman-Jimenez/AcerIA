@@ -22,15 +22,18 @@ export default function App() {
   const [actual, setActual] = useState(() => ({ id: nuevoId(), mensajes: [], ultima: null }))
   const [texto, setTexto] = useState('')
   const [pensando, setPensando] = useState(false)
-  const [escuchando, setEscuchando] = useState(false)
   const [vozActiva, setVozActiva] = useState(false)
+  const [estadoDictado, setEstadoDictado] = useState(null)
+  const [mensajeDictado, setMensajeDictado] = useState('')
   const [detalle, setDetalle] = useState(null)
   const [stock, setStock] = useState([])
   const finRef = useRef(null)
   const entradaRef = useRef(null)
+  const dictadoRef = useRef(null)
 
   useEffect(() => { resumenStock().then(setStock).catch(() => setStock([])) }, [])
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando])
+  useEffect(() => () => descartarDictado(dictadoRef), [])
   const [lento, setLento] = useState(false)
   useEffect(() => {
     setLento(false)
@@ -38,6 +41,47 @@ export default function App() {
     const t = setTimeout(() => setLento(true), 2500)
     return () => clearTimeout(t)
   }, [pensando])
+
+  function cancelarDictado() {
+    descartarDictado(dictadoRef)
+    setEstadoDictado(null)
+    setMensajeDictado('')
+  }
+
+  async function alternarDictado() {
+    if (estadoDictado === 'procesando') return
+    if (dictadoRef.current) {
+      setEstadoDictado('procesando')
+      dictadoRef.current.detener()
+      return
+    }
+
+    setMensajeDictado('')
+    window.speechSynthesis?.cancel()
+    let dictado
+    try {
+      dictado = escuchar()
+      dictadoRef.current = dictado
+      setEstadoDictado('escuchando')
+      const transcripcion = await dictado.texto
+      if (dictadoRef.current !== dictado) return
+      if (transcripcion) {
+        setTexto(anterior => [anterior.trimEnd(), transcripcion].filter(Boolean).join(' '))
+        entradaRef.current?.focus()
+      } else {
+        setMensajeDictado('No se reconoció voz. Prueba otra vez o escribe la petición.')
+      }
+    } catch (error) {
+      if (dictadoRef.current === dictado || !dictado) {
+        setMensajeDictado(`${error.message} Puedes escribir la petición.`)
+      }
+    } finally {
+      if (dictadoRef.current === dictado || !dictado) {
+        dictadoRef.current = null
+        setEstadoDictado(null)
+      }
+    }
+  }
 
   const guardar = conv => {
     setActual(conv)
@@ -47,6 +91,7 @@ export default function App() {
   async function enviar(msg, conv = actual) {
     const limpio = msg.trim()
     if (!limpio || pensando) return
+    cancelarDictado()
     setTexto('')
     const base = { ...conv, creada: conv.creada ?? new Date(), mensajes: [...conv.mensajes, { rol: 'comercial', texto: limpio }] }
     guardar(base)
@@ -70,20 +115,11 @@ export default function App() {
   }
 
   function nuevaConsulta() {
+    cancelarDictado()
     window.speechSynthesis?.cancel()
     setActual({ id: nuevoId(), mensajes: [], ultima: null })
     setTexto('')
     setDetalle(null)
-  }
-
-  async function dictar() {
-    if (escuchando) return
-    setEscuchando(true)
-    try {
-      await escuchar(t => { setTexto(t); entradaRef.current?.focus() }, msg => alert(msg))
-    } finally {
-      setEscuchando(false)
-    }
   }
 
   const noServidas = conversaciones.filter(c => c.ultima?.tipo === 'respuesta'
@@ -130,7 +166,7 @@ export default function App() {
           <div className="lateral-titulo">Recientes ⌄</div>
           {conversaciones.map(c => (
             <button key={c.id} className={`reciente ${c.id === actual.id ? 'activa' : ''}`}
-              onClick={() => { setActual(c); setDetalle(null) }}>
+              onClick={() => { cancelarDictado(); setActual(c); setDetalle(null) }}>
               <span className="reciente-texto">{c.mensajes[0]?.texto}</span>
               {c.creada && <span className="reciente-hora">{cuando(c.creada)}</span>}
             </button>
@@ -186,13 +222,16 @@ export default function App() {
             <input ref={entradaRef} value={texto} onChange={e => setTexto(e.target.value)}
               placeholder="Escribe o dicta: grado, espesor, formato…"
               aria-label="Escribe tu petición" disabled={pensando} />
-            <button type="button" className={`microfono ${escuchando ? 'escuchando' : ''}`} onClick={dictar}
-              title="Dictar la petición" aria-pressed={escuchando}>
-              <span className="microfono-icono" aria-hidden>🎙</span>
-              {escuchando ? 'Escuchando…' : 'Hablar'}
+            <button type="button" className={`microfono ${estadoDictado ? 'escuchando' : ''}`}
+              title={estadoDictado ? 'Detener dictado' : 'Dictar la petición'}
+              aria-pressed={Boolean(estadoDictado)} disabled={pensando || estadoDictado === 'procesando'}
+              onClick={alternarDictado}>
+              <span className="microfono-icono" aria-hidden>{estadoDictado ? '■' : '🎙'}</span>
+              {estadoDictado === 'escuchando' ? 'Escuchando…' : estadoDictado === 'procesando' ? 'Transcribiendo…' : 'Hablar'}
             </button>
             <button type="submit" className="icono" title="Enviar" disabled={pensando || !texto.trim()}>→</button>
           </form>
+          <div className="estado-dictado" role="status">{estadoDictado ? '' : mensajeDictado}</div>
           <Casillas texto={texto} base={esp} />
         </main>
       </div>
@@ -200,6 +239,12 @@ export default function App() {
       {detalle && <Detalle item={detalle} onCerrar={() => setDetalle(null)} />}
     </div>
   )
+}
+
+function descartarDictado(ref) {
+  const dictado = ref.current
+  ref.current = null
+  dictado?.cancelar()
 }
 
 function Resultados({ r, onAbrir }) {

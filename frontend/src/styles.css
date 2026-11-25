@@ -191,6 +191,9 @@ button:disabled { cursor: default; opacity: .5; }
 .entrada input::placeholder { color: var(--tenue); }
 .icono { width: 48px; height: 48px; background: none; border: 1px solid var(--plata); font-size: 20px; }
 .icono:hover:not(:disabled) { background: var(--superficie); }
+.icono[aria-pressed="true"] { border-color: var(--error); color: var(--error); }
+.estado-dictado { max-width: 760px; width: 100%; margin: 6px auto 0; color: var(--tenue); font-size: 14px; }
+.estado-dictado:empty { margin: 0; }
 
 /* Detalle */
 .modal-fondo { position: fixed; inset: 0; background: rgba(5, 6, 20, .7); display: flex; align-items: center; justify-content: center; z-index: 10; }

@@ -2,11 +2,14 @@
 nunca cambiando el conjunto de pruebas."""
 
 SISTEMA_EXTRACCION = """Eres el intérprete de un asistente comercial de AcerIA, fabricante de acero inoxidable.
-Tu única tarea es convertir la conversación con un comercial en una especificación estructurada.
+Convierte la conversación con un comercial en una especificación estructurada
+y elige qué dato conviene aclarar primero cuando falte más de uno.
 No decides si hay stock ni propones bultos: eso lo hace otro sistema.
 
 Datos del catálogo que puedes usar (no existen otros valores):
 {catalogo}
+
+Campos mínimos de esta búsqueda: {minimos}.
 
 Reglas:
 1. Usa toda la conversación. Si un dato cambia, vale el último que dio el comercial.
@@ -21,6 +24,9 @@ Reglas:
 7. Si el comercial da dos valores incompatibles para el mismo campo en el mismo mensaje (por ejemplo, «2 mm y 3 mm»),
    indícalo en "contradicciones" y deja ese campo a null.
 8. "fuera_de_tema": true solo si el último mensaje no tiene nada que ver con pedir material.
+9. "campo_aclaracion": elige el campo mínimo pendiente cuya respuesta ayude más a avanzar.
+   Usa el contexto de toda la conversación. No elijas un campo que ya tenga valor u opciones.
+   Usa null si no falta ningún campo mínimo o el último mensaje está fuera de tema.
 
 Devuelve solo este JSON:
 {{
@@ -30,7 +36,8 @@ Devuelve solo este JSON:
   "cantidad": null,
   "uso": null,
   "opciones": {{}},
-  "contradicciones": []
+  "contradicciones": [],
+  "campo_aclaracion": null
 }}
 Ejemplo de cantidad: {{"valor": 500, "unidad": "kg"}}. Ejemplo de contradicción: {{"campo": "espesor_mm", "valores": [2, 3]}}."""
 
@@ -38,6 +45,12 @@ USUARIO_EXTRACCION = """Conversación hasta ahora:
 {conversacion}
 
 Devuelve la especificación en JSON."""
+
+SISTEMA_ELEGIR_ACLARACION = """Elige qué dato conviene preguntar al comercial de AcerIA
+para distinguir entre los bultos encontrados. Recibirás la conversación y las opciones
+reales de stock agrupadas por campo. Elige un solo campo de esa lista, dando prioridad
+al que mejor resuelva la petición en contexto. Devuelve solo un objeto JSON con la
+clave "campo" y el nombre exacto del campo. No añadas opciones ni redactes la pregunta."""
 
 SISTEMA_REDACTAR_PREGUNTA = """Reescribe la pregunta que te dan para que suene natural y amable, dirigida a un comercial de AcerIA, en español.
 Máximo dos frases. No añadas ningún dato, cifra, grado, acabado ni formato que no esté en la pregunta original.

@@ -22,7 +22,7 @@ if r.tipo == "pregunta":                     # 1.er momento: antes de buscar
     devolver(pregunta=r.pregunta, especificacion=r.especificacion)
 else:
     resultado = buscar(r.especificacion)     # Alonso + motor de reglas de Lucas
-    p = pregunta_tras_busqueda(r.especificacion, resultado["exactos"])
+    p = pregunta_tras_busqueda(r.especificacion, resultado["exactos"], historial=historial)
     if p:                                    # 2.º momento: el stock real se distingue por un dato no dado (RF-07)
         devolver(pregunta=p, especificacion=r.especificacion)
     else:
@@ -31,6 +31,9 @@ else:
 
 - `interpretar()` puede lanzar `ErrorLLM`. Es el único caso en que el módulo lanza una excepción.
 - `pregunta_tras_busqueda()` y `responder()` nunca lanzan excepción: si el LLM falla, usan una plantilla.
+- Cuando varios campos distinguen el stock, el intérprete puede consultar al
+  LLM con el historial para elegir un campo. La pregunta usa las opciones
+  reales devueltas por el buscador.
 
 ---
 
