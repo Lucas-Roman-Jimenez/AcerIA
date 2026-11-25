@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.db import crear_db, disponibles
-from app.buscador import construir_objetivo, buscar_exactos
+from app.buscador import buscar_bultos, construir_objetivo
 
 
 @asynccontextmanager
@@ -98,11 +98,11 @@ def chat(m: MensajeChat):
 @app.post("/buscar")
 def buscar(espec: dict):
     objetivo = construir_objetivo(espec)
-    exactos = buscar_exactos(objetivo)
+    exactos, transformables = buscar_bultos(objetivo)
     return {
-        "estado": "resultados" if exactos else "sin_stock",
+        "estado": "resultados" if exactos or transformables else "sin_stock",
         "objetivo": objetivo,
-        "exactos": exactos, "transformables": [], "alternativas": [],
+        "exactos": exactos, "transformables": transformables, "alternativas": [],
         "criterio_orden": "exactos > % de merma > nº de operaciones",
     }
 
