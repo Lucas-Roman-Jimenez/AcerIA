@@ -58,7 +58,6 @@ else:
 `responder()` nunca lanza excepción: si el LLM falla o su texto añade algo que no está en el resultado, usa una plantilla.
 
 ### Contrato ampliado (avisar a Alonso y Stanis)
-
 La especificación añade estos campos al contrato original:
 
 | Campo | Para qué | Requisito |
