@@ -1,0 +1,22 @@
+{
+  "cortes": {
+    "chapa": {
+      "chapa": "CORTE_CHAPA_CHAPA",
+      "fleje": "CORTE_CHAPA_FLEJE"
+    },
+    "bobina": {
+      "chapa": "CORTE_BOBINA_CHAPA",
+      "fleje": "CORTE_BOBINA_FLEJE"
+    }
+  },
+  "laminacion": {
+    "id": "LAMINACION",
+    "formato": "bobina",
+    "acabados_origen": ["2B", "NR.1"],
+    "acabado_destino": "2B",
+    "reduccion_min": 0.50,
+    "reduccion_max": 0.75,
+    "merma_kg": 0
+  },
+  "densidad_kg_mm3": 0.0000079
+}
