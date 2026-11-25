@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.db import crear_db
+from app.db import crear_db, disponibles
 from app.buscador import construir_objetivo, buscar_exactos
 
 
@@ -20,7 +20,20 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 class MensajeChat(BaseModel):
     conversacion_id: str | None = None
-    mensaje: str
+    mensaje: str | None = None      # formato de Alonso y de la evaluación de Lucas
+    texto: str | None = None        # formato del frontend de Stanis (docs/contrato.md §6)
+
+
+def compatibilizar(r: dict) -> dict:
+    """Añade los campos que usa el frontend de Stanis sin quitar los que usa la evaluación de Lucas.
+    estado (pregunta | resultados | sin_stock | error)  ->  tipo (pregunta | respuesta | error) + error."""
+    r["tipo"] = {"pregunta": "pregunta", "error": "error"}.get(r["estado"], "respuesta")
+    r["error"] = r["texto"] if r["estado"] == "error" else None
+    for t in r.get("transformables", []):
+        t.setdefault("id", t["bulto"]["id"])           # Stanis usa la clave id
+        t.setdefault("bulto_id", t["bulto"]["id"])     # el motor de Lucas usa bulto_id
+        t.setdefault("origen", t["bulto"])             # Stanis pinta el «antes» desde origen
+    return r
 
 
 # ---------- respuestas FALSAS para que Stanis monte el frontend ----------
@@ -57,7 +70,7 @@ def health():
 @app.post("/chat")
 def chat(m: MensajeChat):
     r = respuesta_base(m.conversacion_id)
-    texto = m.mensaje.lower()
+    texto = (m.mensaje or m.texto or "").lower()
 
     if "error" in texto:
         r["estado"] = "error"
@@ -80,7 +93,7 @@ def chat(m: MensajeChat):
         r["pregunta"] = "Tengo 304 de 2 mm en 2B y en BA, ¿cuál necesitas?"
         r["opciones"] = ["2B", "BA"]
         r["texto"] = r["pregunta"]
-    return r
+    return compatibilizar(r)
 
 @app.post("/buscar")
 def buscar(espec: dict):
@@ -92,3 +105,18 @@ def buscar(espec: dict):
         "exactos": exactos, "transformables": [], "alternativas": [],
         "criterio_orden": "exactos > % de merma > nº de operaciones",
     }
+
+
+@app.get("/stock/resumen")
+def stock_resumen(limite: int = 12):
+    """Cinta de stock de la cabecera del frontend: grupos de bultos disponibles por grado, acabado y formato."""
+    grupos: dict[str, dict] = {}
+    for b in disponibles():
+        etiqueta = f"{b['aisi'] or b['euronorma']} {b['acabado']} · {b['formato']}"
+        g = grupos.setdefault(etiqueta, {"etiqueta": etiqueta, "bultos": 0, "toneladas": 0.0})
+        g["bultos"] += 1
+        g["toneladas"] += b["peso_kg"] / 1000
+    resumen = sorted(grupos.values(), key=lambda g: g["toneladas"], reverse=True)[:limite]
+    for g in resumen:
+        g["toneladas"] = round(g["toneladas"], 1)
+    return resumen
