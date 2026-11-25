@@ -6,11 +6,13 @@ from pydantic import BaseModel
 
 from app.db import crear_db, disponibles
 from app.buscador import construir_objetivo, buscar_exactos
+from app.conversacion import buscar_transformables, cargar_env, responder_chat
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     crear_db()          # crea la base de datos al arrancar (RNF-12)
+    cargar_env()        # clave y modelo del LLM desde el .env de la raíz (RNF-13)
     yield
 
 
@@ -69,6 +71,13 @@ def health():
 
 @app.post("/chat")
 def chat(m: MensajeChat):
+    """Conversación real: módulo LLM + buscador + motor de reglas (app/conversacion.py)."""
+    return compatibilizar(responder_chat(m.conversacion_id, m.mensaje or m.texto or ""))
+
+
+@app.post("/chat/prueba")
+def chat_prueba(m: MensajeChat):
+    """Respuestas FALSAS de antes, por si el frontend las necesita para probar sin LLM."""
     r = respuesta_base(m.conversacion_id)
     texto = (m.mensaje or m.texto or "").lower()
 
@@ -99,10 +108,11 @@ def chat(m: MensajeChat):
 def buscar(espec: dict):
     objetivo = construir_objetivo(espec)
     exactos = buscar_exactos(objetivo)
+    transformables = buscar_transformables(objetivo)     # motor de reglas de Lucas (RF-11 a RF-14)
     return {
-        "estado": "resultados" if exactos else "sin_stock",
+        "estado": "resultados" if exactos or transformables else "sin_stock",
         "objetivo": objetivo,
-        "exactos": exactos, "transformables": [], "alternativas": [],
+        "exactos": exactos, "transformables": transformables, "alternativas": [],
         "criterio_orden": "exactos > % de merma > nº de operaciones",
     }
 
