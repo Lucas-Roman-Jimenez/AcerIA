@@ -548,3 +548,12 @@ def test_solo_medidas_se_describe_como_material():
     esp = Especificacion(espesor_mm=2.0, indiferentes=["grado"])
     bultos = [dict(BULTOS[0], acabado=a) for a in ("2B", "BA")]
     assert pregunta_tras_busqueda(esp, bultos) == "Tengo material de 2 mm en 2B y en BA. ¿Cuál prefieres?"
+
+
+def test_acciones_del_motor_de_lucas_como_objetos():
+    t = {"bulto_id": "334", "bulto": TRANSF_BACKEND["bulto"],
+         "acciones": [{"regla": "R-CORTE", "descripcion": "Cortar bobina a chapa 2 × 1250 × 2500 mm",
+                       "parametros": {}, "merma_kg": 152.5, "orden": 1}],
+         "merma_kg": 152.5, "merma_pct": 20.5, "num_operaciones": 1}
+    texto = responder({"exactos": [], "transformables": [t]})
+    assert "334 (" in texto and "Cortar bobina a chapa 2 × 1250 × 2500 mm; merma 152,5 kg (20,5 %)" in texto

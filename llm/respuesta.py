@@ -51,7 +51,9 @@ def _describir_transformable(t: dict[str, Any]) -> str:
     detalle = []
     if isinstance(t.get("bulto"), dict) and _caracteristicas(t["bulto"], con_formato=True):
         detalle.append(", ".join(_caracteristicas(t["bulto"], con_formato=True)))  # antes (RF-20)
-    detalle += list(t.get("acciones") or [])
+    # El motor de Lucas devuelve cada acción como {"regla", "descripcion", "parametros", ...}; antes eran textos.
+    detalle += [a.get("descripcion") or a.get("regla") or "" if isinstance(a, dict) else str(a)
+                for a in (t.get("acciones") or [])]
     if t.get("merma_kg") is not None:
         pct = f" ({fmt_num(t['merma_pct'])} %)" if t.get("merma_pct") is not None else ""
         detalle.append(f"merma {fmt_num(t['merma_kg'])} kg{pct}")
