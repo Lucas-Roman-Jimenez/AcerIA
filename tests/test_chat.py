@@ -70,15 +70,15 @@ def test_exactos_reales_con_formato_de_la_api(api, llm_falso):
     assert r["criterio_orden"]
 
 
-def test_transformables_del_motor_con_bulto_de_origen(api, llm_falso):
-    cliente, conversacion = api
-    objetivo = {"grados": ["304"], "acabados": ["2B"], "formato": "chapa", "espesor_mm": 2.0,
-                "ancho_mm": 1000.0, "largo_mm": 2000.0, "tolerancias": {}}
-    ts = conversacion.buscar_transformables(objetivo)
+def test_transformables_por_chat_con_bulto_de_origen_y_ordenados(api, llm_falso):
+    cliente, _ = api
+    llm_falso(extraccion(grado="304", acabado="2B", formato="chapa", espesor_mm=2, ancho_mm=1000, largo_mm=2000))
+    r = chat(cliente, "chapa 304 2B de 2 x 1000 x 2000", conv="transformables")
+    ts = r["transformables"]
     assert ts, "el inventario real tiene bultos 304 2B que se pueden cortar a 2 × 1000 × 2000"
-    assert all(t["bulto"]["id"] == t["bulto_id"] for t in ts)
+    assert all(t["bulto"]["id"] == t["bulto_id"] == t["id"] for t in ts)       # compatibilizar() de Alonso
     claves = [(t["merma_pct"], t["num_operaciones"]) for t in ts]
-    assert claves == sorted(claves)                                   # RF-14
+    assert claves == sorted(claves)                                          # RF-14
 
 
 def test_pregunta_antes_de_buscar(api, llm_falso):

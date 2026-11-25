@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-RUTA_DATOS = Path(__file__).resolve().parent.parent / "datos_ejemplo"
+RUTA_DATOS = Path(__file__).resolve().parent.parent / "datos"
 
 
 def _norm_texto(v: Any) -> str:
@@ -25,6 +25,14 @@ class Catalogo:
         self.productos: list[dict[str, Any]] = catalogo.get("productos", [])
         self.usos: list[dict[str, Any]] = catalogo.get("usos", [])
         self.terminos: list[dict[str, Any]] = glosario.get("terminos", [])
+        # Catálogo real (Lucas): se puede desactivar la validación de combinaciones y cada ficha
+        # relaciona el grado comercial (AISI, p. ej. 304) con su designación EN (1.4301).
+        self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
+        self.grados_en_por_comercial: dict[str, set[str]] = {}
+        for ficha in catalogo.get("fichas", []):
+            grado = ficha.get("grado_comercial")
+            if grado:
+                self.grados_en_por_comercial.setdefault(grado, set()).add(ficha["en"])
 
     @classmethod
     def cargar(cls, carpeta: Path | str = RUTA_DATOS) -> "Catalogo":
@@ -95,6 +103,10 @@ class Catalogo:
     def ambiguedad_valida(self, campo: str, valores: list[str]) -> bool:
         """True si algún término del glosario admite todos esos valores para ese campo (RF-05)."""
         return any(t["campo"] == campo and set(valores) <= set(t["valores"]) for t in self.terminos)
+
+    def grado_indicado_para_uso(self, grado: str, grados_del_uso: list[str]) -> bool:
+        """True si el grado, o su designación EN, está entre los que el catálogo indica para un uso."""
+        return grado in grados_del_uso or not self.grados_en_por_comercial.get(grado, set()).isdisjoint(grados_del_uso)
 
     # ---------- usos ----------
     def uso(self, nombre: Optional[str]) -> Optional[dict[str, Any]]:

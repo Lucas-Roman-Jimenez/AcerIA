@@ -55,8 +55,9 @@ def _parsear_json(texto: str) -> dict[str, Any]:
     return json.loads(texto[ini:fin + 1])
 
 
-def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo) -> dict[str, Any]:
-    sistema = prompts.SISTEMA_EXTRACCION.format(catalogo=catalogo.resumen_para_prompt())
+def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequence[str] = ()) -> dict[str, Any]:
+    sistema = prompts.SISTEMA_EXTRACCION.format(catalogo=catalogo.resumen_para_prompt(),
+                                                minimos=", ".join(minimos) or "ninguno")
     usuario = prompts.USUARIO_EXTRACCION.format(conversacion=_conversacion(historial))
     ultimo_error = None
     for _ in range(2):  # un reintento si el JSON llega mal formado
@@ -86,7 +87,8 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
     intencion = bruto.get("intencion") or ("fuera_de_tema" if bruto.get("fuera_de_tema") else "pedido")
     problemas: dict[str, Any] = {"invalidos": [], "contradiccion": None, "combinacion": None,
                                  "uso_desconocido": None, "opciones_dudosas": None,
-                                 "intencion": intencion if intencion in INTENCIONES else "pedido"}
+                                 "intencion": intencion if intencion in INTENCIONES else "pedido",
+                                 "campo_aclaracion": bruto.get("campo_aclaracion")}
 
     # Tipos robustos (RNF-14): lo que no tenga la forma esperada se descarta, nunca rompe.
     opciones_brutas = bruto.get("opciones") if isinstance(bruto.get("opciones"), dict) else {}
@@ -146,7 +148,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         if uso:
             esp.uso = uso["uso"]
             esp.fuente_uso = uso.get("fuente")
-            if esp.grado and esp.grado not in uso["grados"]:
+            if esp.grado and not catalogo.grado_indicado_para_uso(esp.grado, uso["grados"]):
                 esp.avisos.append(f"Según el catálogo, para {uso['uso']} se indican {lista_y(uso['grados'])}.")
             if esp.grado is None and "grado" not in esp.opciones:
                 grados = [g for g in uso["grados"] if g in catalogo.grados]
@@ -172,7 +174,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         if contr[0]["campo"] in CAMPOS_TEXTO + CAMPOS_NUMERO:
             setattr(esp, contr[0]["campo"], None)
 
-    if not problemas["invalidos"]:
+    if catalogo.validar_combinaciones and not problemas["invalidos"]:
         _recortar_opciones(esp, catalogo)
         problemas["combinacion"] = _comprobar_combinacion(esp, catalogo)
         if problemas["combinacion"]:
@@ -326,7 +328,9 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
                 f"¿Qué grado necesitas? Por ejemplo: {lista_y(catalogo.grados[:3])}.")
     faltan = esp.faltan
     if faltan:
-        c = faltan[0]
+        # El LLM puede sugerir qué dato mínimo preguntar primero (Lucas); el código lo comprueba.
+        sugerido = problemas.get("campo_aclaracion")
+        c = sugerido if isinstance(sugerido, str) and sugerido in faltan else faltan[0]
         if c in CAMPOS_TEXTO:
             return f"¿Qué {NOMBRE_CAMPO[c]} necesitas? Por ejemplo: {lista_y(catalogo.valores(c)[:3])}."
         return f"¿Qué {NOMBRE_CAMPO[c]} necesitas, en milímetros?"
@@ -368,7 +372,7 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
         return ResultadoInterpretacion("pregunta", Especificacion(faltan=list(minimos)), "¿Qué material necesitas?")
     cliente = cliente or _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
-    bruto = _extraer(historial, cliente, catalogo)
+    bruto = _extraer(historial, cliente, catalogo, minimos)
     esp, problemas = _validar(bruto, catalogo)
     if problemas["intencion"] != "pedido":
         _calcular_faltan(esp, minimos)

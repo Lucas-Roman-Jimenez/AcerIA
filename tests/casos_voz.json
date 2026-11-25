@@ -1,0 +1,12 @@
+[
+  {"id": "VOZ-01", "dictar": "Necesito acabado dos be.", "codigos": ["2B"]},
+  {"id": "VOZ-02", "dictar": "¿Tienes algo en trescientos dieciséis ele?", "codigos": ["316L"]},
+  {"id": "VOZ-03", "dictar": "Acabado dos be, por favor.", "codigos": ["2B"]},
+  {"id": "VOZ-04", "dictar": "Me refería a trescientos dieciséis ele.", "codigos": ["316L"]},
+  {"id": "VOZ-05", "dictar": "Busco una chapa con acabado dos be.", "codigos": ["2B"]},
+  {"id": "VOZ-06", "dictar": "¿Puedes buscar trescientos dieciséis ele en el inventario?", "codigos": ["316L"]},
+  {"id": "VOZ-07", "dictar": "Si tienes dos be, dime qué hay disponible.", "codigos": ["2B"]},
+  {"id": "VOZ-08", "dictar": "Cambia el grado a trescientos dieciséis ele.", "codigos": ["316L"]},
+  {"id": "VOZ-09", "dictar": "Necesito trescientos dieciséis ele con acabado dos be.", "codigos": ["316L", "2B"]},
+  {"id": "VOZ-10", "dictar": "El acabado es dos be y el grado trescientos dieciséis ele.", "codigos": ["2B", "316L"]}
+]

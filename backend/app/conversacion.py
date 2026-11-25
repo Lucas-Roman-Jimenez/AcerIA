@@ -1,7 +1,7 @@
 """Orquestación de /chat: módulo LLM de Nacho + buscador de Alonso + motor de reglas de Lucas.
 
 Flujo por mensaje (docs/contrato.md §1):
-    interpretar() -> (pregunta) | buscar exactos y transformables -> pregunta_tras_busqueda() | responder()
+    interpretar() -> (pregunta) | buscar_bultos() -> pregunta_tras_busqueda() | responder()
 
 El LLM solo interpreta y redacta; qué bultos hay y qué transformaciones son posibles lo decide
 el código (RNF-02). Devuelve el mismo formato que la respuesta de prueba de main.py.
@@ -17,10 +17,8 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 from llm import ErrorLLM, interpretar, pregunta_tras_busqueda, responder  # noqa: E402
-from reglas.motor import aplicar_reglas  # noqa: E402
 
-from app.buscador import a_respuesta, buscar_exactos, construir_objetivo  # noqa: E402
-from app.db import disponibles  # noqa: E402
+from app.buscador import buscar_bultos, construir_objetivo  # noqa: E402
 
 CRITERIO_ORDEN = "exactos > % de merma > nº de operaciones"   # RF-14, el mismo que /buscar
 MAX_MENSAJES = 40                                            # historial por conversación (RF-08)
@@ -37,16 +35,6 @@ def cargar_env(ruta: Path = RAIZ / ".env") -> None:
         if "=" in linea and not linea.strip().startswith("#"):
             clave, valor = linea.split("=", 1)
             os.environ.setdefault(clave.strip(), valor.strip())
-
-
-def buscar_transformables(objetivo: dict) -> list[dict]:
-    """Bultos disponibles que el motor de Lucas puede adaptar al objetivo, ordenados por merma y operaciones."""
-    resultado = []
-    for bulto in disponibles():
-        for t in aplicar_reglas(bulto, objetivo):
-            resultado.append(dict(t, bulto=a_respuesta(bulto)))   # «antes» para la tarjeta y para responder()
-    resultado.sort(key=lambda t: (t.get("merma_pct", float("inf")), t.get("num_operaciones", 99)))
-    return resultado
 
 
 def _respuesta(conv_id: str, estado: str, texto: str, especificacion: dict, **extra) -> dict:
@@ -79,9 +67,8 @@ def responder_chat(conv_id: str | None, mensaje: str) -> dict:
     if r.tipo == "pregunta":                      # faltan datos, valor inválido, saludo, precio...
         return _guardar(historial, _respuesta(conv_id, "pregunta", r.pregunta, espec))
 
-    objetivo = construir_objetivo(espec)
-    exactos = buscar_exactos(objetivo)
-    transformables = buscar_transformables(objetivo)
+    # Buscador de Alonso: exactos y transformables del motor de Lucas, verificados y ordenados (RF-10 a RF-14).
+    exactos, transformables = buscar_bultos(construir_objetivo(espec))
 
     p = pregunta_tras_busqueda(r.especificacion, exactos, historial=historial)
     if p:                                         # el stock real se distingue por un dato no dado (RF-07)

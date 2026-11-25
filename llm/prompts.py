@@ -5,6 +5,8 @@ SISTEMA_EXTRACCION = """Eres el intérprete de un asistente comercial de AcerIA,
 Tu única tarea es convertir la conversación con un comercial en una especificación estructurada.
 No decides si hay stock ni propones bultos: eso lo hace otro sistema.
 
+Campos mínimos de esta búsqueda: {minimos}.
+
 Datos del catálogo que puedes usar (no existen otros valores):
 {catalogo}
 
@@ -28,6 +30,9 @@ Reglas:
 9. "indiferentes": campos que el comercial dice que le dan igual («me da igual el acabado», «cualquier grado»),
    con estos nombres: grado, acabado, formato, espesor_mm, ancho_mm, largo_mm. Si después da un valor, quítalo.
 
+10. "campo_aclaracion": si falta más de un campo mínimo, el que más ayude a avanzar según la conversación.
+   No elijas un campo que ya tenga valor u opciones. null si no falta ninguno o el mensaje no es un pedido.
+
 Ejemplos de casos difíciles (solo se muestran los campos que cambian):
 - «dame cualquiera de 2 mm» -> {{"espesor_mm": 2, "indiferentes": ["grado"]}}
 - Tras «304 de 2 mm», el comercial dice «me da igual el acabado» -> {{"grado": "304", "espesor_mm": 2, "indiferentes": ["acabado"]}}
@@ -45,7 +50,8 @@ Devuelve solo este JSON:
   "uso": null,
   "opciones": {{}},
   "contradicciones": [],
-  "indiferentes": []
+  "indiferentes": [],
+  "campo_aclaracion": null
 }}
 Ejemplo de cantidad: {{"valor": 500, "unidad": "kg"}}. Ejemplo de contradicción: {{"campo": "espesor_mm", "valores": [2, 3]}}."""
 
@@ -90,7 +96,7 @@ ESQUEMA_EXTRACCION = {
     "type": "object",
     "additionalProperties": False,
     "required": ["intencion", "grado", "acabado", "formato", "espesor_mm", "ancho_mm", "largo_mm",
-                 "cantidad", "uso", "opciones", "contradicciones", "indiferentes"],
+                 "cantidad", "uso", "opciones", "contradicciones", "indiferentes", "campo_aclaracion"],
     "properties": {
         "intencion": {"type": "string", "enum": ["pedido", "saludo", "agradecimiento", "precio", "plazo",
                                                  "reserva", "consulta_tecnica", "fuera_de_tema"]},
@@ -108,5 +114,6 @@ ESQUEMA_EXTRACCION = {
             "type": "object", "additionalProperties": False, "required": ["campo", "valores"],
             "properties": {"campo": {"type": "string", "enum": _CAMPOS}, "valores": _LISTA}}},
         "indiferentes": {"type": "array", "items": {"type": "string", "enum": _CAMPOS}},
+        "campo_aclaracion": {"anyOf": [{"type": "null"}, {"type": "string", "enum": _CAMPOS}]},
     },
 }
