@@ -24,10 +24,13 @@ Hackathon IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto 
 - Los mensajes que no son un pedido (saludo, gracias, precio, plazo, reserva, consulta técnica, fuera de tema) tienen respuesta fija, sin LLM.
 
 ## Pendiente
+- **Catálogo real de Lucas** (`datos/catalogo.json` y `glosario.json`): en cuanto esté, cambiar `RUTA_DATOS` en `llm/catalogo.py`. Es lo que más limita: con el catálogo de ejemplo la evaluación de Lucas da 37,5 % de interpretación; con un catálogo sacado del inventario real, 95,8 % (umbral RNF-03: 85 %).
+- Después, repetir `tests/bateria_llm.py`, la evaluación de Lucas (`tests/evaluar_api.py`) y `docs/guion_demo.md` con los datos reales.
+- Decidir con Lucas el caso CL-08 («304 brillante de 2 mm»): su caso espera que se pregunte siempre ante un término ambiguo (RF-05); el módulo busca con las opciones y solo pregunta si el stock se distingue (RF-07).
+- Alonso: conectar `/chat` al módulo (sigue con respuestas de prueba), pasar `historial` a `pregunta_tras_busqueda()` y decidir el formato de las opciones para botones.
+- Stanis: pintar `indiferentes` («Cualquiera») y, si se quiere, `criterio_orden` encima de las tarjetas (RNF-09).
+- Merge request !1 (`nacho/llm` → `main`) pendiente de aceptar.
 - Confirmar con el mentor `CAMPOS_MINIMOS` (ahora grado + espesor) y las tolerancias.
-- Sustituir `datos_ejemplo/` por los datos reales de Lucas.
-- Repetir la batería de escenarios y `docs/guion_demo.md` con los datos reales de Lucas.
-- Que Alonso pase `historial` a `pregunta_tras_busqueda()` y acepte (o no) las propuestas `criterio` y `resultado`.
 
 ## Normas de equipo
 - Carpetas acordadas: `backend/`, `llm/`, `frontend/`, `voz/` y `tests/`. Cada persona en su rama, con merge frecuente a `main`.
