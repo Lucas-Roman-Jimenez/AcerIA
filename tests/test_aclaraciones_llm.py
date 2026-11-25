@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -7,7 +8,7 @@ from llm.catalogo import Catalogo
 
 
 HISTORIAL = [{"rol": "comercial", "texto": "Buenas, busco una chapa."}]
-CATALOGO = Catalogo.cargar()
+CATALOGO = Catalogo.cargar(Path(__file__).resolve().parents[1] / "datos_ejemplo")
 BULTOS = [
     {"id": "B-1023", "grado": "304", "acabado": "2B", "espesor_mm": 2, "ancho_mm": 1250},
     {"id": "B-1024", "grado": "304", "acabado": "BA", "espesor_mm": 2, "ancho_mm": 1500},

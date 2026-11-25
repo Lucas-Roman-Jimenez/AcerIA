@@ -1,11 +1,12 @@
-"""Buscador de bultos que cumplen la petición SIN transformar (RF-10).
+"""Buscador de bultos exactos y transformables (RF-10 a RF-14).
 
-Flujo: especificación de Nacho -> construir_objetivo() -> buscar_exactos(objetivo)
+Flujo: especificación de Nacho -> construir_objetivo() -> buscar_bultos(objetivo)
 La función cumple() es la pieza clave: se reutiliza para verificar los transformables
 de Lucas (RF-12) y en la verificación final anti-invención (RNF-01, RNF-02).
 """
 from app import config
 from app.db import disponibles, grados
+from reglas.motor import aplicar_reglas
 
 EPS = 1e-9                                       # margen para comparar decimales (2.0 vs 1.9999999)
 MEDIDAS = ["espesor_mm", "ancho_mm", "largo_mm"]
@@ -38,12 +39,15 @@ def construir_objetivo(espec: dict) -> dict:
     }
 
 
+def _cumple_grado(bulto: dict, objetivo: dict) -> bool:
+    aceptados = objetivo["grados"]
+    return not aceptados or not set(aceptados).isdisjoint(g.upper() for g in grados(bulto))
+
+
 def cumple(bulto: dict, objetivo: dict) -> bool:
     """¿El bulto (o el resultado de una transformación) cumple el objetivo? Un campo None = no pedido."""
-    if objetivo["grados"]:
-        if not {g.upper() for g in grados(bulto)} & set(objetivo["grados"]):
-            return False
-
+    if not _cumple_grado(bulto, objetivo):
+        return False
     if objetivo["acabados"]:
         if (bulto.get("acabado") or "").upper() not in objetivo["acabados"]:
             return False
@@ -100,3 +104,20 @@ def valores_disponibles(campo: str, espec: dict, bultos: list[dict] | None = Non
     if campo in MEDIDAS:
         return sorted(grupos.values(), key=lambda g: g["valor"])
     return sorted(grupos.values(), key=lambda g: -g["toneladas"])
+
+
+def buscar_bultos(objetivo: dict) -> tuple[list[dict], list[dict]]:
+    """Busca en una sola lectura del inventario y verifica cada resultado del motor."""
+    exactos = []
+    transformables = []
+    for bulto in disponibles():
+        if cumple(bulto, objetivo):
+            exactos.append(a_respuesta(bulto))
+            continue
+        if not _cumple_grado(bulto, objetivo):
+            continue
+        for transformacion in aplicar_reglas(bulto, objetivo, config.MAX_OPERACIONES):
+            if cumple(transformacion["resultado"], objetivo):
+                transformables.append(dict(transformacion, bulto=a_respuesta(bulto)))
+    transformables.sort(key=lambda item: (item["merma_pct"], item["num_operaciones"]))
+    return exactos, transformables

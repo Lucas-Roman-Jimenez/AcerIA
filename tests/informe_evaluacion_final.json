@@ -1,0 +1,75 @@
+{
+  "fecha": "2026-11-25",
+  "rama": "main",
+  "revision_evaluada": "65e9d4b",
+  "estado_evaluacion": "parcial",
+  "metodo": {
+    "inventario": "backend/data/inventario.xlsx",
+    "bultos_disponibles": 2411,
+    "endpoint": "POST /buscar",
+    "ejecucion": "FastAPI TestClient en el mismo proceso con una base SQLite temporal",
+    "peticiones": 18,
+    "tiempo_ms_mediana": 9.7,
+    "tiempo_ms_maximo": 16.5,
+    "alcance": "Coincidencias de referencia y dos rutas de transformación del contrato. La latencia es local."
+  },
+  "umbral_pct": 85,
+  "resultados": {
+    "total": 16,
+    "aciertos": 16,
+    "porcentaje": 100.0,
+    "cumple_umbral": true,
+    "fallos": []
+  },
+  "reglas_locales": {
+    "total": 8,
+    "aciertos": 8,
+    "porcentaje": 100.0,
+    "cumple_umbral": true,
+    "fallos": []
+  },
+  "transformables_api": {
+    "total": 2,
+    "aciertos": 2,
+    "porcentaje": 100.0,
+    "cumple_umbral": true,
+    "fallos": []
+  },
+  "detalle_transformables": [
+    {
+      "caso": "TR-334",
+      "bulto_id": "334",
+      "reglas": [
+        "CORTE_BOBINA_CHAPA"
+      ],
+      "piezas": 12,
+      "merma_kg": 152.5,
+      "merma_pct": 20.5,
+      "merma_estimada": true
+    },
+    {
+      "caso": "TR-23",
+      "bulto_id": "23",
+      "reglas": [
+        "LAMINACION",
+        "CORTE_BOBINA_CHAPA"
+      ],
+      "piezas": 135,
+      "merma_kg": 687.2,
+      "merma_pct": 17.1,
+      "merma_estimada": true
+    }
+  ],
+  "interpretacion": {
+    "estado": "no_medida",
+    "casos_preparados": 26,
+    "umbral_pct": 85,
+    "motivo": "POST /chat sigue simulado. El entorno carece de configuración para un proveedor LLM."
+  },
+  "voz": {
+    "estado": "no_medida",
+    "dictados_preparados": 10,
+    "umbral_pct": 90,
+    "motivo": "Faltan capturas con micrófono real."
+  }
+}
