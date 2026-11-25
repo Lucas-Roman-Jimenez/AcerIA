@@ -29,7 +29,10 @@ Convierte lo que dice el comercial en una especificación validada contra el cat
 pip install -r requirements.txt
 python -m pytest -q         # sin conexión ni clave
 python demo_consola.py      # prueba real con el LLM (búsqueda simulada); en Windows, antes: chcp 65001
+python tests/bateria_llm.py # 42 escenarios contra el LLM real; con prefijos (p. ej. V F) lanza solo esos
 ```
+
+`tests/bateria_llm.py` no lo ejecuta `pytest` porque llama al LLM real y gasta tokens. Al final resume errores y tiempos (mediana, máximo y mensajes de más de 5 s); que cada respuesta tenga sentido hay que revisarlo a mano. Hay que repetirla con los datos reales de Lucas.
 
 ### Configuración del LLM (gateway del hackathon)
 
@@ -74,7 +77,7 @@ else:
 
 ### Qué escenarios cubre
 
-Probado con 38 escenarios contra el LLM real (mediana 1,0 s por mensaje, ninguno inventa datos):
+Probado con los escenarios de `tests/bateria_llm.py` contra el LLM real (mediana 1,0 s por mensaje, ninguno inventa datos):
 
 | Escenario | Comportamiento |
 | --- | --- |
@@ -129,7 +132,8 @@ llm/
   respuesta.py    responder() con plantilla de respaldo
   control.py      control anti-invención de cifras, valores y bultos
   proveedores.py  Anthropic, OpenAI y ClienteFalso para tests
-tests/test_llm.py
+tests/test_llm.py    tests sin conexión (pytest)
+tests/bateria_llm.py escenarios contra el LLM real (a mano)
 demo_consola.py
 docs/contrato.md     contrato JSON completo con ejemplos
 docs/guion_demo.md   conversación de la demo con las respuestas reales
