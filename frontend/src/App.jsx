@@ -115,16 +115,6 @@ export default function App() {
             <section className="inicio">
               <div>
                 <h1>¿Qué quieres buscar?</h1>
-                <div className="sugerencias">
-                  {sugerencias.map(s => (
-                    <button key={s.tipo + s.texto} type="button" className="sugerencia" onClick={() => elegir(s)}>
-                      <span className="sug-tipo">{s.tipo}</span>
-                      {s.texto}
-                      {s.detalle && <span className="sug-detalle">{s.detalle}</span>}
-                    </button>
-                  ))}
-                  {!sugerencias.length && <p className="tenue">No hay nada parecido en stock ni en el catálogo. Sigue escribiendo.</p>}
-                </div>
               </div>
               <div className="bobina" aria-hidden>
                 <div className="bobina-cuerpo" />
@@ -154,7 +144,7 @@ export default function App() {
             </section>
           )}
 
-          {!vacio && texto.trim() && sugerencias.length > 0 && (
+          {texto.trim() && sugerencias.length > 0 && (
             <div className="chips">
               {sugerencias.map(s => (
                 <button key={s.tipo + s.texto} type="button" className="chip" onClick={() => elegir(s)} title={s.detalle}>
