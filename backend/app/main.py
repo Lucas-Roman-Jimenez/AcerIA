@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.db import crear_db, disponibles
-from app.buscador import construir_objetivo, buscar_exactos
+from app.buscador import CAMPOS_VALORES, buscar_bultos, construir_objetivo, valores_disponibles
 
 
 @asynccontextmanager
@@ -98,13 +98,27 @@ def chat(m: MensajeChat):
 @app.post("/buscar")
 def buscar(espec: dict):
     objetivo = construir_objetivo(espec)
-    exactos = buscar_exactos(objetivo)
+    exactos, transformables = buscar_bultos(objetivo)
     return {
-        "estado": "resultados" if exactos else "sin_stock",
+        "estado": "resultados" if exactos or transformables else "sin_stock",
         "objetivo": objetivo,
-        "exactos": exactos, "transformables": [], "alternativas": [],
+        "exactos": exactos, "transformables": transformables, "alternativas": [],
         "criterio_orden": "exactos > % de merma > nº de operaciones",
     }
+
+
+@app.get("/stock/valores")
+def stock_valores(campo: str, grado: str | None = None, acabado: str | None = None,
+                  formato: str | None = None, espesor_mm: float | None = None, ancho_mm: float | None = None):
+    """Valores reales de un campo en el stock disponible, filtrado por lo que ya se sabe.
+    Ejemplo: /stock/valores?campo=espesor_mm&grado=304 -> grosores de 304 que hay ahora."""
+    if campo not in CAMPOS_VALORES:
+        raise HTTPException(422, f"campo debe ser uno de: {', '.join(CAMPOS_VALORES)}")
+    filtros = {k: v for k, v in {"grado": grado, "acabado": acabado, "formato": formato,
+                                 "espesor_mm": espesor_mm, "ancho_mm": ancho_mm}.items() if v is not None}
+    valores = valores_disponibles(campo, filtros)
+    return {"campo": campo, "filtros": filtros, "valores": valores,
+            "total_bultos": sum(v["bultos"] for v in valores)}
 
 
 @app.get("/stock/resumen")

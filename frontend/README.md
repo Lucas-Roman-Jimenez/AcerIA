@@ -11,6 +11,7 @@ VITE_API_URL=http://localhost:8000 npm run dev    # contra el backend de Alonso
 
 ## API
 - `POST /chat` con `{"conversacion_id", "texto"}` → respuesta de `docs/contrato.md` §6.
+- `GET /stock/valores?campo=espesor_mm&grado=304` → `{campo, filtros, valores: [{valor, bultos, toneladas}], total_bultos}`. Lo usan «¿qué grosores hay?», el asistente de uso, la corrección del panel y las alternativas cercanas.
 - `GET /stock/resumen` → `[{"etiqueta": "304 BA · chapa", "bultos": 2, "toneladas": 1.0}]` (cinta de stock de la cabecera).
 
 Sin `VITE_API_URL` se usa `src/mock.js`, que lee `datos_ejemplo/inventario.json`. Escribe «error» en el chat para probar el estado de fallo.

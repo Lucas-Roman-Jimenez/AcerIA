@@ -14,6 +14,9 @@ UMBRAL_FLEJE_MM = 600
 # Densidad para estimar el largo de una bobina a partir de su peso (kg/dm³). POR CONFIRMAR.
 DENSIDAD_KG_DM3 = 7.9
 
+# Permite laminar y después cortar. POR CONFIRMAR.
+MAX_OPERACIONES = 2
+
 # Tolerancias de búsqueda. POR CONFIRMAR.
 TOL_ESPESOR_MM = 0.0
 TOL_ANCHO_MM = 0.0

@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 from llm import ErrorLLM, interpretar, pregunta_tras_busqueda, responder
+from llm.catalogo import Catalogo
 
 RAIZ = Path(__file__).resolve().parent
 
@@ -40,6 +41,7 @@ def buscar_simulado(esp):
 
 def main():
     cargar_env()
+    catalogo = Catalogo.cargar(RAIZ / "datos_ejemplo")   # la demo busca en el inventario de ejemplo
     historial = []
     print("Asistente AcerIA (demo). Escribe tu petición; 'nueva' reinicia, 'salir' termina.\n")
     while True:
@@ -52,7 +54,7 @@ def main():
             continue
         historial.append({"rol": "comercial", "texto": texto})
         try:
-            r = interpretar(historial)
+            r = interpretar(historial, catalogo=catalogo)
         except ErrorLLM as e:
             print(f"[Error del LLM: {e}. Inténtalo de nuevo.]\n")
             historial.pop()
@@ -63,7 +65,7 @@ def main():
         else:
             resultado = buscar_simulado(r.especificacion)
             salida = (pregunta_tras_busqueda(r.especificacion, resultado["exactos"], historial=historial)
-                      or responder(resultado, r.especificacion))
+                      or responder(resultado, r.especificacion, catalogo=catalogo))
         historial.append({"rol": "asistente", "texto": salida})
         print(f"Asistente> {salida}\n")
 

@@ -1,12 +1,13 @@
 """Tests del módulo LLM. No necesitan clave ni conexión: usan ClienteFalso."""
 import json
+from pathlib import Path
 
 import pytest
 
 from llm import ClienteFalso, ErrorLLM, Especificacion, interpretar, pregunta_tras_busqueda, responder
 from llm.catalogo import Catalogo
 
-CAT = Catalogo.cargar()
+CAT = Catalogo.cargar(Path(__file__).resolve().parents[1] / "datos_ejemplo")
 H = [{"rol": "comercial", "texto": "lo que sea"}]
 
 

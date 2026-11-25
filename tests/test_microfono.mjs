@@ -14,6 +14,11 @@ class ReconocimientoFalso {
   stop() {
     this.onend();
   }
+
+  abort() {
+    this.onerror({ error: "aborted" });
+    this.onend();
+  }
 }
 
 test("devuelve el mensaje completo en español sin interpretar la petición", async (t) => {
@@ -48,17 +53,31 @@ test("permite detectar navegadores sin reconocimiento y comunica errores", async
 test("el punto de entrada del chat entrega el dictado completo con la nomenclatura normalizada", async (t) => {
   globalThis.SpeechRecognition = ReconocimientoFalso;
   t.after(() => { delete globalThis.SpeechRecognition; });
-  const mensajes = [];
-  const completa = escuchar((texto) => mensajes.push(texto), assert.fail);
+  const dictado = escuchar();
   const microfono = ReconocimientoFalso.instancia;
-  await escuchar(assert.fail, assert.fail);
-  assert.equal(ReconocimientoFalso.instancia, microfono);
   microfono.onresult({
     results: [{ isFinal: true, 0: {
       transcript: "Buenas, necesito trescientos dieciséis ele, DOS  BE. Busco también dos beige.",
     } }],
   });
   microfono.onend();
-  await completa;
-  assert.deepEqual(mensajes, ["Buenas, necesito 316L, 2B. Busco también dos beige."]);
+  assert.equal(await dictado.texto, "Buenas, necesito 316L, 2B. Busco también dos beige.");
+});
+
+test("cancelar descarta el texto pendiente y permite empezar otro dictado", async (t) => {
+  globalThis.SpeechRecognition = ReconocimientoFalso;
+  t.after(() => { delete globalThis.SpeechRecognition; });
+  const anterior = escuchar();
+  ReconocimientoFalso.instancia.onresult({
+    results: [{ isFinal: true, 0: { transcript: "Texto de la consulta anterior" } }],
+  });
+  anterior.cancelar();
+  assert.equal(await anterior.texto, "");
+
+  const nuevo = escuchar();
+  ReconocimientoFalso.instancia.onresult({
+    results: [{ isFinal: true, 0: { transcript: "Necesito dos be." } }],
+  });
+  nuevo.detener();
+  assert.equal(await nuevo.texto, "Necesito 2B.");
 });
