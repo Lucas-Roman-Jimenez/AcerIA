@@ -44,6 +44,7 @@ export function Panel({ esp, onCorregir, deshabilitado }) {
                     onClick={() => { setEditando(k); setValor(esp[k] ?? '') }}>
                     {esp[k] != null ? `${fmt(esp[k])}${unidad ? ' ' + unidad : ''}`
                       : opciones ? opciones.join(' o ')
+                      : esp.indiferentes?.includes(k) ? 'Cualquiera'
                       : falta ? 'Falta' : '—'}
                   </button>
                 )}

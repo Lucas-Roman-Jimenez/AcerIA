@@ -59,7 +59,7 @@ button:disabled { cursor: default; opacity: .5; }
 
 /* Ticker de stock */
 .ticker { background: var(--fondo); border-bottom: 1px solid var(--borde); overflow: hidden; height: 30px; flex-shrink: 0; }
-.ticker-pista { display: flex; white-space: nowrap; animation: desliza 60s linear infinite; width: max-content; }
+.ticker-pista { display: flex; white-space: nowrap; animation: desliza 140s linear infinite; width: max-content; }
 .ticker-item { padding: 7px 22px; font-size: 13px; font-weight: 600; border-right: 1px solid var(--borde); }
 .ticker-item em { font-style: normal; color: var(--acento); margin-left: 6px; }
 @keyframes desliza { to { transform: translateX(-33.33%); } }
@@ -69,9 +69,11 @@ button:disabled { cursor: default; opacity: .5; }
 .lateral { width: 250px; background: var(--fondo-2); border-right: 1px solid var(--borde); padding: 20px 0; overflow-y: auto; flex-shrink: 0; }
 .lateral-titulo { padding: 8px 18px 14px; font-size: 14px; color: var(--plata); }
 .reciente {
-  display: block; width: 100%; text-align: left; background: none; border: 0; padding: 10px 18px;
-  font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--plata);
+  display: block; width: 100%; text-align: left; background: none; border: 0; padding: 9px 18px;
+  font-size: 14px; color: var(--plata);
 }
+.reciente-texto { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reciente-hora { display: block; font-size: 12px; color: var(--tenue); margin-top: 2px; }
 .reciente:hover, .reciente.activa { background: var(--superficie); color: #fff; }
 
 .principal {
@@ -80,27 +82,12 @@ button:disabled { cursor: default; opacity: .5; }
 }
 
 /* Inicio */
-.inicio { flex: 1; display: flex; align-items: center; gap: 60px; }
-.inicio h1 { font-size: 38px; font-weight: 600; margin: 0 0 24px; }
-.sugerencias { display: grid; grid-template-columns: repeat(2, 240px); gap: 6px; }
-.sugerencia {
-  text-align: left; background: var(--superficie); border: 1px solid var(--borde); padding: 16px 15px;
-  font-size: 15px; line-height: 1.35; min-height: 88px;
-}
-.sugerencia:hover { border-color: var(--acento); }
-.sug-tipo { display: block; color: var(--acento); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; }
-
-.bobina { position: relative; width: 190px; height: 270px; margin-left: 30px; filter: drop-shadow(0 30px 40px rgba(0,0,0,.6)); }
-.bobina-cuerpo {
-  position: absolute; inset: 0 40px 0 0; border-radius: 30px 0 0 30px / 135px 0 0 135px;
-  background: linear-gradient(180deg, #e8eaf2 0%, #9599ab 22%, #f4f5fa 38%, #6d7186 62%, #b6b9c8 82%, #4b4e60 100%);
-}
-.bobina-cara {
-  position: absolute; right: 0; top: 0; width: 80px; height: 270px; border-radius: 50%;
-  background: radial-gradient(ellipse at 40% 50%, #d6d9e4 0%, #8c90a3 60%, #5a5d70 100%);
-  display: flex; align-items: center; justify-content: center;
-}
-.bobina-hueco { width: 20px; height: 80px; border-radius: 50%; background: linear-gradient(90deg, #2a2c3c, #8a8da0); }
+.inicio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.inicio h1 { font-size: 38px; font-weight: 600; margin: 18px 0 20px; }
+.inicio-acero { width: 340px; filter: drop-shadow(0 30px 40px rgba(0,0,0,.6)); }
+.inicio-acero .acero-svg { width: 100%; }
+.inicio-acero stop { transition: stop-color .4s; }
+.inicio-nombre { min-height: 26px; font-size: 18px; font-weight: 600; color: var(--acento); letter-spacing: .5px; }
 
 /* Conversación */
 .conversacion { flex: 1; display: flex; gap: 24px; min-height: 0; padding-top: 24px; }
@@ -118,8 +105,16 @@ button:disabled { cursor: default; opacity: .5; }
 .altavoz:hover { opacity: 1; }
 .reintentar { margin-top: 8px; background: none; border: 1px solid var(--error); color: var(--error); padding: 6px 12px; }
 
+/* Opciones de respuesta rápida */
+.opciones { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.opcion { background: var(--marino); border: 1px solid var(--acento); padding: 8px 18px; font-size: 15px; font-weight: 600; }
+.opcion:hover:not(:disabled) { background: var(--marino-claro); }
+.pensando small { display: block; font-size: 13px; margin-top: 4px; }
+
 /* Tarjetas */
-.tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 10px; }
+.tarjetas-resumen { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--plata); }
+.criterio { color: var(--tenue); }
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 8px; max-height: 440px; overflow-y: auto; padding-right: 4px; }
 .tarjeta {
   text-align: left; background: var(--fondo-2); border: 1px solid var(--borde); border-left: 4px solid var(--acento);
   padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;
@@ -136,10 +131,33 @@ button:disabled { cursor: default; opacity: .5; }
 .tarjeta-medidas, .tarjeta-extra { font-size: 13px; color: var(--plata); display: flex; gap: 12px; }
 .tarjeta-acciones { font-size: 13px; color: var(--oro); border-top: 1px solid var(--borde); padding-top: 6px; margin-top: 2px; }
 
-.sug-detalle { display: block; color: var(--tenue); font-size: 12px; margin-top: 6px; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 760px; margin: 14px auto 0; width: 100%; }
-.chip { background: var(--superficie); border: 1px solid var(--borde); padding: 6px 12px; font-size: 14px; }
-.chip:hover { border-color: var(--acento); }
+/* Cabecera: interruptor de lectura en voz alta */
+.interruptor { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.interruptor input { position: absolute; opacity: 0; width: 0; height: 0; }
+.interruptor-pista { width: 38px; height: 20px; background: var(--fondo); border-radius: 10px; position: relative; transition: background .2s; }
+.interruptor-pista::after { content: ''; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--tenue); transition: transform .2s, background .2s; }
+.interruptor input:checked + .interruptor-pista { background: var(--acento); }
+.interruptor input:checked + .interruptor-pista::after { transform: translateX(18px); background: #fff; }
+.interruptor input:focus-visible + .interruptor-pista { outline: 2px solid #fff; }
+
+/* Micrófono */
+.microfono {
+  display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px;
+  background: var(--marino); border: 1px solid var(--acento); font-size: 15px; font-weight: 600;
+}
+.microfono-icono { font-size: 22px; }
+.microfono:hover { background: var(--marino-claro); }
+.microfono.escuchando { background: #c62f3d; border-color: #ff8a94; animation: latido 1.2s ease-in-out infinite; }
+@keyframes latido { 50% { box-shadow: 0 0 0 8px rgba(198, 47, 61, .25); } }
+
+/* Casillas de lo que se va reconociendo */
+.casillas { display: flex; gap: 8px; max-width: 760px; width: 100%; margin: 10px auto 0; }
+.casilla { flex: 1; border: 1px dashed var(--borde); padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; transition: all .2s; }
+.casilla-etiqueta { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 600; color: var(--tenue); }
+.casilla-valor { font-size: 15px; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.casilla.llena { border-style: solid; border-color: var(--acento); background: var(--superficie); }
+.casilla.llena .casilla-etiqueta { color: var(--acento); }
+.casilla.llena .casilla-valor { color: #fff; font-weight: 600; }
 
 /* Imagen del acero */
 .acero { display: flex; gap: 16px; align-items: center; margin-top: 10px; background: var(--fondo-2); border: 1px solid var(--borde); padding: 12px 16px; }
@@ -190,7 +208,6 @@ button:disabled { cursor: default; opacity: .5; }
 
 @media (max-width: 1100px) {
   .lateral { display: none; }
-  .bobina { display: none; }
   .conversacion { flex-direction: column; }
   .panel { width: 100%; }
 }

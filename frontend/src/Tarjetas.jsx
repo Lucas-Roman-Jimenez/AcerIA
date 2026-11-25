@@ -27,6 +27,8 @@ export function Tarjeta({ tipo, item, onClick }) {
         <div className="tarjeta-acciones">
           {item.acciones.join(' · ')}
           {item.merma_kg != null && <> · merma {num(item.merma_kg)} kg</>}
+          {item.merma_pct != null && <> ({num(item.merma_pct)} %)</>}
+          {item.num_operaciones > 1 && <> · {item.num_operaciones} operaciones</>}
         </div>
       )}
     </button>
@@ -36,7 +38,7 @@ export function Tarjeta({ tipo, item, onClick }) {
 const FILAS = [
   ['grado', 'Grado'], ['acabado', 'Acabado'], ['formato', 'Formato'],
   ['espesor_mm', 'Espesor (mm)'], ['ancho_mm', 'Ancho (mm)'], ['largo_mm', 'Largo (mm)'],
-  ['peso_kg', 'Peso (kg)'], ['ubicacion', 'Ubicación'], ['estado', 'Estado'],
+  ['peso_kg', 'Peso (kg)'], ['piezas', 'Piezas'], ['ubicacion', 'Ubicación'], ['estado', 'Estado'],
 ]
 
 export function Detalle({ item: { tipo, item }, onCerrar }) {
@@ -66,7 +68,9 @@ export function Detalle({ item: { tipo, item }, onCerrar }) {
           <div className="modal-acciones">
             <h3>Acciones</h3>
             <ol>{item.acciones.map((a, i) => <li key={i}>{a}</li>)}</ol>
-            {item.merma_kg != null && <p>Merma estimada: <b>{num(item.merma_kg)} kg</b></p>}
+            {item.merma_kg != null && (
+              <p>Merma estimada: <b>{num(item.merma_kg)} kg</b>{item.merma_pct != null && <> ({num(item.merma_pct)} %)</>}</p>
+            )}
           </div>
         )}
       </div>
