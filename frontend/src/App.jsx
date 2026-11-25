@@ -3,10 +3,11 @@ import { enviarMensaje, resumenStock } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Panel } from './Panel.jsx'
 import { Tarjeta, Detalle } from './Tarjetas.jsx'
+import { Acero } from './Acero.jsx'
 
 const SUGERENCIAS = [
   { tipo: 'Chapa', texto: 'Chapa brillante de 2 mm, 1000 × 2000' },
-  { tipo: 'Bobina', texto: 'Rollo de inox marino de 1,5 mm' },
+  { tipo: 'Bobina', texto: 'Bobina para sistemas de escape de 1,5 mm' },
   { tipo: 'Fleje', texto: 'Tira de 316L de 300 mm de ancho' },
   { tipo: 'Dúplex', texto: 'Dúplex en caliente de 6 mm' },
 ]
@@ -139,6 +140,7 @@ export default function App() {
                     {m.rol === 'asistente' && !m.error && (
                       <button className="altavoz" onClick={() => leerEnAlto(m.texto)} title="Leer en voz alta">🔊</button>
                     )}
+                    {m.respuesta?.especificacion && <Acero esp={m.respuesta.especificacion} id={i} />}
                     {m.respuesta && <Resultados r={m.respuesta} onAbrir={setDetalle} />}
                   </div>
                 ))}
