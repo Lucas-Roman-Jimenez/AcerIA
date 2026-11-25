@@ -7,6 +7,21 @@ import pytest
 from evaluar_api import evaluar
 
 
+def test_solo_resultados_omite_chat_y_la_metrica_de_interpretacion():
+    archivo = Path(__file__).with_name("casos_evaluacion.json")
+    casos = [caso for caso in json.loads(archivo.read_text(encoding="utf-8"))
+             if caso["id"] in ("EX-1276", "CL-01", "RE-01")]
+
+    def enviar(ruta, datos):
+        assert ruta == "/buscar"
+        return {"estado": "resultados", "exactos": [{"id": "1276"}]}
+
+    informe = evaluar(casos, enviar, solo_resultados=True)
+    assert "interpretacion" not in informe
+    assert informe["resultados"]["aciertos"] == 1
+    assert informe["reglas_locales"]["aciertos"] == 1
+
+
 @pytest.mark.parametrize(
     "orden,correcto",
     [((0, 1, 2), True), ((1, 0, 2), False), ((0, 2, 1), False), ((0, 1, 2, 3), False)],

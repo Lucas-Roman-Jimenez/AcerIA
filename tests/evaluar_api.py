@@ -116,7 +116,7 @@ def _resumir(anotaciones):
     }
 
 
-def evaluar(casos, enviar):
+def evaluar(casos, enviar, *, solo_resultados=False):
     interpretacion, resultados, reglas_locales = [], [], []
     for caso in casos:
         esperado = caso["esperado"]
@@ -145,22 +145,28 @@ def evaluar(casos, enviar):
         else:
             raise ValueError(f"Categoría desconocida: {categoria!r}")
 
+        if solo_resultados:
+            continue
         chat = {"conversacion_id": str(uuid4()), "mensaje": caso["peticion"]}
         acierto, observado = _evaluar_peticion(enviar, "/chat", chat, comprobar, objetivo)
         interpretacion.append((acierto, dict(detalle, **observado)))
 
-    return {
+    informe = {
         "umbral_pct": UMBRAL,
-        "interpretacion": _resumir(interpretacion),
         "resultados": _resumir(resultados),
         "reglas_locales": _resumir(reglas_locales),
     }
+    if not solo_resultados:
+        informe["interpretacion"] = _resumir(interpretacion)
+    return informe
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True, help="URL base de la API de Alonso")
     parser.add_argument("--timeout", type=float, default=30, help="Segundos por petición")
+    parser.add_argument("--solo-resultados", action="store_true",
+                        help="Evalúa /buscar y las reglas locales sin llamar a /chat")
     args = parser.parse_args()
     if args.timeout <= 0:
         parser.error("--timeout debe ser positivo")
@@ -170,9 +176,10 @@ def main():
     def enviar(endpoint, datos):
         return _post(args.base_url, endpoint, datos, args.timeout)
 
-    informe = evaluar(casos, enviar)
+    informe = evaluar(casos, enviar, solo_resultados=args.solo_resultados)
     print(json.dumps(informe, ensure_ascii=False, indent=2))
-    correcto = all(informe[metrica]["cumple_umbral"] for metrica in ("interpretacion", "resultados"))
+    metricas = ("resultados",) if args.solo_resultados else ("resultados", "interpretacion")
+    correcto = all(informe[metrica]["cumple_umbral"] for metrica in metricas)
     return 0 if correcto and not informe["reglas_locales"]["fallos"] else 1
 
 
