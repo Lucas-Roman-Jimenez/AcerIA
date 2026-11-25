@@ -111,15 +111,31 @@ button:disabled { cursor: default; opacity: .5; }
 .opcion:hover:not(:disabled) { background: var(--marino-claro); }
 .pensando small { display: block; font-size: 13px; margin-top: 4px; }
 
+/* Respuesta a «¿qué hay?» */
+.consulta { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin-top: 10px; max-height: 320px; overflow-y: auto; }
+.valor-stock { text-align: left; background: var(--fondo-2); border: 1px solid var(--borde); padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+.valor-stock:hover:not(:disabled) { border-color: var(--acento); background: var(--superficie); }
+.valor-stock-nombre { font-weight: 600; font-size: 16px; }
+.valor-stock-ayuda { font-size: 12px; color: var(--acento); }
+.valor-stock-cantidad { font-size: 12px; color: var(--tenue); }
+.ayuda-inicio { color: var(--tenue); font-size: 15px; max-width: 620px; margin: 0; line-height: 1.5; }
+
 /* Tarjetas */
 .tarjetas-resumen { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--plata); }
 .criterio { color: var(--tenue); }
 .tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 8px; max-height: 440px; overflow-y: auto; padding-right: 4px; }
 .tarjeta {
-  text-align: left; background: var(--fondo-2); border: 1px solid var(--borde); border-left: 4px solid var(--acento);
-  padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;
+  background: var(--fondo-2); border: 1px solid var(--borde); border-left: 4px solid var(--acento);
+  display: flex; flex-direction: column;
 }
 .tarjeta:hover { background: var(--superficie); }
+.tarjeta.comparando { outline: 2px solid var(--acento); }
+.tarjeta-cuerpo {
+  text-align: left; background: none; border: 0; padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 5px; width: 100%;
+}
+.tarjeta-origen { font-size: 11px; color: var(--tenue); margin-top: 2px; }
+.tarjeta-cuerpo:hover .tarjeta-origen { color: var(--acento); text-decoration: underline; }
+.tarjeta-comparar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--plata); padding: 0 14px 10px; cursor: pointer; }
 .tarjeta.transformable { border-left-color: var(--oro); }
 .tarjeta.alternativa { border-left-color: var(--tenue); border-style: dashed; border-left-style: solid; }
 .tarjeta-cabeza { display: flex; justify-content: space-between; align-items: center; }
@@ -214,3 +230,53 @@ button:disabled { cursor: default; opacity: .5; }
   .conversacion { flex-direction: column; }
   .panel { width: 100%; }
 }
+
+/* Por qué se propone y de dónde sale cada dato */
+.modal h3 { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--acento); margin: 22px 0 6px; }
+.coincidencias tr.ok td:last-child { color: #7ddc9a; font-weight: 700; }
+.coincidencias tr.no td:last-child, .coincidencias tr.no td:nth-child(3) { color: var(--oro); font-weight: 600; }
+.fuentes ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--plata); line-height: 1.5; }
+.fuentes li { margin-bottom: 6px; }
+
+/* Comparar propuestas */
+.modal-ancho { width: min(980px, 95vw); }
+.tabla-comparar th, .tabla-comparar td { white-space: nowrap; }
+.tabla-comparar thead th.exacto { color: var(--acento); }
+.tabla-comparar thead th.transformable { color: var(--oro); }
+.tabla-comparar tr.cambia td { color: #fff; font-weight: 600; background: rgba(169, 173, 242, .08); }
+.quitar { background: none; border: 0; color: var(--tenue); font-size: 16px; padding: 0 4px; }
+.comparar-barra, .demo-barra {
+  display: flex; align-items: center; gap: 12px; max-width: 760px; width: 100%; margin: 12px auto 0;
+  background: var(--superficie); border: 1px solid var(--borde); padding: 8px 12px; font-size: 14px;
+}
+.comparar-barra span { flex: 1; color: var(--plata); }
+
+/* Asistente de uso y alternativas cercanas */
+.valor-stock-motivo { font-size: 12px; color: var(--plata); line-height: 1.35; }
+.valor-stock.sin-stock { opacity: .6; border-style: dashed; }
+.valor-stock.compacto { padding: 6px 10px; }
+.cercanos { margin-top: 12px; border: 1px dashed var(--oro); padding: 10px 12px; }
+.cercanos-titulo { font-size: 13px; color: var(--oro); margin-bottom: 8px; }
+.cercanos-fila { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.cercanos-etiqueta { width: 70px; font-size: 13px; color: var(--tenue); }
+
+/* Corregir eligiendo de una lista */
+.panel-ayuda { margin: -8px 0 10px; font-size: 12px; color: var(--tenue); }
+.campo-bloque.abierto { background: var(--fondo); margin: 0 -8px; padding: 0 8px 10px; }
+.editor form { display: flex; gap: 6px; margin-top: 8px; }
+.editor input { flex: 1; min-width: 0; background: var(--fondo-2); border: 1px solid var(--acento); color: #fff; padding: 5px 8px; }
+.editor form button { background: var(--marino); border: 1px solid var(--acento); padding: 4px 10px; font-size: 13px; }
+.editor-stock { margin-top: 8px; font-size: 12px; }
+.editor-lista { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; max-height: 150px; overflow-y: auto; }
+.chip-stock { background: var(--superficie); border: 1px solid var(--borde); padding: 3px 8px; font-size: 13px; }
+.chip-stock small { color: var(--tenue); margin-left: 2px; }
+.chip-stock:hover:not(:disabled) { border-color: var(--acento); }
+
+/* Demo guiada */
+.demo-boton { background: none; border: 1px solid #fff; padding: 9px 12px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
+.demo-boton:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+.demo-barra { border-color: var(--acento); }
+.demo-paso { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; color: var(--acento); white-space: nowrap; }
+.demo-nota { flex: 1; color: #fff; line-height: 1.4; }
+.demo-siguiente { background: var(--acento); color: var(--fondo); border: 0; padding: 8px 14px; font-weight: 700; white-space: nowrap; }
+.demo-salir { background: none; border: 1px solid var(--borde); padding: 6px 10px; color: var(--plata); }

@@ -16,7 +16,7 @@ export function buscarFicha(grado) {
   if (grado.includes('/')) return grado.split('/').map(buscarFicha).find(Boolean) ?? null
   const g = grado.toUpperCase()
   return fichas.find(f => f.aisi?.toUpperCase() === g)
-    ?? fichas.find(f => f.en === grado || f.mat.replace(' ', '') === g.replace(' ', ''))
+    ?? fichas.find(f => f.en === grado || f.uns?.toUpperCase().includes(g) || f.mat.replace(' ', '') === g.replace(' ', ''))
     ?? null
 }
 

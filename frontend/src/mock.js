@@ -63,6 +63,21 @@ export async function chatFalso(conversacionId, texto) {
   return { ...base, tipo: 'respuesta', texto: txt, ...res }
 }
 
+export async function valoresFalsos(campo, filtros) {
+  await new Promise(r => setTimeout(r, 300))
+  const esp = { opciones: {}, ...filtros }
+  const g = {}
+  for (const b of BULTOS.filter(b => cumple(b, esp))) {
+    const v = b[campo]
+    if (v == null) continue
+    g[v] ??= { valor: v, bultos: 0, toneladas: 0 }
+    g[v].bultos++
+    g[v].toneladas = Math.round((g[v].toneladas + b.peso_kg / 1000) * 10) / 10
+  }
+  const valores = Object.values(g).sort((a, b) => (typeof a.valor === 'number' ? a.valor - b.valor : b.toneladas - a.toneladas))
+  return { campo, filtros, valores, total_bultos: valores.reduce((s, v) => s + v.bultos, 0) }
+}
+
 export async function resumenFalso() {
   const g = {}
   for (const b of BULTOS) {

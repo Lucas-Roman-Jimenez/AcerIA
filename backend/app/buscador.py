@@ -72,3 +72,31 @@ def a_respuesta(bulto: dict) -> dict:
 def buscar_exactos(objetivo: dict) -> list[dict]:
     """Bultos DISPONIBLES que cumplen sin transformar."""
     return [a_respuesta(b) for b in disponibles() if cumple(b, objetivo)]
+
+
+CAMPOS_VALORES = ("grado", "acabado", "formato", "espesor_mm", "ancho_mm")
+
+
+def valores_disponibles(campo: str, espec: dict, bultos: list[dict] | None = None) -> list[dict]:
+    """Qué valores de un campo hay en stock disponible que cumpla lo ya pedido («¿qué grosores hay de 304?»).
+
+    Devuelve [{valor, bultos, toneladas}]; las medidas de menor a mayor y el resto de más a menos toneladas.
+    """
+    if campo not in CAMPOS_VALORES:
+        raise ValueError(f"Campo no consultable: {campo}")
+    objetivo = construir_objetivo(espec)
+    grupos: dict = {}
+    for b in disponibles() if bultos is None else bultos:
+        if not cumple(b, objetivo):
+            continue
+        valor = a_respuesta(b)["grado"] if campo == "grado" else b.get(campo)
+        if valor is None:
+            continue
+        g = grupos.setdefault(valor, {"valor": valor, "bultos": 0, "toneladas": 0.0})
+        g["bultos"] += 1
+        g["toneladas"] += b["peso_kg"] / 1000
+    for g in grupos.values():
+        g["toneladas"] = round(g["toneladas"], 1)
+    if campo in MEDIDAS:
+        return sorted(grupos.values(), key=lambda g: g["valor"])
+    return sorted(grupos.values(), key=lambda g: -g["toneladas"])
