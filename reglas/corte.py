@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from reglas.configuracion import REGLAS
+
 
 def cumple_condiciones_corte(
     *,
@@ -13,9 +15,7 @@ def cumple_condiciones_corte(
     largo_destino: float | None = None,
 ) -> bool:
     """Comprueba formatos y dimensiones, sin calcular disponibilidad ni merma."""
-    if formato_origen not in ("chapa", "bobina"):
-        return False
-    if formato_destino not in ("chapa", "fleje"):
+    if formato_destino not in REGLAS["cortes"].get(formato_origen, {}):
         return False
     if not 0 < ancho_destino <= ancho_origen < float("inf"):
         return False
