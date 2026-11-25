@@ -15,27 +15,36 @@ class ErrorLLM(RuntimeError):
 
 
 class ClienteLLM(Protocol):
-    def completar(self, sistema: str, usuario: str, *, json: bool = False, max_tokens: int = 800) -> str: ...
+    def completar(self, sistema: str, usuario: str, *, json: bool = False, max_tokens: int = 800,
+                  esquema: dict | None = None) -> str: ...
 
 
 class ClienteAnthropic:
-    def __init__(self, modelo: str | None = None, timeout: float = 20.0):
+    def __init__(self, modelo: str | None = None, timeout: float = 10.0):
         try:
             import anthropic
         except ImportError as e:  # pragma: no cover
             raise ErrorLLM("Falta el paquete 'anthropic' (pip install anthropic)") from e
-        self._cli = anthropic.Anthropic(timeout=timeout)
+        # 10 s y 1 reintento: si falla, el error con «reintentar» llega en ~20 s y no en más de un minuto (RNF-14).
+        self._cli = anthropic.Anthropic(timeout=timeout, max_retries=1)
         self.modelo = modelo or os.getenv("LLM_MODELO") or "claude-sonnet-5-5"
 
-    def completar(self, sistema, usuario, *, json=False, max_tokens=800):
-        if json:
+    def completar(self, sistema, usuario, *, json=False, max_tokens=800, esquema=None):
+        extra = {}
+        if esquema:
+            # Salida estructurada: el JSON siempre es válido y cumple el esquema. Esfuerzo bajo: es una
+            # extracción corta y así responde antes (RNF-05). Sonnet 5.5 no admite temperature.
+            extra["output_config"] = {"format": {"type": "json_schema", "schema": esquema}, "effort": "low"}
+        elif json:
             usuario += "\n\nResponde únicamente con el objeto JSON, sin texto adicional."
         try:
             r = self._cli.messages.create(model=self.modelo, max_tokens=max_tokens, system=sistema,
-                                          messages=[{"role": "user", "content": usuario}])
-            return "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
+                                          messages=[{"role": "user", "content": usuario}], **extra)
         except Exception as e:
             raise ErrorLLM(str(e)) from e
+        if r.stop_reason in ("refusal", "max_tokens"):
+            raise ErrorLLM(f"Respuesta incompleta del LLM ({r.stop_reason})")
+        return "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
 
 
 class ClienteOpenAI:
@@ -49,9 +58,9 @@ class ClienteOpenAI:
             raise ErrorLLM("Define LLM_MODELO con el modelo de OpenAI que vayáis a usar")
         self._cli = openai.OpenAI(timeout=timeout)
 
-    def completar(self, sistema, usuario, *, json=False, max_tokens=800):
+    def completar(self, sistema, usuario, *, json=False, max_tokens=800, esquema=None):
         try:
-            extra = {"response_format": {"type": "json_object"}} if json else {}
+            extra = {"response_format": {"type": "json_object"}} if json or esquema else {}
             r = self._cli.chat.completions.create(
                 model=self.modelo, max_tokens=max_tokens,
                 messages=[{"role": "system", "content": sistema}, {"role": "user", "content": usuario}], **extra)
@@ -67,9 +76,11 @@ class ClienteFalso:
     def __init__(self, respuestas: Sequence[str] | Callable[[str, str], str] = ()):
         self._resp = respuestas if callable(respuestas) else list(respuestas)
         self.llamadas: list[tuple[str, str]] = []
+        self.esquemas: list[dict | None] = []
 
-    def completar(self, sistema, usuario, *, json=False, max_tokens=800):
+    def completar(self, sistema, usuario, *, json=False, max_tokens=800, esquema=None):
         self.llamadas.append((sistema, usuario))
+        self.esquemas.append(esquema)
         if callable(self._resp):
             return self._resp(sistema, usuario)
         if not self._resp:

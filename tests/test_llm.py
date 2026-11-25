@@ -488,3 +488,63 @@ def test_como_mucho_cinco_bultos_en_el_texto():
 def test_sin_propuestas_no_dice_el_criterio():
     sin_stock = {"exactos": [], "transformables": [], "criterio_orden": "exactos > % de merma"}
     assert "Orden:" not in responder(sin_stock)
+
+
+# ---------------------------------------------------------------- parte 2: extracción
+
+def test_la_extraccion_pide_salida_estructurada():
+    from llm import prompts
+    _, cli = interp(extraccion(grado="304", espesor_mm=2))
+    assert cli.esquemas[0] is prompts.ESQUEMA_EXTRACCION
+
+
+def test_json_con_tipos_raros_no_rompe():
+    raro = extraccion(grado=["304"], acabado={"x": 1}, formato=True, opciones=["BA"], contradicciones="no",
+                      indiferentes="acabado", uso=7, espesor_mm="dos", intencion=["pedido"])
+    r, _ = interp(raro)
+    assert r.tipo == "pregunta" and r.especificacion.grado == "304" and r.especificacion.faltan == ["espesor_mm"]
+    assert r.especificacion.acabado is None and r.especificacion.formato is None
+
+
+def test_contradiccion_con_valores_en_texto():
+    r, _ = interp(extraccion(grado="304", contradicciones=[{"campo": "espesor_mm", "valores": ["2", "3"]}]))
+    assert "2 mm y 3 mm" in r.pregunta
+
+
+class _RespuestaFalsa:
+    def __init__(self, stop_reason, texto=""):
+        from types import SimpleNamespace
+        self.stop_reason = stop_reason
+        self.content = [SimpleNamespace(type="text", text=texto)]
+
+
+def _anthropic_falso(respuesta):
+    from types import SimpleNamespace
+    from llm.proveedores import ClienteAnthropic
+    llamadas = []
+    cli = ClienteAnthropic.__new__(ClienteAnthropic)
+    cli.modelo = "modelo-de-prueba"
+    cli._cli = SimpleNamespace(messages=SimpleNamespace(create=lambda **kw: llamadas.append(kw) or respuesta))
+    return cli, llamadas
+
+
+def test_anthropic_envia_el_esquema_con_esfuerzo_bajo():
+    cli, llamadas = _anthropic_falso(_RespuestaFalsa("end_turn", "{}"))
+    assert cli.completar("s", "u", json=True, esquema={"type": "object"}) == "{}"
+    assert llamadas[0]["output_config"] == {"format": {"type": "json_schema", "schema": {"type": "object"}},
+                                            "effort": "low"}
+
+
+@pytest.mark.parametrize("motivo", ["refusal", "max_tokens"])
+def test_anthropic_respuesta_incompleta_lanza_error(motivo):
+    cli, _ = _anthropic_falso(_RespuestaFalsa(motivo, "{"))
+    with pytest.raises(ErrorLLM):
+        cli.completar("s", "u", esquema={"type": "object"})
+
+
+def test_solo_medidas_se_describe_como_material():
+    r, _ = interp(extraccion(intencion="precio", espesor_mm=2))
+    assert "¿Quieres que busque material de 2 mm?" in r.pregunta
+    esp = Especificacion(espesor_mm=2.0, indiferentes=["grado"])
+    bultos = [dict(BULTOS[0], acabado=a) for a in ("2B", "BA")]
+    assert pregunta_tras_busqueda(esp, bultos) == "Tengo material de 2 mm en 2B y en BA. ¿Cuál prefieres?"

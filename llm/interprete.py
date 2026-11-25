@@ -60,7 +60,8 @@ def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo) -> dict[str, An
     usuario = prompts.USUARIO_EXTRACCION.format(conversacion=_conversacion(historial))
     ultimo_error = None
     for _ in range(2):  # un reintento si el JSON llega mal formado
-        texto = cliente.completar(sistema, usuario, json=True)
+        # max_tokens holgado: el modelo también piensa antes de responder y no conviene cortarle.
+        texto = cliente.completar(sistema, usuario, json=True, max_tokens=2000, esquema=prompts.ESQUEMA_EXTRACCION)
         try:
             return _parsear_json(texto)
         except (ValueError, json.JSONDecodeError) as e:
@@ -87,9 +88,17 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
                                  "uso_desconocido": None, "opciones_dudosas": None,
                                  "intencion": intencion if intencion in INTENCIONES else "pedido"}
 
+    # Tipos robustos (RNF-14): lo que no tenga la forma esperada se descarta, nunca rompe.
+    opciones_brutas = bruto.get("opciones") if isinstance(bruto.get("opciones"), dict) else {}
+    opciones_brutas = {c: ([v] if isinstance(v, str) else v) for c, v in opciones_brutas.items()
+                       if isinstance(v, (list, str))}
+
     for campo in CAMPOS_TEXTO:
         v = bruto.get(campo)
-        if v in (None, ""):
+        if isinstance(v, list):            # varios valores en el campo: se tratan como opciones
+            opciones_brutas.setdefault(campo, [str(x) for x in v if isinstance(x, (str, int, float))])
+            continue
+        if v in (None, "") or isinstance(v, bool) or not isinstance(v, (str, int, float)):
             continue
         norm = catalogo.normalizar(campo, v)
         if norm:
@@ -107,7 +116,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
     if isinstance(cant, dict) and _num(cant.get("valor")) and cant.get("unidad") in ("kg", "t", "bultos"):
         esp.cantidad = Cantidad(_num(cant["valor"]), cant["unidad"])
 
-    for campo, valores in (bruto.get("opciones") or {}).items():
+    for campo, valores in opciones_brutas.items():
         if campo not in CAMPOS_TEXTO or getattr(esp, campo) is not None:
             continue
         validos = [n for n in dict.fromkeys(catalogo.normalizar(campo, v) for v in valores or []) if n]
@@ -131,7 +140,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.opciones[campo] = validos
 
     # Uso (RF-26): solo se traduce a grados si el catálogo lo respalda.
-    uso_txt = bruto.get("uso")
+    uso_txt = bruto.get("uso") if isinstance(bruto.get("uso"), str) else None
     if uso_txt:
         uso = catalogo.uso(uso_txt)
         if uso:
@@ -150,12 +159,14 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.avisos.append(f"El catálogo no indica qué grado es adecuado para «{uso_txt}».")
 
     # Campos que al comercial le dan igual: no se preguntan ni cuentan como «faltan».
-    indif = bruto.get("indiferentes") or []
+    indif = bruto.get("indiferentes") if isinstance(bruto.get("indiferentes"), list) else []
     esp.indiferentes = [c for c in indif if isinstance(c, str)
                         and c in CAMPOS_TEXTO + CAMPOS_NUMERO and getattr(esp, c) is None]
     esp.opciones = {c: v for c, v in esp.opciones.items() if c not in esp.indiferentes}
 
-    contr = [c for c in (bruto.get("contradicciones") or []) if isinstance(c, dict) and c.get("campo")]
+    contr_brutas = bruto.get("contradicciones") if isinstance(bruto.get("contradicciones"), list) else []
+    contr = [c for c in contr_brutas if isinstance(c, dict) and isinstance(c.get("campo"), str)
+             and isinstance(c.get("valores", []), list)]
     if contr:
         problemas["contradiccion"] = contr[0]
         if contr[0]["campo"] in CAMPOS_TEXTO + CAMPOS_NUMERO:
@@ -256,7 +267,9 @@ def _describir(esp: Especificacion, sin: str = "") -> str:
         partes.append(acabado)
     if esp.espesor_mm and sin != "espesor_mm":
         partes.append(f"de {fmt_num(esp.espesor_mm)} mm")
-    return " ".join(partes) or "material"
+    if not partes or partes[0].startswith("de "):   # solo medidas: «material de 2 mm», no «de 2 mm»
+        partes.insert(0, "material")
+    return " ".join(partes)
 
 
 INTENCIONES = ("pedido", "saludo", "agradecimiento", "precio", "plazo", "reserva", "consulta_tecnica",

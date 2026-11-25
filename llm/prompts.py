@@ -28,6 +28,14 @@ Reglas:
 9. "indiferentes": campos que el comercial dice que le dan igual («me da igual el acabado», «cualquier grado»),
    con estos nombres: grado, acabado, formato, espesor_mm, ancho_mm, largo_mm. Si después da un valor, quítalo.
 
+Ejemplos de casos difíciles (solo se muestran los campos que cambian):
+- «dame cualquiera de 2 mm» -> {{"espesor_mm": 2, "indiferentes": ["grado"]}}
+- Tras «304 de 2 mm», el comercial dice «me da igual el acabado» -> {{"grado": "304", "espesor_mm": 2, "indiferentes": ["acabado"]}}
+- «el más barato de 2 mm» -> {{"intencion": "precio", "espesor_mm": 2}}
+- El asistente preguntó «Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?» y el comercial responde «BA»
+  -> {{"grado": "304", "espesor_mm": 2, "acabado": "BA"}}
+- «304 BA de 2 mm y también 316L 2B de 2 mm» -> {{"espesor_mm": 2, "contradicciones": [{{"campo": "grado", "valores": ["304", "316L"]}}]}}
+
 Devuelve solo este JSON:
 {{
   "intencion": "pedido",
@@ -71,3 +79,34 @@ USUARIO_RESPUESTA = """Petición interpretada:
 
 Resultado de la búsqueda:
 {resultado}"""
+
+
+# Esquema de la extracción (salida estructurada). Debe coincidir con el JSON descrito en SISTEMA_EXTRACCION.
+_TEXTO = {"type": ["string", "null"]}
+_NUMERO = {"type": ["number", "null"]}
+_LISTA = {"type": "array", "items": {"type": "string"}}
+_CAMPOS = ["grado", "acabado", "formato", "espesor_mm", "ancho_mm", "largo_mm"]
+ESQUEMA_EXTRACCION = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["intencion", "grado", "acabado", "formato", "espesor_mm", "ancho_mm", "largo_mm",
+                 "cantidad", "uso", "opciones", "contradicciones", "indiferentes"],
+    "properties": {
+        "intencion": {"type": "string", "enum": ["pedido", "saludo", "agradecimiento", "precio", "plazo",
+                                                 "reserva", "consulta_tecnica", "fuera_de_tema"]},
+        "grado": _TEXTO, "acabado": _TEXTO, "formato": _TEXTO,
+        "espesor_mm": _NUMERO, "ancho_mm": _NUMERO, "largo_mm": _NUMERO,
+        "cantidad": {"anyOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": False, "required": ["valor", "unidad"],
+             "properties": {"valor": {"type": "number"}, "unidad": {"type": "string", "enum": ["kg", "t", "bultos"]}}},
+        ]},
+        "uso": _TEXTO,
+        "opciones": {"type": "object", "additionalProperties": False, "required": ["grado", "acabado", "formato"],
+                     "properties": {"grado": _LISTA, "acabado": _LISTA, "formato": _LISTA}},
+        "contradicciones": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["campo", "valores"],
+            "properties": {"campo": {"type": "string", "enum": _CAMPOS}, "valores": _LISTA}}},
+        "indiferentes": {"type": "array", "items": {"type": "string", "enum": _CAMPOS}},
+    },
+}
