@@ -1,12 +1,13 @@
 """Equivalencias de transcripción recogidas en los requisitos de Lucas."""
 
+import json
 import re
+from pathlib import Path
 
 
-_EQUIVALENCIAS = {
-    "dos be": "2B",
-    "trescientos dieciséis ele": "316L",
-}
+_EQUIVALENCIAS = json.loads(
+    Path(__file__).with_name("equivalencias.json").read_text(encoding="utf-8")
+)
 _PATRON = re.compile(
     r"\b(?:" + "|".join(
         r"\s+".join(map(re.escape, expresion.split()))

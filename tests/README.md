@@ -44,3 +44,6 @@ El informe JSON incluye el porcentaje y los fallos de cada métrica:
 
 El comando devuelve un código de error si alguna métrica de la API queda por
 debajo del 85 % o falla alguna comprobación local.
+
+Añade `--solo-resultados` para medir el buscador y las reglas locales
+mientras la interpretación de `/chat` no esté disponible.
