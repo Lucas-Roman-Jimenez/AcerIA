@@ -106,6 +106,33 @@ def test_uso_no_respaldado_pregunta_grado():
     assert r.tipo == "pregunta" and "para la luna" in r.pregunta
 
 
+def test_faltan_se_rellena_aunque_se_pregunte_por_otra_cosa():
+    r, _ = interp(extraccion(grado="304", acabado="Supermagico"))
+    assert r.tipo == "pregunta" and "Supermagico" in r.pregunta
+    assert r.especificacion.faltan == ["espesor_mm"]
+
+
+def test_opciones_sin_combinacion_se_recortan():
+    # 430 en bobina solo existe en BA en los datos de ejemplo
+    r, _ = interp(extraccion(grado="430", formato="bobina", espesor_mm=1, opciones={"acabado": ["BA", "2R"]}))
+    assert r.tipo == "especificacion"
+    assert r.especificacion.acabado == "BA" and not r.especificacion.opciones
+    assert any("2R" in a for a in r.especificacion.avisos)
+
+
+def test_uso_que_no_cuadra_con_el_grado_avisa_sin_cambiarlo():
+    r, _ = interp(extraccion(grado="430", uso="ambiente marino", espesor_mm=1))
+    assert r.tipo == "especificacion" and r.especificacion.grado == "430"
+    assert any("316" in a for a in r.especificacion.avisos)
+
+
+def test_opciones_que_no_vienen_del_glosario_preguntan():
+    # 2B y BA no son las opciones de ningún término del glosario de ejemplo
+    r, _ = interp(extraccion(grado="304", espesor_mm=2, opciones={"acabado": ["2B", "BA"]}))
+    assert r.tipo == "pregunta" and "2B o BA" in r.pregunta
+    assert r.especificacion.acabado is None and not r.especificacion.opciones
+
+
 # ---------------------------------------------------------------- modo mixto
 
 def test_redaccion_llm_aceptada_si_no_anade_nada():

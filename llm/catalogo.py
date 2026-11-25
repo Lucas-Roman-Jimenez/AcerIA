@@ -72,6 +72,10 @@ class Catalogo:
             res.append(p)
         return res
 
+    def ambiguedad_valida(self, campo: str, valores: list[str]) -> bool:
+        """True si algún término del glosario admite todos esos valores para ese campo (RF-05)."""
+        return any(t["campo"] == campo and set(valores) <= set(t["valores"]) for t in self.terminos)
+
     # ---------- usos ----------
     def uso(self, nombre: Optional[str]) -> Optional[dict[str, Any]]:
         if not nombre:

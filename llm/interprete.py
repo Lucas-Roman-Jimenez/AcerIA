@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
 from typing import Any, Optional, Sequence
 
 from . import prompts
@@ -82,7 +83,8 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
     """Devuelve la especificación limpia y los problemas detectados (para decidir la pregunta)."""
     esp = Especificacion()
     problemas: dict[str, Any] = {"invalidos": [], "contradiccion": None, "combinacion": None,
-                                 "uso_desconocido": None, "fuera_de_tema": bool(bruto.get("fuera_de_tema"))}
+                                 "uso_desconocido": None, "opciones_dudosas": None,
+                                 "fuera_de_tema": bool(bruto.get("fuera_de_tema"))}
 
     for campo in CAMPOS_TEXTO:
         v = bruto.get(campo)
@@ -108,6 +110,14 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         if campo not in CAMPOS_TEXTO or getattr(esp, campo) is not None:
             continue
         validos = [n for n in dict.fromkeys(catalogo.normalizar(campo, v) for v in valores or []) if n]
+        for v in valores or []:
+            if not catalogo.normalizar(campo, v):
+                esp.avisos.append(f"«{v}» no es un {NOMBRE_CAMPO[campo]} del catálogo.")
+        # La ambigüedad tiene que venir del glosario, no del LLM (RF-05).
+        if len(validos) > 1 and not catalogo.ambiguedad_valida(campo, validos):
+            problemas["opciones_dudosas"] = (campo, validos)
+            esp.avisos.append(f"No tengo claro qué {NOMBRE_CAMPO[campo]} necesitas.")
+            continue
         if len(validos) == 1:
             setattr(esp, campo, validos[0])
         elif validos:
@@ -120,6 +130,8 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
         if uso:
             esp.uso = uso["uso"]
             esp.fuente_uso = uso.get("fuente")
+            if esp.grado and esp.grado not in uso["grados"]:
+                esp.avisos.append(f"Según el catálogo, para {uso['uso']} se indican {lista_y(uso['grados'])}.")
             if esp.grado is None and "grado" not in esp.opciones:
                 grados = [g for g in uso["grados"] if g in catalogo.grados]
                 if len(grados) == 1:
@@ -137,6 +149,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             setattr(esp, contr[0]["campo"], None)
 
     if not problemas["invalidos"]:
+        _recortar_opciones(esp, catalogo)
         problemas["combinacion"] = _comprobar_combinacion(esp, catalogo)
         if problemas["combinacion"]:
             esp.avisos.append(problemas["combinacion"]["aviso"])
@@ -159,6 +172,28 @@ def _hay_combinacion(esp: Especificacion, catalogo: Catalogo, ignorar: str = "")
                         None if ignorar == "ancho_mm" else esp.ancho_mm):
                     return True
     return False
+
+
+def _fijar(esp: Especificacion, campo: str, valor: str) -> Especificacion:
+    """Copia de la especificación con `campo` fijado a `valor` y sin opciones para él."""
+    opciones = {c: v for c, v in esp.opciones.items() if c != campo}
+    return replace(esp, opciones=opciones, **{campo: valor})
+
+
+def _recortar_opciones(esp: Especificacion, catalogo: Catalogo) -> None:
+    """Quita de opciones los valores que no forman ninguna combinación del catálogo con el resto de datos."""
+    for campo in list(esp.opciones):
+        posibles = [v for v in esp.opciones[campo] if _hay_combinacion(_fijar(esp, campo, v), catalogo)]
+        if not posibles:
+            continue  # lo detecta y lo explica _comprobar_combinacion
+        descartados = [v for v in esp.opciones[campo] if v not in posibles]
+        if descartados:
+            esp.avisos.append(f"Descarto {lista_y(descartados)}: no existe en el catálogo con el resto de datos.")
+        if len(posibles) == 1:
+            setattr(esp, campo, posibles[0])
+            del esp.opciones[campo]
+        else:
+            esp.opciones[campo] = posibles
 
 
 def _comprobar_combinacion(esp: Especificacion, catalogo: Catalogo) -> Optional[dict[str, Any]]:
@@ -207,6 +242,8 @@ def _describir(esp: Especificacion, sin: str = "") -> str:
 def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: Catalogo,
                       minimos: Sequence[str]) -> Optional[str]:
     """Pregunta ANTES de buscar, o None si ya se puede buscar."""
+    # Se calcula siempre, aunque se pregunte por otra cosa, para el panel del frontend (RF-18).
+    esp.faltan = [c for c in minimos if not esp.tiene(c)]
     if problemas["fuera_de_tema"]:
         return "Solo puedo ayudarte a buscar material en el inventario. ¿Qué necesita tu cliente?"
     if problemas["contradiccion"]:
@@ -217,6 +254,9 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
         campo, valor = problemas["invalidos"][0]
         ejemplos = lista_y(catalogo.valores(campo)[:4], "")
         return f"No encuentro «{valor}» como {NOMBRE_CAMPO[campo]} en el catálogo. ¿Te refieres a alguno de estos: {ejemplos}?"
+    if problemas["opciones_dudosas"]:
+        campo, vals = problemas["opciones_dudosas"]
+        return f"No tengo claro qué {NOMBRE_CAMPO[campo]} necesitas. ¿Es {', '.join(vals[:-1])} o {vals[-1]}?"
     if problemas["combinacion"]:
         comb = problemas["combinacion"]
         if comb["campo"]:
@@ -225,8 +265,7 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
     if problemas["uso_desconocido"] and not esp.tiene("grado"):
         return (f"El catálogo no indica qué grado es adecuado para «{problemas['uso_desconocido']}». "
                 f"¿Qué grado necesitas? Por ejemplo: {lista_y(catalogo.grados[:3])}.")
-    faltan = [c for c in minimos if not esp.tiene(c)]
-    esp.faltan = faltan
+    faltan = esp.faltan
     if faltan:
         c = faltan[0]
         if c in CAMPOS_TEXTO:
