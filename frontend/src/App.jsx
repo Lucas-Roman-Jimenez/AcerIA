@@ -14,7 +14,7 @@ import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
 import { Reportes } from './Reportes.jsx'
 import { gradoVisible } from './grados.js'
 import { Escritura } from './Escritura.jsx'
-import { CabeceraVideos } from './CabeceraVideos.jsx'
+import { Planchas } from './Planchas.jsx'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
 const DEMO = [
@@ -267,7 +267,14 @@ export default function App() {
       quitarDelCarrito(item.id)
       return
     }
-    await reservarBultos([item.id])
+    // Si otro comercial ya lo tiene reservado (o se ha vendido), se avisa en el chat y no se añade.
+    try {
+      await reservarBultos([item.id])
+    } catch (e) {
+      const conv = actualRef.current
+      guardar({ ...conv, mensajes: [...conv.mensajes, { rol: 'asistente', texto: e.message, error: true }] })
+      return
+    }
     setCarrito(cs => cs.some(c => c.item.id === item.id) ? cs : [...cs, { tipo, item }])
     nuevaConsulta()
     const b = item.origen ?? item
@@ -387,14 +394,13 @@ export default function App() {
         </div>
       </div>
 
-        <CabeceraVideos />
-
       {verReporte ? (
         <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} />
       ) : (
         <main className="principal">
           {vacio ? (
             <section className="inicio">
+              <Planchas />
               <div className="inicio-texto">
                 <Escritura as="h1" texto="¿Qué quieres buscar?" />
                 <div className="inicio-nombre">
