@@ -12,7 +12,7 @@ const CARACTERISTICAS = [
   ['largo_mm', 'Largo', medidas], ['peso_kg', 'Peso del bulto', n => `${numero.format(n)} kg`],
 ]
 
-export function ReporteSemanal({ onVolver }) {
+export function ReporteSemanal() {
   const [reporte, setReporte] = useState(null)
   const [error, setError] = useState('')
 
@@ -25,10 +25,10 @@ export function ReporteSemanal({ onVolver }) {
   }, [])
 
   return (
-    <main className="reporte-semanal">
+    <section aria-labelledby="reporte-semanal-titulo">
       <header className="reporte-cabecera">
         <div>
-          <h1>{reporte?.titulo ?? 'Reporte semanal de compras'}</h1>
+          <h1 id="reporte-semanal-titulo">{reporte?.titulo ?? 'Reporte semanal de compras'}</h1>
           {reporte && (
             <p className="reporte-fecha">
               Del <time dateTime={reporte.semana.inicio}>{fecha.format(new Date(reporte.semana.inicio))}</time>
@@ -37,7 +37,6 @@ export function ReporteSemanal({ onVolver }) {
           )}
         </div>
         <div className="reporte-botones">
-          <button type="button" className="nueva" onClick={onVolver}>Volver a reportes</button>
           <button type="button" className="nueva" disabled={!reporte}
             onClick={() => descargarJson(reporte, `reporte-semanal-compras-${reporte.semana.inicio}.json`)}>
             Descargar JSON
@@ -77,6 +76,6 @@ export function ReporteSemanal({ onVolver }) {
         </ul>
       )}
       <Tendencias />
-    </main>
+    </section>
   )
 }

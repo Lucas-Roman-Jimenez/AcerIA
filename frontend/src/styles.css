@@ -107,7 +107,9 @@ button:disabled { cursor: default; opacity: .5; }
 }
 .nueva:hover, .demo-boton:hover:not(:disabled) { background: #fff; color: #000; }
 
-.reporte-semanal { flex: 1; overflow: auto; width: min(100%, 1100px); margin: 0 auto; padding: clamp(20px, 5vw, 56px); }
+.reportes { flex: 1; overflow: auto; width: min(100%, 1100px); margin: 0 auto; padding: clamp(20px, 5vw, 56px); }
+.reportes-nav { margin-bottom: 28px; }
+.reportes-nav button[aria-pressed="true"] { background: #fff; color: #000; }
 .reporte-cabecera { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; }
 .reporte-cabecera h1 { margin: 0; }
 .reporte-fecha { color: var(--tenue); margin: 8px 0 0; }
