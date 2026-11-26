@@ -12,8 +12,10 @@ Todo se ejecuta desde la raíz del repo con `python -m pytest -q`.
 - 16 exactas, con un ID de referencia de la hoja `DATA` y los valores
   literales del Excel. El ID acredita una coincidencia en la muestra y las
   medidas se conservan sin asignar unidades.
-- 8 de aclaración, con el campo que falta o es ambiguo. La ambigüedad de
-  «brillante» viene de «Tareas de Lucas».
+- 7 de aclaración, con el campo que falta o es ambiguo.
+- 1 sin stock, CL-08. La ficha de AcerIA identifica el acabado brillante
+  como `2R (BA)`. El almacén registra `BA` y carece de chapa `304 BA`
+  de 2 mm y de una transformación válida para obtenerla.
 - 4 transformaciones con los ejemplos del Word y 4 peticiones imposibles
   derivadas de sus restricciones y del ejemplo de corte imposible del PDF.
   Cada una fija el bulto de origen en la propia petición. El resultado
@@ -34,7 +36,7 @@ El informe JSON incluye el porcentaje y los fallos de cada métrica:
   transformables estén ordenados por `merma_pct` ascendente y, en caso de
   empate, por `num_operaciones` ascendente. El conjunto aporta una
   coincidencia exacta comprobada por caso, sin fijar todas las coincidencias
-  exactas ni su orden.
+  exactas ni su orden. También verifica la ausencia de stock para CL-08.
 - **Transformables API** (`POST /buscar`): comprueba el corte del bulto
   `334` y la laminación seguida de corte del bulto `23`, según los
   [casos del contrato](casos_transformables_api.json). Verifica el orden

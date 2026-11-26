@@ -68,6 +68,15 @@ def _orden_correcto(transformables):
     return None not in ranking and ranking == sorted(ranking)
 
 
+def _sin_stock(respuesta, _esperado):
+    exactos = respuesta.get("exactos")
+    transformables = respuesta.get("transformables")
+    estado = respuesta.get("estado")
+    return estado == "sin_stock" and exactos == [] and transformables == [], {
+        "estado": estado, "exactos": exactos, "transformables": transformables,
+    }
+
+
 def _criterio_transformable(item):
     porcentaje = item.get("merma_pct")
     operaciones = item.get("num_operaciones")
@@ -189,6 +198,13 @@ def evaluar(casos, enviar, *, solo_resultados=False):
                 enviar, "/buscar", especificacion, _resultado_transformable, esperado,
             )
             transformables.append((acierto, dict(detalle, **observado)))
+            comprobar, objetivo = _interpretacion_exacta, especificacion
+        elif categoria == "sin_stock":
+            especificacion = esperado["especificacion"]
+            acierto, observado = _evaluar_peticion(
+                enviar, "/buscar", especificacion, _sin_stock, None,
+            )
+            resultados.append((acierto, dict(detalle, **observado)))
             comprobar, objetivo = _interpretacion_exacta, especificacion
         elif categoria == "aclaracion":
             campo = esperado["pedir_aclaracion_sobre"]

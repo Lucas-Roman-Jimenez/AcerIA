@@ -283,22 +283,22 @@ def _calcular_faltan(esp: Especificacion, minimos: Sequence[str]) -> None:
     esp.faltan = [c for c in minimos if not esp.tiene(c) and c not in esp.indiferentes]
 
 
-def _acabado_pendiente(historial: Sequence[dict[str, str]], catalogo: Catalogo) -> Optional[str]:
-    """Un acabado técnico dicho por el comercial resuelve el término pendiente."""
-    if not catalogo.acabados_pendientes:
+def _acabado_expresado(texto: str, catalogo: Catalogo) -> Optional[str]:
+    """Resuelve un término confirmado cuando el usuario evita un código explícito."""
+    if re.search(r"\b(?:no|sin)\s+(?:acabado\s+)?brillante\b", texto, flags=re.I):
         return None
-    for mensaje in reversed(historial):
-        if mensaje.get("rol") != "comercial":
-            continue
-        texto = mensaje.get("texto") or ""
-        for codigo in catalogo.acabados:
-            literal = re.escape(codigo)
-            patron = rf"\bacabado\s+{literal}(?!\w)" if codigo.isdecimal() else rf"(?<!\w){literal}(?!\w)"
-            if re.search(patron, texto, flags=re.I):
-                return None
-        for termino in catalogo.acabados_pendientes:
-            if re.search(rf"(?<!\w){re.escape(termino)}s?(?!\w)", texto, flags=re.I):
-                return termino
+    terminos = [
+        t["termino"] for t in catalogo.terminos if t.get("detectar_en_peticion")
+        and t["campo"] == "acabado"
+        and re.search(rf"(?<!\w){re.escape(t['termino'])}s?(?!\w)", texto, flags=re.I)
+    ]
+    if terminos:
+        explicitos = [
+            c for c in (*catalogo.acabados, "2R") if not c.isdecimal()
+            and re.search(rf"(?<!\w){re.escape(c)}(?!\w)", texto, flags=re.I)
+        ]
+        if not explicitos:
+            return catalogo.normalizar("acabado", terminos[0])
     return None
 
 
@@ -330,11 +330,6 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
         vals = [fmt_num(v) + " mm" if c["campo"] in CAMPOS_NUMERO else str(v) for v in c.get("valores", [])]
         return (f"Has indicado {lista_y(vals)} de {NOMBRE_CAMPO.get(c['campo'], c['campo'])}. "
                 "Si son pedidos distintos, vamos de uno en uno: ¿con cuál empezamos?")
-    pendiente = problemas.get("acabado_pendiente")
-    if pendiente:
-        if "acabado" not in esp.faltan:
-            esp.faltan.append("acabado")
-        return f"Cuando dices «{pendiente}», ¿qué acabado concreto necesitas?"
     if problemas["invalidos"]:
         campo, valor = problemas["invalidos"][0]
         ejemplos = lista_y(catalogo.parecidos(campo, valor), "")
@@ -397,14 +392,11 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     cliente = cliente or _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
     bruto = _extraer(historial, cliente, catalogo, minimos)
-    pendiente = _acabado_pendiente(historial, catalogo)
-    if pendiente:
-        opciones = bruto.get("opciones")
-        otras_opciones = {c: v for c, v in opciones.items() if c != "acabado"} if isinstance(opciones, dict) else {}
-        bruto = dict(bruto, acabado=None, opciones=otras_opciones)
+    ultimo_mensaje = next(m["texto"] for m in reversed(historial) if m.get("rol") == "comercial")
+    acabado = _acabado_expresado(ultimo_mensaje, catalogo)
+    if acabado:
+        bruto = dict(bruto, acabado=acabado)
     esp, problemas = _validar(bruto, catalogo)
-    if pendiente and "acabado" not in esp.indiferentes:
-        problemas["acabado_pendiente"] = pendiente
     if problemas["intencion"] != "pedido":
         _calcular_faltan(esp, minimos)
         return ResultadoInterpretacion("pregunta", esp, _respuesta_intencion(esp, problemas["intencion"], catalogo))

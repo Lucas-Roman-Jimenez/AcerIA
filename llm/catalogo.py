@@ -25,10 +25,6 @@ class Catalogo:
         self.productos: list[dict[str, Any]] = catalogo.get("productos", [])
         self.usos: list[dict[str, Any]] = catalogo.get("usos", [])
         self.terminos: list[dict[str, Any]] = glosario.get("terminos", [])
-        self.acabados_pendientes = [
-            t["termino"] for t in glosario.get("pendientes_de_confirmacion", [])
-            if t.get("campo") == "acabado"
-        ]
         # Catálogo real (Lucas): se puede desactivar la validación de combinaciones y cada ficha
         # relaciona el grado comercial (AISI, p. ej. 304) con su designación EN (1.4301).
         self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
@@ -63,6 +59,11 @@ class Catalogo:
             for permitido in self.valores(campo):
                 if c.lower() == permitido.lower():
                     return permitido
+        if campo == "acabado":
+            for termino in self.terminos:
+                if (termino["campo"] == campo and termino["termino"].casefold() == v.casefold()
+                        and len(termino["valores"]) == 1 and termino["valores"][0] in self.acabados):
+                    return termino["valores"][0]
         return None
 
     def parecidos(self, campo: str, valor: Any, n: int = 4) -> list[str]:
@@ -125,12 +126,10 @@ class Catalogo:
     def resumen_para_prompt(self) -> str:
         glos = "\n".join(f'- «{t["termino"]}» → {t["campo"]}: {", ".join(t["valores"])}' for t in self.terminos)
         usos = "\n".join(f'- {u["uso"]}' for u in self.usos) or "- (ninguno)"
-        pendientes = ", ".join(f"«{t}»" for t in self.acabados_pendientes) or "(ninguno)"
         return (
             f"Grados válidos: {', '.join(self.grados)}\n"
             f"Acabados válidos: {', '.join(self.acabados)}\n"
             f"Formatos válidos: {', '.join(self.formatos)}\n"
             f"Glosario (término coloquial → valores técnicos posibles):\n{glos}\n"
-            f"Términos de acabado sin equivalencia confirmada: {pendientes}. Si no hay código explícito, deja el acabado pendiente.\n"
             f"Usos reconocidos por el catálogo:\n{usos}"
         )

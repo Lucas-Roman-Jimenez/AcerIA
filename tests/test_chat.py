@@ -89,42 +89,30 @@ def test_pregunta_antes_de_buscar(api, llm_falso):
     assert r["especificacion"]["faltan"] == ["espesor_mm"]
 
 
-@pytest.mark.parametrize("acabado,opciones", [(None, {"acabado": ["BA", "2R"]}), ("BA", {})])
-def test_cl08_aclara_brillante_y_acepta_un_acabado_explicito(api, llm_falso, monkeypatch, acabado, opciones):
+@pytest.mark.parametrize("acabado,opciones", [(None, {"acabado": ["BA", "2R"]}), ("2R", {}), ("2B", {})])
+def test_cl08_interpreta_brillante_como_ba_y_comunica_sin_stock(api, llm_falso, monkeypatch, acabado, opciones):
     from evaluar_api import CASOS, evaluar
 
-    cliente, conversacion = api
+    cliente, _ = api
     caso = next(c for c in json.loads(CASOS.read_text(encoding="utf-8")) if c["id"] == "CL-08")
     llm_falso(
         extraccion(grado="304", formato="chapa", espesor_mm=2, acabado=acabado, opciones=opciones),
-        extraccion(grado="304", formato="chapa", espesor_mm=2, acabado="BA"),
     )
     monkeypatch.setattr(interprete, "_catalogo", Catalogo.cargar())
-    consultadas = []
-    buscar = conversacion.buscar_bultos
-
-    def buscar_con_registro(objetivo):
-        consultadas.append(objetivo)
-        return buscar(objetivo)
-
-    monkeypatch.setattr(conversacion, "buscar_bultos", buscar_con_registro)
-    respuestas = []
-
     def enviar(ruta, datos):
-        assert ruta == "/chat"
-        respuestas.append(datos["conversacion_id"])
-        respuesta = chat(cliente, datos["mensaje"], conv=datos["conversacion_id"])
-        assert respuesta["pregunta"] == "Cuando dices «brillante», ¿qué acabado concreto necesitas?"
-        assert respuesta["especificacion"]["acabado"] is None
-        assert "acabado" not in respuesta["especificacion"]["opciones"]
+        r = cliente.post(ruta, json=datos)
+        assert r.status_code == 200
+        respuesta = r.json()
+        assert respuesta["estado"] == "sin_stock"
+        assert respuesta["exactos"] == respuesta["transformables"] == []
+        if ruta == "/chat":
+            assert respuesta["pregunta"] is None
+            assert respuesta["especificacion"]["acabado"] == "BA"
         return respuesta
 
     informe = evaluar([caso], enviar)
     assert informe["interpretacion"]["aciertos"] == 1
-    assert consultadas == []
-    aclarada = chat(cliente, "BA", conv=respuestas[0])
-    assert aclarada["especificacion"]["acabado"] == "BA"
-    assert consultadas[0]["acabados"] == ["BA"]
+    assert informe["resultados"]["aciertos"] == 1
 
 
 def test_el_historial_se_guarda_por_conversacion(api, llm_falso):
