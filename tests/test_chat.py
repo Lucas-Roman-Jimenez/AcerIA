@@ -77,7 +77,7 @@ def test_transformables_por_chat_con_bulto_de_origen_y_ordenados(api, llm_falso)
     ts = r["transformables"]
     assert ts, "el inventario real tiene bultos 304 2B que se pueden cortar a 2 × 1000 × 2000"
     assert all(t["bulto"]["id"] == t["bulto_id"] == t["id"] for t in ts)       # compatibilizar() de Alonso
-    claves = [(t["merma_pct"], t["num_operaciones"]) for t in ts]
+    claves = [(t["num_operaciones"], t["merma_pct"]) for t in ts]
     assert claves == sorted(claves)                                          # RF-14
 
 

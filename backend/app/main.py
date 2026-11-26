@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.db import crear_db, disponibles
-from app.buscador import CAMPOS_VALORES, buscar_bultos, construir_objetivo, valores_disponibles
+from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_bultos, construir_objetivo, valores_disponibles
 from app.conversacion import cargar_env, responder_chat
 from app.reportes import reporte_semanal
 
@@ -61,7 +61,7 @@ def respuesta_base(conv_id: str | None) -> dict:
                            "espesor_mm": 2.0, "ancho_mm": 1250, "largo_mm": 2500, "faltan": []},
         "exactos": [], "transformables": [], "alternativas": [],
         "pregunta": None, "opciones": [],
-        "texto": "", "criterio_orden": "exactos > % de merma > nº de operaciones",
+        "texto": "", "criterio_orden": CRITERIO_ORDEN,
     }
 
 
@@ -118,7 +118,7 @@ def buscar(espec: dict):
         "estado": "resultados" if exactos or transformables else "sin_stock",
         "objetivo": objetivo,
         "exactos": exactos, "transformables": transformables, "alternativas": [],
-        "criterio_orden": "exactos > % de merma > nº de operaciones",
+        "criterio_orden": CRITERIO_ORDEN,
     }
 
 

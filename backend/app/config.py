@@ -21,3 +21,6 @@ MAX_OPERACIONES = 2
 TOL_ESPESOR_MM = 0.0
 TOL_ANCHO_MM = 0.0
 TOL_LARGO_MM = 0.0
+
+# RF-14. Orden de los transformables. POR CONFIRMAR con el mentor: el PDF pide operaciones > merma > ID.
+ORDEN_TRANSFORMABLES = ("num_operaciones", "merma_pct", "id")

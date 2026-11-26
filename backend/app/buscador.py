@@ -11,6 +11,23 @@ from reglas.motor import aplicar_reglas
 EPS = 1e-9                                       # margen para comparar decimales (2.0 vs 1.9999999)
 MEDIDAS = ["espesor_mm", "ancho_mm", "largo_mm"]
 
+_NOMBRES_CRITERIO = {"num_operaciones": "nº de operaciones", "merma_pct": "% de merma",
+                     "merma_kg": "kg de merma", "id": "ID"}
+CRITERIO_ORDEN = "exactos > " + " > ".join(_NOMBRES_CRITERIO[c] for c in config.ORDEN_TRANSFORMABLES)
+
+
+def id_natural(bulto_id) -> tuple:
+    """'99' < '100' como número; los ID con letras van detrás, en orden alfabético."""
+    s = str(bulto_id)
+    return (0, int(s), "") if s.isdigit() else (1, 0, s)
+
+
+def clave_transformable(t: dict) -> tuple:
+    """RF-14: clave de orden de un transformable según config.ORDEN_TRANSFORMABLES."""
+    valores = {"num_operaciones": t["num_operaciones"], "merma_pct": t["merma_pct"],
+               "merma_kg": t["merma_kg"], "id": id_natural(t["bulto_id"])}
+    return tuple(valores[c] for c in config.ORDEN_TRANSFORMABLES)
+
 
 def _valores_aceptados(espec: dict, campo: str) -> list[str] | None:
     """Une el valor del campo y sus 'opciones' (p. ej. brillante -> BA o 2R). None = vale cualquiera."""
@@ -119,5 +136,6 @@ def buscar_bultos(objetivo: dict) -> tuple[list[dict], list[dict]]:
         for transformacion in aplicar_reglas(bulto, objetivo, config.MAX_OPERACIONES):
             if cumple(transformacion["resultado"], objetivo):
                 transformables.append(dict(transformacion, bulto=a_respuesta(bulto)))
-    transformables.sort(key=lambda item: (item["merma_pct"], item["num_operaciones"]))
+    exactos.sort(key=lambda b: id_natural(b["id"]))
+    transformables.sort(key=clave_transformable)
     return exactos, transformables

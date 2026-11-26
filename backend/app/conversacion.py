@@ -18,9 +18,8 @@ if str(RAIZ) not in sys.path:
 
 from llm import ErrorLLM, interpretar, pregunta_tras_busqueda, responder  # noqa: E402
 
-from app.buscador import buscar_bultos, construir_objetivo  # noqa: E402
+from app.buscador import CRITERIO_ORDEN, buscar_bultos, construir_objetivo  # noqa: E402
 
-CRITERIO_ORDEN = "exactos > % de merma > nº de operaciones"   # RF-14, el mismo que /buscar
 MAX_MENSAJES = 40                                            # historial por conversación (RF-08)
 
 # Historial de cada conversación, en memoria: se pierde al reiniciar el servidor.

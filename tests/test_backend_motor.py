@@ -55,16 +55,18 @@ def test_buscar_excluye_bultos_reservados_y_bloqueados_del_motor(inventario, mon
         assert all(t["bulto_id"] not in ("334", "23") for t in resultado["transformables"])
 
 
-def test_buscar_verifica_el_objetivo_y_ordena_por_porcentaje_y_operaciones(monkeypatch):
+def test_buscar_verifica_el_objetivo_y_ordena_por_operaciones_merma_e_id(monkeypatch):
     exacto = {
         "id": "exacto", "aisi": "304", "euronorma": "1.4301", "acabado": "2B",
         "formato": "chapa", "espesor_mm": 2, "ancho_mm": 1250, "largo_mm": 2500,
     }
     origenes = [dict(exacto, id=id_, formato="bobina", largo_mm=None)
-                for id_ in ("a", "b", "c", "invalido")]
+                for id_ in ("a", "b", "c", "100", "99", "invalido")]
     origenes.append(dict(origenes[0], id="otro-grado", aisi="316", euronorma=None))
     monkeypatch.setattr(buscador, "disponibles", lambda: [exacto, *origenes])
-    mermas = {"a": (10, 2, 10), "b": (5, 2, 100), "c": (10, 1, 20), "invalido": (0, 1, 0)}
+    mermas = {"a": (10, 2, 10), "b": (5, 2, 100), "c": (10, 1, 20),
+              "100": (7, 2, 50), "99": (7, 2, 50),             # empate: decide el ID ("99" < "100")
+              "invalido": (0, 1, 0)}
 
     def transformar(origen, objetivo, max_operaciones):
         porcentaje, operaciones, kilos = mermas[origen["id"]]
@@ -80,5 +82,6 @@ def test_buscar_verifica_el_objetivo_y_ordena_por_porcentaje_y_operaciones(monke
         "espesor_mm": 2, "ancho_mm": 1250, "largo_mm": 2500,
     })
     assert [b["id"] for b in respuesta["exactos"]] == ["exacto"]
-    assert [t["bulto_id"] for t in respuesta["transformables"]] == ["b", "c", "a"]
-    assert [t["bulto"]["id"] for t in respuesta["transformables"]] == ["b", "c", "a"]
+    orden = ["c", "b", "99", "100", "a"]                    # RF-14: operaciones > merma > ID
+    assert [t["bulto_id"] for t in respuesta["transformables"]] == orden
+    assert [t["bulto"]["id"] for t in respuesta["transformables"]] == orden
