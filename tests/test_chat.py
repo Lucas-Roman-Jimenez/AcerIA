@@ -1,6 +1,7 @@
 """Tests de /chat (backend/app/conversacion.py): módulo LLM + buscador + motor de reglas.
 
-Sin clave ni conexión: el LLM se sustituye por ClienteFalso. Usan la BD real (se crea con crear_db()).
+Sin clave ni conexión: el LLM se sustituye por ClienteFalso. Usan el inventario real cargado en una
+base temporal (crear_db()), así no dependen de lo vendido en la demo ni tocan backend/data/aceria.db.
 Ejecutar desde la raíz del repositorio:  python -m pytest -q
 """
 import json
@@ -38,12 +39,17 @@ CATALOGO = Catalogo({
 
 
 @pytest.fixture(scope="module")
-def api():
+def api(tmp_path_factory):
+    """Inventario real en una base temporal: no depende de las ventas de la demo ni toca aceria.db."""
+    from app import config, conversacion
     from app.db import crear_db
-    crear_db()
-    from app import conversacion
     from app.main import app
-    return TestClient(app), conversacion
+    carpeta = tmp_path_factory.mktemp("chat")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(config, "DB_PATH", carpeta / "inventario.db")
+        mp.setattr(config, "ESTADOS_DEMO", carpeta / "sin_estados_demo.csv")
+        crear_db()
+        yield TestClient(app), conversacion
 
 
 @pytest.fixture
