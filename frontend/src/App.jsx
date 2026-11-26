@@ -18,9 +18,8 @@ import { Planchas } from './Planchas.jsx'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
 const DEMO = [
-  { texto: 'chapa brillante 304', nota: '«Brillante» es coloquial: puede ser BA o 2R. No lo supone, lo guarda como dos opciones y solo pregunta lo que falta.' },
-  { texto: 'de 2 mm', nota: 'Ha buscado en el inventario real: hay stock en los dos acabados, así que ahora sí pregunta, y solo por el acabado.' },
-  { texto: 'BA', nota: 'Todo lo que dice sale del inventario. Abre una tarjeta: «Por qué se propone» y «De dónde sale cada dato».' },
+  { texto: 'chapa brillante 304 de 1 mm', nota: '«Brillante» es coloquial: el glosario, con fuente de AcerIA, lo traduce a BA. Ha buscado en el inventario real y solo pregunta el dato que distingue el stock (el ancho).' },
+  { texto: '1250', nota: 'Todo sale del inventario: ID, medidas y peso. Abre una tarjeta: «Por qué se propone» y «De dónde sale cada dato».' },
   { texto: '¿qué acero recomiendas para ambiente marino?', nueva: true, nota: 'Recomienda solo lo que respaldan las fichas de AcerIA (límite de cloruros) y comprueba qué hay en stock.' },
   { texto: '¿qué grosores hay de 316L?', nota: 'Para quien no conoce la nomenclatura: pregunta qué hay y elige con un clic, sin saber los códigos.' },
 ]
@@ -209,10 +208,10 @@ export default function App() {
         return
       }
       const textoBot = r.tipo === 'error' ? r.error
-        : analisis && !r.opciones?.length ? textoAnalisis(analisis) : (r.pregunta ?? r.texto)
+        : (r.pregunta ?? r.texto) || (analisis ? textoAnalisis(analisis) : '')
       const msgBot = { rol: 'asistente', texto: textoBot, respuesta: r, analisis, error: r.tipo === 'error', reintento: limpio }
       guardar({ ...base, mensajes: [...base.mensajes, msgBot], ultima: r })
-      if (vozActiva && r.tipo !== 'error') leerEnAlto(textoBot)
+      if (vozActiva && r.tipo !== 'error') leerEnAlto([textoBot, r.aviso_ia?.texto_voz].filter(Boolean).join(' '))
     } catch (e) {
       const msgErr = { rol: 'asistente', texto: `No he podido responder (${e.message}). Puedes reintentar o reformular la petición.`, error: true, reintento: limpio }
       guardar({ ...base, mensajes: [...base.mensajes, msgErr] })
@@ -331,7 +330,7 @@ export default function App() {
       <aside className="lateral">
         <button type="button" className="marca" onClick={salir} title="Volver al inicio">
           <img className="logo-aceria" src="/logo-aceria.svg" alt="AcerIA" width="46" height="46" />
-          <span className="logo-texto" aria-label="acer.IA">ACER<span className="logo-ia">.IA</span></span>
+          <span className="logo-texto" aria-label="acerIA">ACER<span className="logo-ia">IA</span></span>
         </button>
 
         <nav className="lateral-menu" aria-label="Principal">
@@ -398,7 +397,7 @@ export default function App() {
         <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} />
       ) : (
         <main className="principal">
-          {vacio && <Planchas />}
+          <Planchas />
           {vacio ? (
             <section className="inicio">
               <div className="inicio-texto">
@@ -417,6 +416,7 @@ export default function App() {
                     {m === fresco && !m.error
                       ? <Escritura as="p" texto={m.texto} inicio={200} velocidad={3.5} />
                       : <p>{m.texto}</p>}
+                    {m.respuesta?.aviso_ia?.texto && <small className="aviso-ia"><span>{m.respuesta.aviso_ia.texto}</span></small>}
                     {m.error && i === actual.mensajes.length - 1 && (
                       <button className="reintentar" onClick={() => reintentar(m.reintento)}>Reintentar</button>
                     )}
@@ -444,7 +444,7 @@ export default function App() {
                     )}
                     {m.consulta && <Consulta consulta={m.consulta} deshabilitado={pensando} onElegir={anadirATexto} />}
                     {m.uso && <Uso uso={m.uso} deshabilitado={pensando} onElegir={anadirATexto} />}
-                    {m.respuesta?.especificacion && <Acero esp={m.respuesta.especificacion} id={i} />}
+                    {m.respuesta?.especificacion && <Acero esp={m.respuesta.especificacion} id={i} sinStock={m.respuesta.estado === 'sin_stock' || m.analisis?.estado === 'fallos'} />}
                     {m.analisis && (
                       <Flujo analisis={m.analisis} activo={i === actual.mensajes.length - 1} onEnviar={enviar}
                         onCancelar={nuevaConsulta} carrito={carrito} onCarrito={alternarCarrito}
@@ -490,6 +490,14 @@ export default function App() {
               <button className="demo-salir" onClick={() => setComparar([])}>Limpiar</button>
             </div>
           )}
+          {!vacio && (() => {
+            // Datos que aún faltan: se piden encima del campo de texto, centrados y con una línea de separación.
+            const faltan = [['grado', 'grado'], ['espesor_mm', 'espesor'], ['acabado', 'acabado'], ['formato', 'formato'], ['ancho_mm', 'ancho']]
+              .filter(([k]) => esp?.[k] == null).map(([, n]) => n)
+            if (!faltan.length) return null
+            const lista = faltan.length > 1 ? `${faltan.slice(0, -1).join(', ')} y ${faltan.at(-1)}` : faltan[0]
+            return <p className="faltan-datos"><span>Escribe {faltan.length > 1 ? "los datos que faltan" : "el dato que falta"} (<b>{lista}</b>) o elígelo abajo</span></p>
+          })()}
           <form className="entrada" onSubmit={e => { e.preventDefault(); enviar(texto) }}>
             <input ref={entradaRef} value={texto} onChange={e => setTexto(e.target.value)}
               placeholder="Escribe o dicta: grado, espesor, formato…"

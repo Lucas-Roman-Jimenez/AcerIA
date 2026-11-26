@@ -175,7 +175,7 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
         </div>
       )}
 
-      {activo && filas.length > 0 && (
+      {activo && filas.length > 0 && a.estado === 'fallos' && (
         <div className="cercanos">
           <div className="cercanos-titulo">
             {a.estado === 'fallos' ? 'Pulsa lo que falla y elige un valor que sí hay en stock:' : 'Elige un dato más:'}
@@ -195,11 +195,6 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
         </div>
       )}
 
-      {activo && (
-        <div className="flujo-acciones">
-          <span className="tenue">También puedes escribir más datos o la petición entera abajo.</span>
-        </div>
-      )}
     </div>
   )
 }
