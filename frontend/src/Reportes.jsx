@@ -20,7 +20,7 @@ export function Reportes({ vista, onCambiarVista }) {
           </button>
         ))}
       </nav>
-      <Vista />
+      <div key={actual} className="reportes-vista"><Vista /></div>
     </main>
   )
 }

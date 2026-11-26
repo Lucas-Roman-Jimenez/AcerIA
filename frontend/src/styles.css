@@ -1813,3 +1813,21 @@ select:focus-visible { box-shadow: none; border-bottom-color: #F07D00; }
 .reportes-fondo > .planchas { position: fixed; opacity: .4; z-index: 0; pointer-events: none; }
 .reportes-fondo > :not(.planchas) { position: relative; z-index: 1; flex: 1; min-height: 0; }
 select, .tend-controles select { field-sizing: content; width: auto; min-width: 0; }
+
+/* Chat centrado: una columna en el eje del campo de texto, con tarjetas, opciones y avisos centrados */
+.conversacion .mensajes { width: 100%; max-width: 900px; margin: 0 auto; }
+.flujo .tarjetas { grid-template-columns: repeat(auto-fit, minmax(210px, 250px)); justify-content: center; }
+.flujo, .flujo .cercanos, .consulta, .opciones { text-align: center; }
+.consulta, .opciones, .cercanos-fila { justify-content: center; }
+.flujo .cercanos { margin-left: auto; margin-right: auto; }
+.flujo-datos { justify-content: center; }
+.flujo-tarjeta .tarjeta-cuerpo, .flujo-tarjeta .carrito-boton { text-align: left; }
+
+/* Transiciones al entrar en un apartado (portada, chat, reportes y cada pestaña de reportes):
+   el contenido aparece con un fundido y una subida corta; las planchas del fondo no se animan */
+@keyframes entra-apartado { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+.principal > .inicio, .principal > .conversacion, .reportes, .reportes-vista {
+  animation: entra-apartado .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+.reportes-vista { animation-delay: .05s; }
+@media (prefers-reduced-motion: reduce) { .principal > .inicio, .principal > .conversacion, .reportes, .reportes-vista { animation: none; } }
