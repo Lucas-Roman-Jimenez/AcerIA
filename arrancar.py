@@ -78,7 +78,8 @@ def main() -> int:
         backend = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
              "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ,
-            env={**os.environ, "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0"})
+            env={**os.environ, "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0",
+                 "ACERIA_CORS_ORIGENES": web})
         if not esperar(f"{api}/health", 90, backend):
             print("El backend no ha arrancado. Revisa el error de arriba "
                   "(¿pip install -r backend/requirements.txt? ¿puerto ocupado?).")

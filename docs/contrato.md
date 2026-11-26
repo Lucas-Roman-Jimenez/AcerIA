@@ -146,8 +146,8 @@ Lo construye Alonso. El acordado era `exactos` y `transformables`; se añaden ca
 | `transformables[].acciones` | Original | Lista de acciones del motor de reglas |
 | `transformables[].merma_kg` | **Nuevo**, opcional | Merma estimada (RF-13) |
 | `transformables[].resultado` | **PROPUESTA** | Cómo queda el bulto tras transformar (RF-13, RF-20). Ver sección 7 |
-| `criterio` | **PROPUESTA**, opcional | Texto con el criterio de ordenación del ranking (RF-14), p. ej. `"sin transformar primero; después, menor merma y menos operaciones"`. `responder()` lo añade como «Orden: …» (RNF-09). Si no viene, no se dice nada |
-| `alternativas[]` | **Nuevo**, opcional | Bultos reales cercanos que **no** cumplen, relajando un parámetro (RF-29). Siempre se presentan como alternativa |
+| `criterio` / `criterio_orden` | **PROPUESTA**, opcional | Texto con el criterio de ordenación del ranking (RF-14). El backend lo manda como `criterio_orden`: `"exactos > nº de operaciones > % de merma > ID"` (sale de `config.ORDEN_TRANSFORMABLES`). `responder()` acepta las dos claves y lo añade como «Orden: …» (RNF-09). Si no viene, no se dice nada |
+| `alternativas[]` | **Nuevo**, opcional | Bultos reales cercanos que **no** cumplen (RF-29). Solo se rellena cuando no hay `exactos` ni `transformables`. Cada elemento es un bulto con el mismo formato que `exactos[]` más `diferencias: list[str]` (p. ej. `"ancho 1000 mm (pedido 1250 mm)"`). Con la regla de sustitución de AcerIA: chapa del mismo grado, acabado y espesor con otra medida (ancho × largo), como mucho `config.MAX_ALTERNATIVAS` (3), las más cercanas primero. Siempre se presentan como alternativa, y `estado` sigue siendo `"sin_stock"` |
 
 `responder()` solo menciona datos de este JSON. Si no hay `exactos` ni `transformables`, dice claramente que no hay stock (RF-15).
 
