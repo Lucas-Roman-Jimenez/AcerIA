@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cargarReporteDiarioInventario } from './api.js'
 import { descargarJson } from './descargarJson.js'
 
@@ -8,27 +8,14 @@ const fechaLegible = iso => fecha.format(new Date(iso))
 export function ReporteDiarioInventario({ onVolver }) {
   const [reporte, setReporte] = useState(null)
   const [error, setError] = useState('')
-  const [cargando, setCargando] = useState(false)
-  const solicitud = useRef(null)
 
-  useEffect(() => () => solicitud.current?.abort(), [])
-
-  async function generarReporte() {
+  useEffect(() => {
     const control = new AbortController()
-    solicitud.current = control
-    setError('')
-    setCargando(true)
-    try {
-      const datos = await cargarReporteDiarioInventario(control.signal)
-      if (control.signal.aborted) return
-      setReporte(datos)
-      descargarJson(datos, `reporte-diario-inventario-${datos.fecha}.json`)
-    } catch (e) {
-      if (!control.signal.aborted) setError(e.message)
-    } finally {
-      if (!control.signal.aborted) setCargando(false)
-    }
-  }
+    cargarReporteDiarioInventario(control.signal)
+      .then(datos => { if (!control.signal.aborted) setReporte(datos) })
+      .catch(e => { if (!control.signal.aborted) setError(e.message) })
+    return () => control.abort()
+  }, [])
 
   return (
     <main className="reporte-semanal">
@@ -39,13 +26,14 @@ export function ReporteDiarioInventario({ onVolver }) {
         </div>
         <div className="reporte-botones">
           <button type="button" className="nueva" onClick={onVolver}>Volver a reportes</button>
-          <button type="button" className="nueva" disabled={cargando} onClick={generarReporte}>
+          <button type="button" className="nueva" disabled={!reporte}
+            onClick={() => descargarJson(reporte, `reporte-diario-inventario-${reporte.fecha}.json`)}>
             Descargar reporte
           </button>
         </div>
       </header>
       {error && <p role="alert">{error}</p>}
-      {cargando && <p role="status">Generando reporte…</p>}
+      {!reporte && !error && <p role="status">Cargando reporte…</p>}
       {reporte?.materiales_sin_stock.length === 0 && <p role="status">No hay materiales del catálogo sin stock.</p>}
       {Boolean(reporte?.materiales_sin_stock.length) && (
         <div className="reporte-tabla-scroll">
