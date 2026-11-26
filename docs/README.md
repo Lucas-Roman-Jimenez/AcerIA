@@ -8,8 +8,10 @@ Documentos de referencia del equipo:
 
 En el repo:
 
-- [`contrato.md`](contrato.md): contrato JSON del módulo LLM (especificación, resultado de búsqueda y propuestas para `POST /chat`).
+- [`arquitectura.md`](arquitectura.md): componentes, flujo de una petición, API, datos, seguridad, despliegue (demo y producción) y cómo trabajamos.
+- [`contrato.md`](contrato.md): contrato JSON entre el módulo LLM, el backend y el frontend (especificación, resultado de búsqueda, `POST /chat` y reservas).
+- [`legal_ia.md`](legal_ia.md): uso de IA, Reglamento de IA de la UE (art. 50, Ómnibus Digital) y datos (RGPD).
 - [`guion_demo.md`](guion_demo.md): conversación de la demo (RF-07) con las respuestas reales del LLM y casos de respaldo.
-- [`evaluacion.md`](evaluacion.md): resultado de la evaluación de Lucas con el LLM real y el catálogo real (RNF-03: 96,2 %) y cómo repetirla.
+- [`evaluacion.md`](evaluacion.md): resultado de la evaluación de Lucas con el LLM real y el catálogo real (100 % en todos los bloques) y cómo repetirla.
 
 Los PDF están ignorados por `.gitignore`; aquí van notas en Markdown.
