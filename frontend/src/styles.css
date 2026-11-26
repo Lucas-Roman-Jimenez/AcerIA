@@ -75,6 +75,23 @@ button:disabled { cursor: default; opacity: .5; }
 }
 .nueva:hover, .demo-boton:hover:not(:disabled) { background: #fff; color: #000; }
 
+.reporte-semanal { flex: 1; overflow: auto; width: min(100%, 1100px); margin: 0 auto; padding: clamp(20px, 5vw, 56px); }
+.reporte-cabecera { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; }
+.reporte-cabecera h1 { margin: 0; }
+.reporte-fecha { color: var(--tenue); margin: 8px 0 0; }
+.reporte-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.reporte-botones .nueva { border: 1px solid var(--borde); }
+.reporte-compras { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--borde); }
+.reporte-compra { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--borde); }
+.reporte-compra h2 { font-size: 1.1rem; margin: 0 0 10px; }
+.reporte-caracteristicas { display: flex; flex-wrap: wrap; gap: 5px 16px; font-size: .85rem; margin: 0; }
+.reporte-caracteristicas div { display: flex; gap: 5px; }
+.reporte-caracteristicas dt { color: var(--tenue); }
+.reporte-caracteristicas dd { margin: 0; overflow-wrap: anywhere; }
+.reporte-cantidad { text-align: right; }
+.reporte-cantidad span { display: block; color: var(--tenue); font-size: .8rem; }
+.reporte-cantidad strong { display: block; font-size: 1.15rem; margin-top: 4px; }
+
 /* Cinta de stock, como la línea de cotización de la web */
 .ticker { overflow: hidden; height: 30px; flex-shrink: 0; margin: 0 56px; border-bottom: 1px solid var(--borde); }
 .ticker-pista { display: flex; white-space: nowrap; animation: desliza 140s linear infinite; width: max-content; }

@@ -28,3 +28,10 @@ export async function resumenStock() {
   if (!r.ok) throw new Error(`El servidor respondió ${r.status}`)
   return r.json()
 }
+
+export async function cargarReporteSemanal(signal) {
+  if (!API) throw new Error('El reporte necesita conexión con el backend.')
+  const r = await fetch(`${API}/reportes/compras/semanal`, { signal })
+  if (!r.ok) throw new Error(`El servidor respondió ${r.status}.`)
+  return r.json()
+}

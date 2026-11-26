@@ -9,6 +9,7 @@ import { interpretarTexto, detectarConsulta, detectarUso, recomendarPorUso } fro
 import { Consulta, textoConsulta } from './Consulta.jsx'
 import { Uso, construirUso } from './Uso.jsx'
 import { Cercanos } from './Cercanos.jsx'
+import { ReporteSemanal } from './ReporteSemanal.jsx'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
 const DEMO = [
@@ -54,6 +55,7 @@ export default function App() {
   const [comparar, setComparar] = useState([])
   const [verComparacion, setVerComparacion] = useState(false)
   const [demo, setDemo] = useState(null)
+  const [verReporte, setVerReporte] = useState(false)
   const actualRef = useRef(actual)
   actualRef.current = actual
   const finRef = useRef(null)
@@ -204,6 +206,10 @@ export default function App() {
   const hoy = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
   const previa = vacio && texto.trim() ? interpretarTexto(texto) : null
 
+  if (verReporte) {
+    return <div className="app"><ReporteSemanal onVolver={() => setVerReporte(false)} /></div>
+  }
+
   return (
     <div className={`app ${vacio ? 'portada' : ''}`}>
       <header className="cabecera">
@@ -233,7 +239,11 @@ export default function App() {
           <div className="acciones">
             <button className="demo-boton" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
               title="Reproduce la conversación de la demo paso a paso">▶ Demo guiada</button>
-            <button className="nueva" onClick={nuevaConsulta}>+ Nueva consulta</button>
+          <button className="nueva" type="button" onClick={() => {
+            cancelarDictado()
+            setVerReporte(true)
+          }}>Reporte semanal</button>
+          <button className="nueva" onClick={nuevaConsulta}>+ Nueva consulta</button>
           </div>
         </div>
         <div className="lema">
