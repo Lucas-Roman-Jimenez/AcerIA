@@ -98,7 +98,10 @@ El Excel, la base de datos, los PDF y el `.env` no se suben al repositorio (`.gi
 | Entradas mal formadas | Todas las entradas de la API se validan con Pydantic: tipos, rangos, longitudes y valores permitidos. Error 422 en español y sin repetir lo enviado |
 | Abuso del LLM de pago | Límite de 2.000 caracteres por mensaje y de 40 mensajes de historial. Un mensaje vacío no llama al LLM |
 | Otra web usando la API desde el navegador | CORS limitado al frontend (`ACERIA_CORS_ORIGENES`) |
+| Una web maliciosa que hace apuntar su dominio a 127.0.0.1 (*DNS rebinding*) | Solo se aceptan peticiones dirigidas a los hosts permitidos (`ACERIA_HOSTS`, por defecto `127.0.0.1` y `localhost`); el resto recibe 400 |
+| Ataques desde el navegador (tipos de archivo adivinados, fuga de la página de origen, incrustar la API en otra web) | Cabeceras en todas las respuestas: `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` y `Content-Security-Policy: frame-ancestors` limitado al propio backend y al frontend (el panel de fichas en PDF sigue funcionando) |
 | Dos comerciales vendiendo el mismo bulto | Reservas y ventas en transacción (`BEGIN IMMEDIATE`). Solo se vende lo reservado a tu nombre; todo o nada |
+| Un carrito que bloquea todo el stock o sondea las reservas de otros | Como mucho 50 bultos reservados por carrito. Si una reserva de varios bultos falla, el error no dice cuál, para que no sirva para averiguar qué tienen reservado los demás |
 | Fugas de información en los errores | Los errores al cliente son textos fijos; el detalle va al log. Los de Databricks no incluyen el token ni la URL |
 | Lectura de archivos arbitrarios | `/fichas/{mat}` solo sirve las 41 fichas del catálogo; el nombre de archivo sale del catálogo, nunca de la petición. Vite solo expone las carpetas necesarias (`fs.allow`) |
 | Secretos | Tokens del LLM y de Databricks solo en `.env`, que no se sube. Nunca llegan al navegador |
@@ -153,6 +156,7 @@ Usar `127.0.0.1` y no `localhost`: en la red de la URJC, `localhost` acaba en el
 | `DATABRICKS_HOST`, `DATABRICKS_TOKEN` | Opcional: credenciales para las fichas. Si faltan, se usan las del gateway |
 | `DATABRICKS_FICHAS` | Opcional: carpeta del workspace con las fichas |
 | `ACERIA_CORS_ORIGENES` | Opcional: orígenes permitidos del frontend |
+| `ACERIA_HOSTS` | Opcional: nombres con los que se puede llamar a la API (por defecto `127.0.0.1` y `localhost`) |
 
 ### Producción (propuesta)
 
@@ -178,7 +182,7 @@ flowchart LR
 - **Ramas y merge requests:** cada persona en su rama (`nombre/tarea`), con merge request a `main` revisado antes de aceptar.
 - **Contrato JSON** entre piezas en [`contrato.md`](contrato.md): no se cambia sin avisar a los cuatro.
 - **Pruebas:**
-  - `python -m pytest -q`: 396 tests automáticos, sin red. Ninguno toca la base de datos real.
+  - `python -m pytest -q`: 405 tests automáticos, sin red. Ninguno toca la base de datos real.
   - `python -m tests.evaluar_api`: evaluación del reto contra el servidor real con el LLM real, con 100 % en todos los bloques ([`evaluacion.md`](evaluacion.md)).
   - `python tests/bateria_llm.py`: 53 conversaciones con el LLM real, 0 fallos, mediana de 1,4 s por mensaje.
 - **Parámetros de negocio pendientes de confirmar** con AcerIA (tolerancias, campos mínimos, criterio de merma), centralizados en `backend/app/config.py` y `llm/interprete.py`.
