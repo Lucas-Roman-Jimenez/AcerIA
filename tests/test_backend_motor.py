@@ -85,3 +85,32 @@ def test_buscar_verifica_el_objetivo_y_ordena_por_operaciones_merma_e_id(monkeyp
     orden = ["c", "b", "99", "100", "a"]                    # RF-14: operaciones > merma > ID
     assert [t["bulto_id"] for t in respuesta["transformables"]] == orden
     assert [t["bulto"]["id"] for t in respuesta["transformables"]] == orden
+
+
+def test_buscar_devuelve_una_sola_ruta_por_bulto_la_mejor_segun_rf14(monkeypatch):
+    pedido = {"aisi": "304", "euronorma": "1.4301", "acabado": "2B", "formato": "chapa",
+              "espesor_mm": 2, "ancho_mm": 1250, "largo_mm": 2500}
+    origen = dict(pedido, id="b1", formato="bobina", largo_mm=None)
+    monkeypatch.setattr(buscador, "disponibles", lambda: [origen])
+
+    def ruta(operaciones, porcentaje, resultado=pedido):
+        return {"bulto_id": "b1", "resultado": resultado, "num_operaciones": operaciones,
+                "merma_pct": porcentaje, "merma_kg": porcentaje * 10}
+
+    rutas = [
+        ruta(2, 5),                                        # menos merma, pero más operaciones
+        ruta(1, 10),                                       # la mejor según RF-14
+        ruta(1, 0, dict(pedido, ancho_mm=1300)),           # mejor clave, pero no cumple: se ignora
+    ]
+    monkeypatch.setattr(buscador, "aplicar_reglas", lambda *_: rutas)
+    respuesta = buscar({"grado": "304", "formato": "chapa", "acabado": "2B",
+                        "espesor_mm": 2, "ancho_mm": 1250, "largo_mm": 2500})
+    assert [(t["bulto_id"], t["num_operaciones"], t["merma_pct"])
+            for t in respuesta["transformables"]] == [("b1", 1, 10)]
+
+
+def test_buscar_real_no_repite_bultos(inventario):
+    respuesta = buscar({"grado": "304", "acabado": "2B", "espesor_mm": 1.5, "ancho_mm": 1000})
+    ids = [t["bulto_id"] for t in respuesta["transformables"]]
+    assert ids, "el inventario real tiene bultos 304 2B de 1,5 mm que se pueden cortar a 1000 mm"
+    assert len(ids) == len(set(ids))

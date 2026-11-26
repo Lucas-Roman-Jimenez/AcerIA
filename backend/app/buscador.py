@@ -124,7 +124,10 @@ def valores_disponibles(campo: str, espec: dict, bultos: list[dict] | None = Non
 
 
 def buscar_bultos(objetivo: dict) -> tuple[list[dict], list[dict]]:
-    """Busca en una sola lectura del inventario y verifica cada resultado del motor."""
+    """Busca en una sola lectura del inventario y verifica cada resultado del motor.
+
+    De cada bulto solo se devuelve su mejor transformación según RF-14 (clave_transformable).
+    """
     exactos = []
     transformables = []
     for bulto in disponibles():
@@ -133,9 +136,14 @@ def buscar_bultos(objetivo: dict) -> tuple[list[dict], list[dict]]:
             continue
         if not _cumple_grado(bulto, objetivo):
             continue
+        mejor = None
         for transformacion in aplicar_reglas(bulto, objetivo, config.MAX_OPERACIONES):
-            if cumple(transformacion["resultado"], objetivo):
-                transformables.append(dict(transformacion, bulto=a_respuesta(bulto)))
+            if not cumple(transformacion["resultado"], objetivo):
+                continue
+            if mejor is None or clave_transformable(transformacion) < clave_transformable(mejor):
+                mejor = transformacion
+        if mejor is not None:
+            transformables.append(dict(mejor, bulto=a_respuesta(bulto)))
     exactos.sort(key=lambda b: id_natural(b["id"]))
     transformables.sort(key=clave_transformable)
     return exactos, transformables
