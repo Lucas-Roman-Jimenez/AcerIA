@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import statistics
 import sys
 import time
@@ -103,13 +104,22 @@ ESCENARIOS = [
 ]
 
 
+def _base_al_dia() -> bool:
+    """True si la base existe y tiene la tabla de reservas. No se recrea si no hace falta: crear_db() vacía las
+    reservas, y la aplicación puede estar abierta a la vez."""
+    if not config.DB_PATH.exists():
+        return False
+    with sqlite3.connect(config.DB_PATH) as conn:
+        return conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'reservas'").fetchone() is not None
+
+
 def _resumen(espec: dict) -> str:
     return json.dumps({k: v for k, v in espec.items() if v not in (None, [], {})}, ensure_ascii=False)
 
 
 def main(prefijos: list[str]) -> int:
     cargar_env()
-    if not config.DB_PATH.exists():          # primera vez en este ordenador: se carga el inventario
+    if not _base_al_dia():                   # primera vez, o base anterior a las reservas: se carga como al arrancar
         crear_db()
     token = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("ANTHROPIC_API_KEY") or ""
     escenarios = [e for e in ESCENARIOS if not prefijos or e[0].startswith(tuple(prefijos))]
