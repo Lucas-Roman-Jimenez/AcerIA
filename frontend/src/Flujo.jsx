@@ -35,8 +35,11 @@ export async function analizar(r) {
   const dados = CAMPOS.map(c => c[0]).filter(k => esp[k] != null)
   const correctos = {}
   const fallan = []
+  // Si el backend ha encontrado bultos que cumplen o transformables, todo lo pedido se puede conseguir:
+  // un ancho o un espesor que no está tal cual en stock puede salir cortando o laminando (motor de reglas).
+  const conResultados = Boolean(r.exactos?.length || r.transformables?.length)
   for (const k of dados) {
-    if (await hayStock({ ...correctos, [k]: esp[k] })) correctos[k] = esp[k]
+    if (conResultados || await hayStock({ ...correctos, [k]: esp[k] })) correctos[k] = esp[k]
     else fallan.push(k)
   }
   const avisos = esp.avisos ?? []
