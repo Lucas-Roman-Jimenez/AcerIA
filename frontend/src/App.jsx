@@ -12,6 +12,7 @@ import { sugerirCorreccion } from './sugerir.js'
 import { pideBorrarConsulta, pideQuitar, frasesQuitar, textoNoSeleccionado } from './quitar.js'
 import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
 import { ReporteSemanal } from './ReporteSemanal.jsx'
+import { Escritura } from './Escritura.jsx'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
 const DEMO = [
@@ -63,6 +64,8 @@ export default function App() {
   const [verCarrito, setVerCarrito] = useState(false)
   const [avisoInicio, setAvisoInicio] = useState(null)
   const [verReporte, setVerReporte] = useState(false)
+  // Respuesta que acaba de llegar: es la única que se escribe letra a letra
+  const [fresco, setFresco] = useState(null)
   const actualRef = useRef(actual)
   actualRef.current = actual
   const finRef = useRef(null)
@@ -123,6 +126,8 @@ export default function App() {
 
   // Si el usuario ha salido a otro chat mientras se esperaba la respuesta, esta solo se guarda en «Recientes».
   const guardar = conv => {
+    const ultimo = conv.mensajes.at(-1)
+    if (ultimo?.rol === 'asistente') setFresco(ultimo)
     setActual(a => (a.id === conv.id ? conv : a))
     setConversaciones(cs => [conv, ...cs.filter(c => c.id !== conv.id)])
   }
@@ -317,6 +322,43 @@ export default function App() {
 
   return (
     <div className={`app ${vacio ? 'portada' : ''}`}>
+      <aside className="lateral">
+        <button type="button" className="marca" onClick={salir} title="Volver al inicio">
+          <span className="logo-luna" aria-hidden />
+          <span className="logo-texto">ACERIA</span>
+        </button>
+
+        <nav className="lateral-menu" aria-label="Principal">
+          <button type="button" className="lateral-item destacado" onClick={salir}>
+            <Icono nombre="nueva" /> Nueva consulta
+          </button>
+          <button type="button" className="lateral-item" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
+            title="Reproduce la conversación de la demo paso a paso">
+            <Icono nombre="demo" /> Demo guiada
+          </button>
+          <button type="button" className="lateral-item carrito-cabecera" onClick={() => setVerCarrito(true)}>
+            <Icono nombre="carrito" /> Carrito
+            {carrito.length > 0 && <span className="contador">{carrito.length}</span>}
+          </button>
+          <button type="button" className="lateral-item" onClick={() => { cancelarDictado(); setVerReporte(true) }}>
+            <Icono nombre="reporte" /> Reporte semanal
+          </button>
+        </nav>
+
+        <div className="lateral-titulo">Recientes</div>
+        <div className="lateral-lista">
+          {conversaciones.length === 0 && <p className="lateral-vacio">Aquí aparecerán tus consultas.</p>}
+          {conversaciones.map(c => (
+            <button key={c.id} className={`reciente ${c.id === actual.id ? 'activa' : ''}`}
+              onClick={() => { cancelarDictado(); setFresco(null); setActual(c); setDetalle(null) }}>
+              <span className="reciente-texto">{c.mensajes[0]?.texto}</span>
+              {c.creada && <span className="reciente-hora">{cuando(c.creada)}</span>}
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <div className="contenido">
       <header className="cabecera">
         <div className="fondo-video" aria-hidden>
           <video src="/video/cabecera.mp4" autoPlay muted loop playsInline
@@ -334,23 +376,6 @@ export default function App() {
             {totalBultos > 0 && <span className="resalte">{totalBultos.toLocaleString('es-ES')} bultos disponibles</span>}
           </div>
         </div>
-        <nav className="principal-cabecera" aria-label="Principal">
-          <button type="button" className="marca" onClick={salir} title="Volver al inicio">
-            <span className="logo-luna" aria-hidden />
-            <span className="logo-texto">ACERIA</span>
-          </button>
-          <div className="menu">
-            <button type="button" className="menu-enlace" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
-              title="Reproduce la conversación de la demo paso a paso">Demo guiada</button>
-            <button type="button" className="menu-enlace" onClick={() => { cancelarDictado(); setVerReporte(true) }}>Reporte semanal</button>
-          </div>
-          <div className="acciones">
-            <button type="button" className="menu-enlace carrito-cabecera" onClick={() => setVerCarrito(true)}>
-              Carrito{carrito.length > 0 && <span className="contador">{carrito.length}</span>}
-            </button>
-            <button type="button" className="boton-destacado" onClick={nuevaConsulta}>Nueva consulta</button>
-          </div>
-        </nav>
       </header>
 
       <div className="ticker" aria-label="Resumen de stock">
@@ -363,17 +388,6 @@ export default function App() {
         </div>
       </div>
 
-      <div className="cuerpo">
-        <aside className="lateral">
-          <div className="lateral-titulo">Recientes ⌄</div>
-          {conversaciones.map(c => (
-            <button key={c.id} className={`reciente ${c.id === actual.id ? 'activa' : ''}`}
-              onClick={() => { cancelarDictado(); setActual(c); setDetalle(null) }}>
-              <span className="reciente-texto">{c.mensajes[0]?.texto}</span>
-              {c.creada && <span className="reciente-hora">{cuando(c.creada)}</span>}
-            </button>
-          ))}
-        </aside>
 
         <main className="principal">
           {vacio ? (
@@ -382,7 +396,7 @@ export default function App() {
                 <Dibujo formato={previa?.formato} acabado={previa?.acabado ?? previa?.opciones.acabado?.[0]} id="inicio" />
               </div>
               <div className="inicio-texto">
-                <h1>¿Qué quieres buscar?</h1>
+                <Escritura as="h1" texto="¿Qué quieres buscar?" />
                 <div className="inicio-nombre">
                   {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
                 </div>
@@ -405,7 +419,9 @@ export default function App() {
                 </div>
                 {actual.mensajes.map((m, i) => (
                   <div key={i} className={`mensaje ${m.rol} ${m.error ? 'error' : ''}`}>
-                    <p>{m.texto}</p>
+                    {m === fresco && !m.error
+                      ? <Escritura as="p" texto={m.texto} inicio={200} />
+                      : <p>{m.texto}</p>}
                     {m.error && i === actual.mensajes.length - 1 && (
                       <button className="reintentar" onClick={() => reintentar(m.reintento)}>Reintentar</button>
                     )}
@@ -513,6 +529,19 @@ export default function App() {
         <Comparador seleccion={comparar} onQuitar={t => alternarComparar(t.tipo, t.item)} onCerrar={() => setVerComparacion(false)} />
       )}
     </div>
+  )
+}
+
+const ICONOS = {
+  nueva: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>,
+  demo: <><circle cx="12" cy="12" r="9" /><path d="m10 8.5 5.5 3.5-5.5 3.5Z" /></>,
+  carrito: <><circle cx="9" cy="20" r="1.3" /><circle cx="18" cy="20" r="1.3" /><path d="M2.5 3.5h2.8l2.4 11.2a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.6-1.2l1.6-7.3H6.1" /></>,
+  reporte: <><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M21 20H3" /></>,
+}
+function Icono({ nombre }) {
+  return (
+    <svg className="icono-lateral" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{ICONOS[nombre]}</svg>
   )
 }
 
