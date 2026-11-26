@@ -35,3 +35,15 @@ la unidad y una fecha con zona horaria. Si una compra agrupa varios bultos,
 cada movimiento debe tener un ID distinto. La función usa la conexión
 recibida y el llamador controla el commit o rollback. El registro de compras
 se conserva cuando se vuelve a cargar la muestra de inventario.
+
+## Venta simulada del carrito
+
+`POST /compras` con `{"bultos": ["334", "23"]}` vende los bultos del carrito
+(simulación para la demo: no toca los sistemas de AcerIA). En una sola
+transacción, cada bulto se registra con `registrar_compra()` (aparece en el
+reporte semanal, con su peso en kg) y pasa a estado `vendido`, así deja de
+salir en `/buscar`, `/chat` y `/stock`. Si alguno no existe o ya no está
+disponible responde `409` con `no_disponibles` y no vende ninguno.
+
+Al arrancar se recarga el Excel, pero los bultos que ya están en `compras`
+se vuelven a marcar como `vendido`, así que no reaparecen.

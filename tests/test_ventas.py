@@ -1,0 +1,76 @@
+"""Venta simulada del carrito (POST /compras): marca los bultos como vendidos y los registra en compras."""
+from datetime import datetime, timezone
+from pathlib import Path
+import sqlite3
+import sys
+
+import pytest
+
+pytest.importorskip("pandas")
+pytest.importorskip("openpyxl")
+pytest.importorskip("fastapi")
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app import config  # noqa: E402
+from app.db import crear_db, disponibles  # noqa: E402
+from app.main import app  # noqa: E402
+from app.reportes import reporte_semanal  # noqa: E402
+from app.ventas import BultosNoDisponibles, vender  # noqa: E402
+
+
+@pytest.fixture
+def base(tmp_path, monkeypatch):
+    """Inventario real cargado en una base temporal (no toca backend/data/aceria.db)."""
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "inventario.db")
+    monkeypatch.setattr(config, "ESTADOS_DEMO", tmp_path / "sin_estados_demo.csv")
+    crear_db()
+    return config.DB_PATH
+
+
+def estado(base, bulto_id):
+    with sqlite3.connect(base) as c:
+        return c.execute("SELECT estado FROM bultos WHERE id = ?", (bulto_id,)).fetchone()[0]
+
+
+def test_vender_marca_vendido_y_aparece_en_el_reporte(base):
+    ahora = datetime.now(timezone.utc)
+    r = vender(["334", "23"], ahora=ahora)
+    assert r["vendidos"] == ["334", "23"]
+    assert estado(base, "334") == estado(base, "23") == "vendido"
+    assert not {"334", "23"} & {b["id"] for b in disponibles()}          # ya no salen en /buscar ni /chat
+    compras = reporte_semanal(ahora=ahora)["compras"]
+    assert {c["caracteristicas"]["id"] for c in compras} == {"334", "23"}
+    c334 = next(c for c in compras if c["caracteristicas"]["id"] == "334")
+    assert c334["cantidad_sustraida"] == {"valor": 745.0, "unidad": "kg"}
+    assert c334["caracteristicas"]["estado"] == "disponible"             # se guarda el bulto antes de la baja
+
+
+def test_si_un_bulto_no_esta_disponible_no_se_vende_ninguno(base):
+    vender(["334"])
+    with pytest.raises(BultosNoDisponibles) as e:
+        vender(["23", "334", "no-existe"])
+    assert e.value.ids == ["334", "no-existe"]
+    assert estado(base, "23") == "disponible"                            # todo o nada
+    assert len(reporte_semanal()["compras"]) == 1
+
+
+def test_lo_vendido_no_vuelve_al_recargar_el_inventario(base):
+    vender(["334"])
+    crear_db()                                                           # se recarga el Excel, como al arrancar
+    assert estado(base, "334") == "vendido"
+    assert estado(base, "23") == "disponible"
+    assert len(reporte_semanal()["compras"]) == 1                        # las compras se conservan
+
+
+def test_endpoint_compras(base):
+    cliente = TestClient(app)
+    ok = cliente.post("/compras", json={"bultos": ["334"]})
+    assert ok.status_code == 200 and ok.json()["vendidos"] == ["334"]
+    repetida = cliente.post("/compras", json={"bultos": ["334"]})
+    assert repetida.status_code == 409 and repetida.json()["detail"]["no_disponibles"] == ["334"]
+    vacia = cliente.post("/compras", json={"bultos": []})
+    assert vacia.status_code == 422
+    assert cliente.get("/reportes/compras/semanal").json()["compras"][0]["caracteristicas"]["id"] == "334"

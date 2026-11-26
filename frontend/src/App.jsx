@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { enviarMensaje, resumenStock, consultarValores } from './api.js'
+import { enviarMensaje, resumenStock, consultarValores, venderCarrito } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
 import { Acero, Dibujo } from './Acero.jsx'
@@ -443,7 +443,13 @@ export default function App() {
       {detalle && <Detalle item={detalle} esp={esp} onCerrar={() => setDetalle(null)} />}
       {verCarrito && (
         <Carrito carrito={carrito} onQuitar={id => setCarrito(cs => cs.filter(c => c.item.id !== id))}
-          onVaciar={() => setCarrito([])} onCerrar={() => setVerCarrito(false)} />
+          onVaciar={() => setCarrito([])} onCerrar={() => setVerCarrito(false)}
+          onVender={async ids => {
+            const r = await venderCarrito(ids)
+            setCarrito([])
+            resumenStock().then(setStock).catch(() => {})     // la cinta de stock ya no los cuenta
+            return r
+          }} />
       )}
       {verComparacion && comparar.length > 1 && (
         <Comparador seleccion={comparar} onQuitar={t => alternarComparar(t.tipo, t.item)} onCerrar={() => setVerComparacion(false)} />

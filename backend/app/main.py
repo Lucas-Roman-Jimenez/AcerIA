@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.db import crear_db, disponibles
 from app.buscador import CAMPOS_VALORES, buscar_bultos, construir_objetivo, valores_disponibles
 from app.conversacion import cargar_env, responder_chat
+from app.ventas import BultosNoDisponibles, vender
 from app.reportes import reporte_semanal
 
 
@@ -73,6 +74,22 @@ def health():
 @app.get("/reportes/compras/semanal")
 def obtener_reporte_semanal():
     return reporte_semanal()
+
+
+class Venta(BaseModel):
+    bultos: list[str]               # IDs de los bultos del carrito
+
+
+@app.post("/compras")
+def comprar(v: Venta):
+    """Vende (simulado) los bultos del carrito: pasan a «vendido» y aparecen en el reporte semanal."""
+    try:
+        return vender(v.bultos)
+    except BultosNoDisponibles as e:
+        raise HTTPException(409, {"mensaje": "Algún bulto ya no está disponible; no se ha vendido nada.",
+                                  "no_disponibles": e.ids})
+    except ValueError as e:
+        raise HTTPException(422, str(e))
 
 
 @app.post("/chat")

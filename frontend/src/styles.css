@@ -342,3 +342,8 @@ button:disabled { cursor: default; opacity: .5; }
 .casilla-opciones-titulo { font-size: 12px; color: var(--oro); }
 .casilla-opciones .editor-lista { max-height: 220px; }
 .chip-stock.elegido { background: #fff; color: #000; }
+
+/* Venta simulada del carrito */
+.carrito-pie { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.carrito-ok { color: #7fd18b; margin: 12px 0; }
+.carrito-error { color: #ff8a80; margin: 12px 0; }
