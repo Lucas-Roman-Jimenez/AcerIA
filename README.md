@@ -109,7 +109,7 @@ La conversación de la demo y los casos de respaldo están en [`docs/guion_demo.
 
 ### Contrato ampliado (avisar a Alonso y Stanis)
 
-El contrato completo, con ejemplos y las propuestas pendientes de acordar, está en [`docs/contrato.md`](docs/contrato.md).
+El contrato completo, con ejemplos, está en [`docs/contrato.md`](docs/contrato.md).
 
 La especificación añade estos campos al contrato original:
 
@@ -124,13 +124,15 @@ La especificación añade estos campos al contrato original:
 
 El resultado de búsqueda que espera `responder()` admite en cada bulto `peso_kg` y `ubicacion`, en cada transformable `merma_kg`, y una lista opcional `alternativas` (RF-29).
 
-**Propuestas pendientes de aceptar** (funcionan si vienen y no rompen nada si no):
-- `criterio` en el resultado (Alonso): texto con el criterio de ordenación; se añade como «Orden: …» (RNF-09).
-- `resultado` en cada transformable (Lucas): cómo queda el bulto tras transformarlo; se añade como «queda 304 2B, 3 × 1250 mm» (RF-13).
+**Acordado e implementado** (antes eran propuestas):
+- `criterio_orden` en el resultado (Alonso): texto con el criterio de ordenación; se añade como «Orden: …» (RNF-09).
+- `resultado` en cada transformable (Lucas): cómo queda el bulto tras transformarlo; se añade como «queda chapa 2B, 1 × 1250 × 2500 mm» (RF-13).
+- `aviso_ia` en la respuesta de `/chat`: marca y textos del aviso de contenido generado por IA (`docs/legal_ia.md`).
 
 ### Decisiones pendientes
 
 - `CAMPOS_MINIMOS` en `llm/interprete.py`: ahora es grado + espesor. **Confirmar con el mentor** qué datos son imprescindibles para buscar.
+- Criterio RF-14: si la merma se ordena en % o en kg (ahora en %). **Confirmar con el mentor.**
 - `datos_ejemplo/` son datos inventados: los usan los tests del módulo (`tests/test_llm.py`, `tests/test_aclaraciones_llm.py`), que así no dependen de los datos reales, y el frontend cuando arranca sin backend (`src/mock.js`). La aplicación usa los reales de `datos/`.
 
 ### Estructura

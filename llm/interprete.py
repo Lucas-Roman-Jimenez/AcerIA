@@ -293,9 +293,14 @@ def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo
     }.get(intencion)
 
 
-def _responder_orientacion_obra(catalogo, orientacion, minimos):
+def _responder_orientacion_obra(catalogo, orientacion, minimos, esp: Especificacion):
+    """Consejo de obra (Lucas). Conserva lo que el comercial ya ha dado (formato, medidas…) para el panel
+    (RF-18); solo se quita el grado deducido del uso, porque el catálogo no permite elegirlo así."""
     aplicacion = catalogo.uso(orientacion.get("aplicacion_documentada"))
-    esp = Especificacion(uso=orientacion["uso"])
+    esp.grado = None
+    esp.opciones.pop("grado", None)
+    esp.uso, esp.fuente_uso = orientacion["uso"], None
+    esp.avisos = [a for a in esp.avisos if not a.startswith(_AVISOS_USO)]
     _calcular_faltan(esp, minimos)
     pregunta = orientacion["aclaracion"]
     if aplicacion and aplicacion.get("fuente") and aplicacion.get("grados"):
@@ -387,7 +392,7 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     opciones = bruto.get("opciones")
     grado_pedido = bruto.get("grado") or (isinstance(opciones, dict) and opciones.get("grado"))
     if orientacion and (intencion == "consulta_tecnica" or (intencion == "pedido" and not grado_pedido)):
-        return _responder_orientacion_obra(catalogo, orientacion, minimos)
+        return _responder_orientacion_obra(catalogo, orientacion, minimos, esp)
     if problemas["intencion"] != "pedido":
         _calcular_faltan(esp, minimos)
         return ResultadoInterpretacion("pregunta", esp, _respuesta_intencion(esp, problemas["intencion"], catalogo))
@@ -396,6 +401,15 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
         return ResultadoInterpretacion("especificacion", esp)
     pregunta = _redactar(plantilla, cliente if redactar_con_llm else None, catalogo)
     return ResultadoInterpretacion("pregunta", esp, pregunta)
+
+
+# Avisos del catálogo sobre el uso (los genera _validar): se dicen también en el texto, no solo en el panel.
+_AVISOS_USO = ("Según el catálogo, para ", "El catálogo no indica qué grado")
+
+
+def avisos_uso(esp: Especificacion, ya_dicho: str = "") -> list[str]:
+    """Avisos del catálogo sobre el uso que hay que decir al comercial, sin repetir los ya dichos."""
+    return [a for a in esp.avisos if a.startswith(_AVISOS_USO) and a not in (ya_dicho or "")]
 
 
 MAX_USOS_EJEMPLO = 4
@@ -436,5 +450,7 @@ def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequen
             plantilla = f"Tengo {_describir(esp, sin=campo)} en {lista_y(valores)}. ¿Qué formato prefieres?"
         else:
             plantilla = f"Tengo {_describir(esp, sin=campo)} {lista_y(valores, 'en ')}. ¿Cuál prefieres?"
-        return None if plantilla == ultima else plantilla
+        if ultima and plantilla in ultima:          # ya se preguntó y no lo ha resuelto: se enseña todo
+            return None
+        return " ".join([*avisos_uso(esp, ultima), plantilla])
     return None
