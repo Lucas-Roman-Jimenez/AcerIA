@@ -45,6 +45,6 @@ Hackathon IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto 
 - Responder en español.
 
 ## Estructura del repositorio
-- Raíz: `llm/` (módulo de Nacho), `tests/`, `demo_consola.py`, `datos_ejemplo/`.
+- Raíz: `llm/` (módulo de Nacho), `tests/`, `arrancar.py`, `datos/` (catálogo real) y `datos_ejemplo/` (solo tests y frontend sin backend).
 - Carpetas de cada miembro: `backend/` (Alonso), `frontend/` (Stanis), `datos/`, `reglas/`, `voz/` (Lucas), `docs/`. `tests/` es común: tests de cada pieza, conjunto de pruebas y script de evaluación.
-- Comandos desde la raíz del repo: `python -m pytest -q`, `python demo_consola.py`.
+- Comandos desde la raíz del repo: `python -m pytest -q`, `python arrancar.py` (`--reiniciar-demo` para empezar sin ventas) y `python tests/bateria_llm.py`.

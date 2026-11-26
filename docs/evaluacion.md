@@ -2,22 +2,20 @@
 
 Resultado de `tests/evaluar_api.py` (el evaluador de Lucas) **contra el servidor real**: `/chat` con el módulo LLM, el buscador de Alonso con el motor de reglas, la base de datos de 2411 bultos y el **catálogo y glosario reales** de `datos/`.
 
-- **Fecha:** 26 de noviembre de 2026 · **código:** `main` en `4b16d37`
+- **Fecha:** 26 de noviembre de 2026 · **código:** `main` en `fe4a607` (con la venta del carrito) más esta rama
 - **LLM:** `system.ai.claude-sonnet-5-5` por el AI Gateway de Databricks
-- **Duración:** 49 s para los 32 casos · el script termina con `exit 0`
+- **Duración:** 45 s para los 34 casos · el script termina con `exit 0`
 
 | Métrica | Requisito | Resultado | Umbral 85 % |
 | --- | --- | --- | --- |
-| Interpretación (por `/chat`) | RNF-03 | **25/26 = 96,2 %** | ✅ |
-| Resultados (por `/buscar`) | RNF-04 | **16/16 = 100 %** | ✅ |
+| Interpretación (por `/chat`) | RNF-03 | **26/26 = 100 %** | ✅ |
+| Resultados (por `/buscar`, incluido un caso sin stock) | RNF-04, RF-15 | **17/17 = 100 %** | ✅ |
 | Transformables (por `/buscar`) | RF-11 a RF-14 | **2/2 = 100 %** | ✅ |
 | Reglas locales | RF-28 | **8/8 = 100 %** | ✅ |
 
-## El único fallo: CL-08
+## CL-08: «brillante»
 
-*«Quiero una chapa 304 brillante de 2 mm.»* El caso espera que el asistente pregunte por el acabado (RF-05). No lo hace porque el glosario real todavía no da ninguna equivalencia para «brillante»: está en `pendientes_de_confirmacion` (el inventario tiene BA y no tiene 2R). En cuanto el mentor confirme sus valores y Lucas los añada al glosario, el intérprete los usará sin cambiar código.
-
-Queda además una diferencia de criterio por cerrar entre Nacho y Lucas: con un término ambiguo, el módulo busca con todas las opciones y solo pregunta si el stock se distingue por ese dato (RF-07); el caso espera que se pregunte siempre (RF-05).
+*«Quiero una chapa 304 brillante de 2 mm.»* Antes era el único fallo (96,2 %). Lucas añadió al glosario «brillante» → BA con fuente de AcerIA («2R (BA), brillante»), y el caso pasó a comprobar que se interpreta como BA y que se comunica que no hay stock. **Ojo:** es un cambio en el conjunto de evaluación; está justificado por un dato nuevo con fuente, no por ajustar los prompts.
 
 ## Cómo repetirla
 
@@ -33,10 +31,10 @@ python -m tests.evaluar_api --base-url http://127.0.0.1:8000
 
 ## Lo que esta evaluación no mide todavía
 
-- **Casos sin solución y alternativas cercanas (RF-15, RF-29).** La métrica de resultados solo puntúa casos con solución. Falta añadir casos sin stock al evaluador (Lucas) y que el buscador proponga alternativas (Alonso).
+- **Alternativas cercanas (RF-29).** El evaluador ya puntúa un caso sin stock (CL-08), pero el buscador todavía no propone alternativas (Alonso).
 - **Criterio de orden (RF-14).** El buscador y el evaluador ordenan por % de merma y luego por número de operaciones; el PDF del reto pide operaciones, luego merma y luego ID. Pendiente de decidir con el mentor.
 
 ## Otras pruebas del módulo LLM
 
-- `python -m pytest -q`: tests sin conexión (153 en `main`).
-- `python tests/bateria_llm.py`: 42 escenarios de conversación contra el LLM real (búsqueda simulada sobre `datos_ejemplo/`), con mediana de 1,3 s por mensaje en las últimas ejecuciones.
+- `python -m pytest -q`: tests sin conexión (165).
+- `python tests/bateria_llm.py`: 48 escenarios de conversación con el LLM real y los datos reales, por el mismo camino que `POST /chat`. Última ejecución (26/11): 0 fallos, mediana de 1,4 s por mensaje.
