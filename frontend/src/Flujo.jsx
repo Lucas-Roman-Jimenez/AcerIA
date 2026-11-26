@@ -212,8 +212,8 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
     setVendiendo(true)
     setMensaje(null)
     try {
-      const r = await onVender(carrito.map(c => c.item.id))
-      setMensaje({ tipo: 'ok', texto: `Vendidos ${r.vendidos.length} bultos. Ya no salen en el stock y aparecen en el reporte semanal.` })
+      await onVender(carrito.map(c => c.item.id))
+      setMensaje({ tipo: 'ok', texto: 'Compra procesada' })
     } catch (e) {
       setMensaje({ tipo: 'error', texto: e.message })
     } finally {
@@ -257,7 +257,6 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
                 </button>
               )}
             </div>
-            <p className="tenue">Simulación para la demo: no se envía nada a los sistemas de AcerIA.</p>
           </>
         )}
       </div>
