@@ -43,6 +43,23 @@ app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES,   # nunca
                    allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type", "X-Carrito"])
 
 
+# Cabeceras de seguridad en todas las respuestas. frame-ancestors deja incrustar la API (el PDF de las fichas
+# en el iframe de las tarjetas) solo en el propio backend y en el frontend (los mismos orígenes que CORS).
+CABECERAS_SEGURIDAD = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": " ".join(["frame-ancestors 'self'", *config.CORS_ORIGENES]),
+}
+
+
+@app.middleware("http")
+async def cabeceras_seguridad(request: Request, call_next):
+    respuesta = await call_next(request)
+    for nombre, valor in CABECERAS_SEGURIDAD.items():
+        respuesta.headers.setdefault(nombre, valor)
+    return respuesta
+
+
 @app.exception_handler(RequestValidationError)
 async def datos_no_validos(request: Request, exc: RequestValidationError):
     """Tarea 6: todo 422 de validación con el mismo formato, en español y sin repetir lo enviado.
