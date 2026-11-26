@@ -352,7 +352,7 @@ def test_precio_ofrece_buscar_lo_entendido_y_conserva_la_especificacion():
 def test_consulta_tecnica_solo_cita_usos_del_catalogo():
     r, _ = interp(extraccion(intencion="consulta_tecnica"))
     assert "No puedo comparar propiedades" in r.pregunta
-    assert "ambiente marino o industria alimentaria" in r.pregunta
+    assert "(por ejemplo, industria alimentaria o ambiente marino)" in r.pregunta   # preferidos primero
 
 
 def test_intencion_desconocida_se_trata_como_pedido():
