@@ -31,8 +31,8 @@ python -m tests.evaluar_api --base-url http://127.0.0.1:8000
 
 ## Lo que esta evaluación no mide todavía
 
-- **Alternativas cercanas (RF-29).** El evaluador ya puntúa un caso sin stock (CL-08), pero el buscador todavía no propone alternativas (Alonso).
-- **Criterio de orden (RF-14).** El buscador y el evaluador ordenan por % de merma y luego por número de operaciones; el PDF del reto pide operaciones, luego merma y luego ID. Pendiente de decidir con el mentor.
+- **Alternativas cercanas (RF-29): hecho en el buscador, sin métrica.** El evaluador ya puntúa un caso sin stock (CL-08), pero todavía no puntúa las alternativas. Si no hay exactos ni transformables, `buscador.buscar_alternativas()` propone hasta 3 chapas reales del mismo grado, acabado y espesor con otra medida (regla de sustitución de `reglas/sustitucion.py`), las más cercanas primero. Lo cubre `tests/test_alternativas.py`.
+- **Criterio de orden (RF-14): hecho.** El buscador y el evaluador ordenan los transformables por nº de operaciones, luego % de merma y luego ID (como número), como pide el PDF del reto. El orden está en `config.ORDEN_TRANSFORMABLES`; queda confirmarlo con el mentor (¿merma en % o en kg?).
 
 ## Otras pruebas del módulo LLM
 

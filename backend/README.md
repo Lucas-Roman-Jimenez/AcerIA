@@ -30,6 +30,18 @@ Cada fila incluye el formato en el título y muestra el ID del bulto, grado
 Las cantidades sustraídas se suman por bulto y unidad. Si hay varios
 movimientos del mismo bulto, se muestran las características del más reciente.
 
+`GET /reportes/compras/tendencias?semanas=8&unidad=kg` reconstruye el reporte
+consolidado de cada semana y usa sus compras como fuente de las barras.
+Devuelve barras por semana y formato y ordena los materiales por cantidad.
+Cada material se identifica por formato, grado, acabado y medidas. El peso
+en toneladas se convierte a kg. Las vistas de bultos y piezas son separadas.
+El comparativo con stock actual se ofrece en kg o bultos.
+
+La semana en curso y la primera con movimientos se marcan aparte. El
+porcentaje compara semanas cerradas consecutivas y queda en `null` cuando
+falta una base comparable o el valor anterior es cero. El periodo anterior
+al primer movimiento se devuelve como `sin_historial`, con barras nulas.
+
 El flujo de baja debe llamar a `app.reportes.registrar_compra` dentro de la
 misma transacción que actualiza el stock, pasando el bulto original antes
 de la baja, un ID único por movimiento, la cantidad realmente descontada,

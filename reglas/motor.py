@@ -77,6 +77,12 @@ def _cortar(origen: dict, objetivo: dict, formato: str) -> tuple[dict, dict, boo
     ancho = objetivo.get("ancho_mm")
     if ancho is None:
         ancho = ancho_origen
+    if formato == "fleje":
+        ancho_max = REGLAS.get("fleje", {}).get("ancho_max_mm")
+        if not ancho < ancho_origen:
+            return None   # cortar a fleje tiene que estrechar el bulto; si no, solo cambia el nombre
+        if ancho_max is not None and not ancho < ancho_max:
+            return None   # mismo criterio que db.deducir_formato(): fleje < UMBRAL_FLEJE_MM
     largo = objetivo.get("largo_mm") if formato == "chapa" else largo_origen
     if formato == "chapa" and largo is None:
         largo = largo_origen

@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 RAIZ = Path(__file__).resolve().parents[2]          # raíz del repo: llm/ y reglas/ viven ahí
 if str(RAIZ) not in sys.path:
@@ -18,9 +19,8 @@ if str(RAIZ) not in sys.path:
 
 from llm import ErrorLLM, interpretar, pregunta_tras_busqueda, responder  # noqa: E402
 
-from app.buscador import buscar_bultos, construir_objetivo  # noqa: E402
+from app.buscador import CRITERIO_ORDEN, buscar_alternativas, buscar_bultos, construir_objetivo  # noqa: E402
 
-CRITERIO_ORDEN = "exactos > % de merma > nº de operaciones"   # RF-14, el mismo que /buscar
 MAX_MENSAJES = 40                                            # historial por conversación (RF-08)
 
 # Historial de cada conversación, en memoria: se pierde al reiniciar el servidor.
@@ -44,7 +44,7 @@ def _respuesta(conv_id: str, estado: str, texto: str, especificacion: dict, **ex
         "especificacion": especificacion,
         "exactos": extra.get("exactos", []),
         "transformables": extra.get("transformables", []),
-        "alternativas": [],                       # RF-29: pendiente
+        "alternativas": extra.get("alternativas", []),   # RF-29: solo si no hay exactos ni transformables
         "pregunta": texto if estado == "pregunta" else None,
         "opciones": [],                           # botones: formato pendiente de acordar
         "texto": texto,
@@ -53,7 +53,7 @@ def _respuesta(conv_id: str, estado: str, texto: str, especificacion: dict, **ex
 
 
 def responder_chat(conv_id: str | None, mensaje: str) -> dict:
-    conv_id = conv_id or "demo-1"
+    conv_id = conv_id or f"c-{uuid4().hex}"     # sin ID, conversación nueva: nunca una compartida
     historial = conversaciones.setdefault(conv_id, [])
     historial.append({"rol": "comercial", "texto": mensaje or ""})
 
@@ -68,18 +68,21 @@ def responder_chat(conv_id: str | None, mensaje: str) -> dict:
         return _guardar(historial, _respuesta(conv_id, "pregunta", r.pregunta, espec))
 
     # Buscador de Alonso: exactos y transformables del motor de Lucas, verificados y ordenados (RF-10 a RF-14).
-    exactos, transformables = buscar_bultos(construir_objetivo(espec))
+    objetivo = construir_objetivo(espec)
+    exactos, transformables = buscar_bultos(objetivo)
 
     p = pregunta_tras_busqueda(r.especificacion, exactos, historial=historial)
     if p:                                         # el stock real se distingue por un dato no dado (RF-07)
         return _guardar(historial, _respuesta(conv_id, "pregunta", p, espec))
 
-    resultado = {"exactos": exactos, "transformables": transformables, "alternativas": [],
+    alternativas = [] if exactos or transformables else buscar_alternativas(objetivo)   # RF-29
+    resultado = {"exactos": exactos, "transformables": transformables, "alternativas": alternativas,
                  "criterio_orden": CRITERIO_ORDEN}
     texto = responder(resultado, r.especificacion)
     estado = "resultados" if exactos or transformables else "sin_stock"
     return _guardar(historial, _respuesta(conv_id, estado, texto, espec,
-                                          exactos=exactos, transformables=transformables))
+                                          exactos=exactos, transformables=transformables,
+                                          alternativas=alternativas))
 
 
 def _guardar(historial: list[dict[str, str]], respuesta: dict) -> dict:
