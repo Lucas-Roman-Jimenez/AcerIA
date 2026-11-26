@@ -283,25 +283,6 @@ def _calcular_faltan(esp: Especificacion, minimos: Sequence[str]) -> None:
     esp.faltan = [c for c in minimos if not esp.tiene(c) and c not in esp.indiferentes]
 
 
-def _acabado_expresado(texto: str, catalogo: Catalogo) -> Optional[str]:
-    """Resuelve un término confirmado cuando el usuario evita un código explícito."""
-    if re.search(r"\b(?:no|sin)\s+(?:acabado\s+)?brillante\b", texto, flags=re.I):
-        return None
-    terminos = [
-        t["termino"] for t in catalogo.terminos if t.get("detectar_en_peticion")
-        and t["campo"] == "acabado"
-        and re.search(rf"(?<!\w){re.escape(t['termino'])}s?(?!\w)", texto, flags=re.I)
-    ]
-    if terminos:
-        explicitos = [
-            c for c in (*catalogo.acabados, "2R") if not c.isdecimal()
-            and re.search(rf"(?<!\w){re.escape(c)}(?!\w)", texto, flags=re.I)
-        ]
-        if not explicitos:
-            return catalogo.normalizar("acabado", terminos[0])
-    return None
-
-
 def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo) -> Optional[str]:
     """Respuesta fija para mensajes que no son un pedido (RF-09). No pasa por el LLM."""
     hay_datos = _describir(esp) != "material"
@@ -392,10 +373,6 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     cliente = cliente or _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
     bruto = _extraer(historial, cliente, catalogo, minimos)
-    ultimo_mensaje = next(m["texto"] for m in reversed(historial) if m.get("rol") == "comercial")
-    acabado = _acabado_expresado(ultimo_mensaje, catalogo)
-    if acabado:
-        bruto = dict(bruto, acabado=acabado)
     esp, problemas = _validar(bruto, catalogo)
     if problemas["intencion"] != "pedido":
         _calcular_faltan(esp, minimos)
