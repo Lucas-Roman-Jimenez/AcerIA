@@ -81,15 +81,16 @@ class Catalogo:
                     return termino["valores"][0]
         return None
 
-    def parecidos(self, campo: str, valor: Any, n: int = 4) -> list[str]:
-        """Valores del catálogo más parecidos a uno que no existe (316 -> 316L, 316TI), para sugerirlos."""
+    def parecidos(self, campo: str, valor: Any, n: int = 4, respaldo: bool = True) -> list[str]:
+        """Valores del catálogo más parecidos a uno que no existe (316 -> 316L, 316TI), para sugerirlos.
+        Si no hay ninguno parecido, los primeros del catálogo, o [] con respaldo=False."""
         v = _norm_texto(valor).lower()
         valores = self.valores(campo)
         prefijo = [p for p in valores if p.lower().startswith(v) or v.startswith(p.lower())]
         cercanos = difflib.get_close_matches(v, [p.lower() for p in valores], n=n, cutoff=0.6)
         por_minuscula = {p.lower(): p for p in valores}
         res = list(dict.fromkeys(prefijo + [por_minuscula[c] for c in cercanos]))[:n]
-        return res or valores[:n]
+        return res or (valores[:n] if respaldo else [])
 
     def termino(self, campo: str, valores: list[str]) -> Optional[str]:
         """Término coloquial del glosario que corresponde a esos valores (satinado -> ['4']), si lo hay."""

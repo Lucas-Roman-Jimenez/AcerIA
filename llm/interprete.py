@@ -234,22 +234,50 @@ def _comprobar_combinacion(esp: Especificacion, catalogo: Catalogo) -> Optional[
                 continue
             disp = lista_y(disponibles)
         return {"campo": campo, "disponible": disp,
-                "aviso": f"En el catálogo no existe {_describir(esp)}. "
+                "aviso": f"En el catálogo no existe {_describir(esp, catalogo=catalogo)}. "
                          f"Con el resto de datos hay {NOMBRE_CAMPO[campo]} {disp}."}
     return {"campo": None, "disponible": "", "aviso": "Esa combinación no existe en el catálogo."}
 
 
 # ------------------------------------------------------------------ preguntas
 
-def _valor_o_opciones(esp: Especificacion, campo: str) -> Optional[str]:
+# Ejemplos de grado cuando falta: los habituales del inventario, no los primeros de la lista del catálogo
+# (que va ordenada por designación EN: 1.4016, 1.4021…). Solo se usan los que existen en el catálogo.
+GRADOS_EJEMPLO = ("304", "316L", "430", "304L")
+MAX_GRADOS_EN_TEXTO = 4
+
+
+def _nombre_grado(grado: str, catalogo: Optional[Catalogo]) -> str:
+    """Nombre para el comercial: el AISI si el catálogo documenta la equivalencia (1.4404 -> 316L).
+    Solo cambia lo que se lee; la especificación sigue con el valor del catálogo."""
+    return (getattr(catalogo, "aisi_por_en", None) or {}).get(grado, grado)
+
+
+def _ejemplos(campo: str, catalogo: Catalogo, n: int = 3) -> list[str]:
+    valores = catalogo.valores(campo)
+    if campo != "grado":
+        return valores[:n]
+    habituales = [g for g in GRADOS_EJEMPLO if g in valores]
+    resto = [g for g in valores if g not in habituales and not g.startswith("1.")] + valores
+    return list(dict.fromkeys(habituales + resto))[:n]
+
+
+def _valor_o_opciones(esp: Especificacion, campo: str, catalogo: Optional[Catalogo] = None) -> Optional[str]:
     if getattr(esp, campo):
-        return getattr(esp, campo)
-    return lista_o(esp.opciones[campo]) if esp.opciones.get(campo) else None
+        return _nombre_grado(getattr(esp, campo), catalogo) if campo == "grado" else getattr(esp, campo)
+    if not esp.opciones.get(campo):
+        return None
+    if campo != "grado":
+        return lista_o(esp.opciones[campo])
+    nombres = list(dict.fromkeys(_nombre_grado(g, catalogo) for g in esp.opciones[campo]))
+    if len(nombres) > MAX_GRADOS_EN_TEXTO:        # «316, 316L, 316Ti, 301 u otros 3»: no una lista de 9
+        return f"{', '.join(nombres[:MAX_GRADOS_EN_TEXTO])} u otros {len(nombres) - MAX_GRADOS_EN_TEXTO}"
+    return lista_o(nombres)
 
 
-def _describir(esp: Especificacion, sin: str = "") -> str:
+def _describir(esp: Especificacion, sin: str = "", catalogo: Optional[Catalogo] = None) -> str:
     partes = []
-    formato, grado, acabado = (_valor_o_opciones(esp, c) for c in ("formato", "grado", "acabado"))
+    formato, grado, acabado = (_valor_o_opciones(esp, c, catalogo) for c in ("formato", "grado", "acabado"))
     if formato and sin != "formato":
         partes.append(formato)
     if grado and sin != "grado":
@@ -274,8 +302,8 @@ def _calcular_faltan(esp: Especificacion, minimos: Sequence[str]) -> None:
 
 def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo) -> Optional[str]:
     """Respuesta fija para mensajes que no son un pedido (RF-09). No pasa por el LLM."""
-    hay_datos = _describir(esp) != "material"
-    buscar = f"¿Quieres que busque {_describir(esp)}?" if hay_datos else "¿Qué material necesitas?"
+    hay_datos = _describir(esp, catalogo=catalogo) != "material"
+    buscar = f"¿Quieres que busque {_describir(esp, catalogo=catalogo)}?" if hay_datos else "¿Qué material necesitas?"
     usos = [u["uso"] for u in catalogo.usos]
     # El catálogo real tiene unos 90 usos: se nombran como mucho MAX_USOS_EJEMPLO, primero los más habituales.
     ejemplos = [u for u in USOS_PREFERIDOS if u in usos] + [u for u in usos if u not in USOS_PREFERIDOS]
@@ -323,7 +351,9 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
                 "Si son pedidos distintos, vamos de uno en uno: ¿con cuál empezamos?")
     if problemas["invalidos"]:
         campo, valor = problemas["invalidos"][0]
-        ejemplos = lista_y(catalogo.parecidos(campo, valor), "")
+        # Sin ninguno parecido («titanio», «999X»): los habituales, no los primeros de la lista del catálogo.
+        parecidos = catalogo.parecidos(campo, valor, respaldo=False) or _ejemplos(campo, catalogo, 4)
+        ejemplos = lista_y(parecidos, "")
         return f"No encuentro «{valor}» como {NOMBRE_CAMPO[campo]} en el catálogo. ¿Te refieres a alguno de estos: {ejemplos}?"
     if problemas["opciones_dudosas"]:
         campo, vals = problemas["opciones_dudosas"]
@@ -335,14 +365,14 @@ def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: 
         return "Esa combinación no existe en el catálogo. ¿Puedes revisar el grado, el acabado o el espesor?"
     if problemas["uso_desconocido"] and not esp.tiene("grado"):
         return (f"El catálogo no indica qué grado es adecuado para «{problemas['uso_desconocido']}». "
-                f"¿Qué grado necesitas? Por ejemplo: {lista_y(catalogo.grados[:3])}.")
+                f"¿Qué grado necesitas? Por ejemplo: {lista_y(_ejemplos('grado', catalogo))}.")
     faltan = esp.faltan
     if faltan:
         # El LLM puede sugerir qué dato mínimo preguntar primero (Lucas); el código lo comprueba.
         sugerido = problemas.get("campo_aclaracion")
         c = sugerido if isinstance(sugerido, str) and sugerido in faltan else faltan[0]
         if c in CAMPOS_TEXTO:
-            return f"¿Qué {NOMBRE_CAMPO[c]} necesitas? Por ejemplo: {lista_y(catalogo.valores(c)[:3])}."
+            return f"¿Qué {NOMBRE_CAMPO[c]} necesitas? Por ejemplo: {lista_y(_ejemplos(c, catalogo))}."
         return f"¿Qué {NOMBRE_CAMPO[c]} necesitas, en milímetros?"
     return None
 
@@ -422,7 +452,7 @@ ORDEN_DISTINGUIR = ("acabado", "grado", "formato", "espesor_mm", "ancho_mm", "la
 
 def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequence[dict[str, Any]], *,
                            historial: Optional[Sequence[dict[str, str]]] = None,
-                           max_opciones: int = 4) -> Optional[str]:
+                           max_opciones: int = 4, catalogo: Optional[Catalogo] = None) -> Optional[str]:
     """Llamar DESPUÉS de buscar con los bultos que cumplen (los «exactos»).
 
     Devuelve la pregunta por el dato que el comercial no ha dado y que distingue
@@ -433,6 +463,7 @@ def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequen
     no se repite (el comercial no la ha resuelto) y se devuelve None para mostrar todos los bultos.
     """
     esp = especificacion if isinstance(especificacion, Especificacion) else Especificacion.desde_dict(especificacion)
+    catalogo = catalogo or _catalogo_defecto()        # solo para nombrar los grados (1.4404 -> 316L)
     if len(bultos) < 2:
         return None
     ultima = next((m.get("texto") for m in reversed(historial or []) if m.get("rol") == "asistente"), None)
@@ -445,12 +476,12 @@ def pregunta_tras_busqueda(especificacion: Especificacion | dict, bultos: Sequen
         if not 2 <= len(valores) <= max_opciones:
             continue
         if campo in CAMPOS_NUMERO:
-            plantilla = (f"Tengo {_describir(esp, sin=campo)} con {NOMBRE_CAMPO[campo]} de "
+            plantilla = (f"Tengo {_describir(esp, sin=campo, catalogo=catalogo)} con {NOMBRE_CAMPO[campo]} de "
                          f"{lista_y([fmt_num(v) for v in valores])} mm. ¿Cuál prefieres?")
         elif campo == "formato":
-            plantilla = f"Tengo {_describir(esp, sin=campo)} en {lista_y(valores)}. ¿Qué formato prefieres?"
+            plantilla = f"Tengo {_describir(esp, sin=campo, catalogo=catalogo)} en {lista_y(valores)}. ¿Qué formato prefieres?"
         else:
-            plantilla = f"Tengo {_describir(esp, sin=campo)} {lista_y(valores, 'en ')}. ¿Cuál prefieres?"
+            plantilla = f"Tengo {_describir(esp, sin=campo, catalogo=catalogo)} {lista_y(valores, 'en ')}. ¿Cuál prefieres?"
         if ultima and plantilla in ultima:          # ya se preguntó y no lo ha resuelto: se enseña todo
             return None
         return " ".join([*avisos_uso(esp, ultima), plantilla])
