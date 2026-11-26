@@ -167,7 +167,13 @@ Es decisión de Alonso. Se propone para que Stanis tenga en una sola respuesta t
   "exactos": [ ... ],
   "transformables": [ ... ],
   "alternativas": [],
-  "error": null
+  "error": null,
+  "aviso_ia": {
+    "generado_por_ia": true,
+    "texto": "Respuesta generada por IA. Los bultos y las transformaciones salen del inventario y las reglas de AcerIA; revísalos antes de confirmar.",
+    "texto_voz": "Respuesta generada por inteligencia artificial.",
+    "inicio": "Estás hablando con un asistente de inteligencia artificial. …"
+  }
 }
 ```
 
@@ -176,6 +182,7 @@ Es decisión de Alonso. Se propone para que Stanis tenga en una sola respuesta t
 - `especificacion`: siempre presente, para el panel «Lo que he entendido» (RF-18) y para marcar `faltan`.
 - `exactos`, `transformables` y `alternativas`: para las tarjetas (RF-17), con distinto color para cada tipo.
 - `error`: mensaje claro si falló el LLM, para mostrar el botón de reintentar (RNF-14).
+- `aviso_ia` (Reglamento de IA de la UE, art. 50; ver `docs/legal_ia.md`): `generado_por_ia` es la marca legible por máquina. El frontend pinta `texto` en cada respuesta del asistente, lee `texto_voz` en la lectura en voz alta y muestra `inicio` una vez al abrir el chat. Es `null` cuando `tipo` es `"error"`. Los textos salen de `llm/aviso.py`.
 
 ---
 

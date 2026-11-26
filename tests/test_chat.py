@@ -68,6 +68,8 @@ def test_exactos_reales_con_formato_de_la_api(api, llm_falso):
     assert r["exactos"] and all(b["acabado"] == "2B" and b["espesor_mm"] == 2 for b in r["exactos"])
     assert r["texto"].startswith("Hay ") and r["especificacion"]["grado"] == "304"
     assert r["criterio_orden"]
+    assert r["aviso_ia"]["generado_por_ia"] is True                    # AI Act art. 50.2 (docs/legal_ia.md)
+    assert r["aviso_ia"]["texto"].startswith("Respuesta generada por IA")
 
 
 def test_transformables_por_chat_con_bulto_de_origen_y_ordenados(api, llm_falso):
@@ -140,6 +142,7 @@ def test_error_del_llm_deja_reintentar(api, llm_falso):
     llm_falso(ErrorLLM("caído"))
     r = chat(cliente, "304 de 2 mm", conv="error")
     assert r["estado"] == "error" and r["tipo"] == "error" and r["error"]
+    assert r["aviso_ia"] is None                                       # el error no es texto generado
     assert conversacion.conversaciones["error"] == []                 # el mensaje fallido no queda
 
 
