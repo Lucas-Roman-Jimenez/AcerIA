@@ -68,7 +68,7 @@ button:disabled { cursor: default; opacity: .5; }
 
 .principal-cabecera { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 76px; flex-shrink: 0; }
 .marca { display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; justify-self: start; }
-.logo-luna { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; border-right-width: 6px; flex-shrink: 0; }
+.logo-aceria { display: block; flex-shrink: 0; padding: 3px; border-radius: 50%; background: #fff; }
 .logo-texto { font-family: var(--logo); font-weight: 400; font-size: 40px; letter-spacing: 1.5px; line-height: 1; padding-top: 4px; }
 .punto { color: var(--tenue); }
 .menu { display: flex; align-items: center; gap: 36px; }
@@ -466,7 +466,6 @@ button:disabled { cursor: default; opacity: .5; }
 .flujo-dato.mal { color: var(--naranja); border-color: var(--naranja); }
 
 /* Metal: logo, bordes e iconos */
-.logo-luna { border-color: var(--plata); }
 .logo-texto { color: #fff; }
 .punto { color: var(--metal); }
 .altavoz { color: var(--metal); }

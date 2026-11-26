@@ -322,7 +322,7 @@ export default function App() {
     <div className={`app ${verReporte ? 'en-reportes' : vacio ? 'portada' : ''}`}>
       <aside className="lateral">
         <button type="button" className="marca" onClick={salir} title="Volver al inicio">
-          <span className="logo-luna" aria-hidden />
+          <img className="logo-aceria" src="/logo-aceria.svg" alt="AcerIA" width="46" height="46" />
           <span className="logo-texto">ACERIA</span>
         </button>
 
