@@ -107,9 +107,11 @@ button:disabled { cursor: default; opacity: .5; }
 }
 .nueva:hover, .demo-boton:hover:not(:disabled) { background: #fff; color: #000; }
 
-.reporte-semanal { flex: 1; overflow: auto; width: min(100%, 1100px); margin: 0 auto; padding: clamp(20px, 5vw, 56px); }
+.reportes { flex: 1; min-height: 0; overflow: auto; width: 100%; padding: clamp(20px, 4vw, 40px); }
+.reportes-nav { margin-bottom: 28px; }
+.reportes-nav button[aria-pressed="true"] { background: var(--azul); border-color: var(--azul-claro); color: #fff; }
 .reporte-cabecera { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; }
-.reporte-cabecera h1 { margin: 0; }
+.reporte-cabecera h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(25px, 2.9vw, 42px); line-height: 1.1; letter-spacing: .5px; text-transform: uppercase; }
 .reporte-fecha { color: var(--tenue); margin: 8px 0 0; }
 .reporte-botones { display: flex; flex-wrap: wrap; gap: 8px; }
 .reporte-botones .nueva { border: 1px solid var(--borde); }
@@ -607,6 +609,18 @@ button:disabled { cursor: default; opacity: .5; }
 /* Sin menú en la cabecera: durante la conversación queda una franja de vídeo con las utilidades */
 .cabecera { height: 56px; }
 .app.portada .cabecera { height: clamp(220px, 32vh, 360px); }
+
+@media (max-width: 640px) {
+  .app.en-reportes { flex-direction: column; }
+  .en-reportes .lateral { width: 100%; border-right: 0; border-bottom: 1px solid var(--borde); }
+  .en-reportes .lateral-menu { flex-direction: row; flex-wrap: wrap; padding-bottom: 0; border-bottom: 0; }
+  .en-reportes .lateral-item { width: auto; }
+  .en-reportes :is(.lateral-titulo, .lateral-lista) { display: none; }
+  .en-reportes .cabecera { padding-inline: 16px; }
+  .en-reportes .ticker { margin-inline: 16px; }
+  .en-reportes .utilidades { gap: 10px; }
+  .en-reportes .utilidades-derecha { gap: 8px; }
+}
 
 /* ===== Botones rectangulares: nada de píldoras ni círculos, esquinas apenas redondeadas ===== */
 .nueva, .demo-boton, .opcion, .microfono, .icono, .editor form button, .chip-stock, .demo-siguiente, .demo-salir,

@@ -5,7 +5,7 @@ import { descargarJson } from './descargarJson.js'
 const fecha = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'UTC' })
 const fechaLegible = iso => fecha.format(new Date(iso))
 
-export function ReporteDiarioInventario({ onVolver }) {
+export function ReporteDiarioInventario() {
   const [reporte, setReporte] = useState(null)
   const [error, setError] = useState('')
 
@@ -18,14 +18,13 @@ export function ReporteDiarioInventario({ onVolver }) {
   }, [])
 
   return (
-    <main className="reporte-semanal">
+    <section aria-labelledby="reporte-diario-titulo">
       <header className="reporte-cabecera">
         <div>
-          <h1>{reporte?.titulo ?? 'Reporte diario'}</h1>
+          <h1 id="reporte-diario-titulo">{reporte?.titulo ?? 'Reporte diario'}</h1>
           {reporte && <p className="reporte-fecha"><time dateTime={reporte.fecha}>{fechaLegible(reporte.fecha)}</time></p>}
         </div>
         <div className="reporte-botones">
-          <button type="button" className="nueva" onClick={onVolver}>Volver a reportes</button>
           <button type="button" className="nueva" disabled={!reporte}
             onClick={() => descargarJson(reporte, `reporte-diario-inventario-${reporte.fecha}.json`)}>
             Descargar reporte
@@ -55,6 +54,6 @@ export function ReporteDiarioInventario({ onVolver }) {
           </table>
         </div>
       )}
-    </main>
+    </section>
   )
 }

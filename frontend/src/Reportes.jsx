@@ -1,30 +1,20 @@
-import { useState } from 'react'
 import { ReporteDiarioInventario } from './ReporteDiarioInventario.jsx'
 import { ReporteSemanal } from './ReporteSemanal.jsx'
 
-export function Reportes({ onVolver }) {
-  const [vista, setVista] = useState(null)
-  const volverAlMenu = () => setVista(null)
-
-  if (vista === 'inventario') return <ReporteDiarioInventario onVolver={volverAlMenu} />
-  if (vista === 'compras') return <ReporteSemanal onVolver={volverAlMenu} />
-
+export function Reportes({ vista, onCambiarVista, onVolver }) {
+  const verCompras = vista === 'compras'
   return (
-    <main className="reporte-semanal">
-      <header className="reporte-cabecera">
-        <h1>Reportes</h1>
-        <div className="reporte-botones">
-          <button type="button" className="nueva" onClick={onVolver}>Volver al chat</button>
-        </div>
-      </header>
-      <nav className="reporte-botones" aria-label="Reportes disponibles">
-        <button type="button" className="nueva" onClick={() => setVista('inventario')}>
+    <main className="reportes">
+      <nav className="reporte-botones reportes-nav" aria-label="Reportes">
+        <button type="button" className="nueva" aria-pressed={!verCompras} onClick={() => onCambiarVista('inventario')}>
           Reporte diario de inventario
         </button>
-        <button type="button" className="nueva" onClick={() => setVista('compras')}>
+        <button type="button" className="nueva" aria-pressed={verCompras} onClick={() => onCambiarVista('compras')}>
           Reporte semanal de compras
         </button>
+        <button type="button" className="nueva" onClick={onVolver}>Volver al chat</button>
       </nav>
+      {verCompras ? <ReporteSemanal /> : <ReporteDiarioInventario />}
     </main>
   )
 }
