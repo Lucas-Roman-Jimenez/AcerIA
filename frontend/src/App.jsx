@@ -394,7 +394,10 @@ export default function App() {
       </div>
 
       {verReporte ? (
-        <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} />
+        <div className="reportes-fondo">
+          <Planchas />
+          <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} />
+        </div>
       ) : (
         <main className="principal">
           <Planchas />

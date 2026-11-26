@@ -1783,3 +1783,33 @@ select, .tend-controles select {
 }
 select:hover { background-color: transparent; border-bottom-color: rgba(255, 255, 255, .35); }
 select:focus-visible { box-shadow: none; border-bottom-color: #F07D00; }
+
+/* Tarjetas de bulto con efecto cristal esmerilado (frosted blur): se ve el fondo desenfocado detrás */
+.flujo-tarjeta { box-shadow: 0 14px 34px rgba(5, 8, 30, .35); }
+.flujo-tarjeta .tarjeta {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06));
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, .2); border-bottom: 0; border-radius: 18px 18px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.flujo-tarjeta .tarjeta::after { content: none; }
+
+/* Tarjeta y «Añadir» en una sola pieza de cristal: el botón es una fila de texto naranja con línea fina encima */
+.flujo-tarjeta {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06));
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, .2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 14px 34px rgba(5, 8, 30, .35);
+}
+.flujo-tarjeta .tarjeta { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
+.flujo-tarjeta .carrito-boton {
+  background: none; color: #F6A04A; border-top: 1px solid rgba(255, 255, 255, .12);
+  padding: 12px 18px; text-align: left; font-size: 13px; font-weight: 700;
+}
+.flujo-tarjeta .carrito-boton:hover:not(:disabled) { background: rgba(240, 125, 0, .14); color: #fff; }
+.flujo-tarjeta .carrito-boton.dentro { background: none; color: #7CE0A3; }
+
+/* Las planchas de fondo también en Reportes, igual de tenues que en el chat */
+.reportes-fondo { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.reportes-fondo > .planchas { position: fixed; opacity: .4; z-index: 0; pointer-events: none; }
+.reportes-fondo > :not(.planchas) { position: relative; z-index: 1; flex: 1; min-height: 0; }
+select, .tend-controles select { field-sizing: content; width: auto; min-width: 0; }
