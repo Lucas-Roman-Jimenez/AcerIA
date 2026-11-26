@@ -213,6 +213,10 @@ button:disabled { cursor: default; opacity: .5; }
 .tarjeta-spec { font-size: 15px; }
 .tarjeta-medidas, .tarjeta-extra { font-size: 13px; color: var(--plata); display: flex; gap: 12px; }
 .tarjeta-acciones { font-size: 13px; color: var(--plata); border-top: 1px solid var(--borde); padding-top: 6px; margin-top: 2px; }
+.tarjeta-requiere { font-size: 12px; font-weight: 600; color: var(--tinta); background: var(--naranja); border-radius: 4px; padding: 3px 8px; align-self: flex-start; }
+.tarjeta-paso { font-size: 13px; color: var(--plata); display: grid; grid-template-columns: 64px 1fr; gap: 8px; }
+.tarjeta-paso span { color: var(--tenue); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; padding-top: 2px; }
+.tarjeta-paso.tarjeta-obtienes { font-size: 15px; color: var(--texto); }
 
 /* Cabecera: interruptor de lectura en voz alta */
 .interruptor { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }

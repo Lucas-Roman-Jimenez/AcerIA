@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { consultarValores, buscarStock } from './api.js'
-import { Tarjeta } from './Tarjetas.jsx'
+import { Tarjeta, transformacion } from './Tarjetas.jsx'
 
 // Campos que el comercial puede dar, en el orden en que se dan por buenos.
 export const CAMPOS = [
@@ -76,11 +76,18 @@ export async function analizar(r) {
     })))
     : []
 
-  return { estado, correctos, fallan: opcionesFallo, avisos, lista, total: lista.length, cribar, esp }
+  const soloTransformables = lista.length > 0 && lista.every(l => l.tipo === 'transformable')
+  return { estado, correctos, fallan: opcionesFallo, avisos, lista, total: lista.length, cribar, esp, soloTransformables }
 }
 
 export function textoAnalisis(a) {
   const n = a.total
+  // Sin bultos que cumplan tal cual: no se dice «tengo lo que pides», sino que hay que transformarlos.
+  if (a.soloTransformables && (a.estado === 'encontrado' || a.estado === 'parcial')) {
+    return n === 1
+      ? 'No tengo nada que cumpla tal cual, pero hay 1 bulto que se puede transformar para conseguirlo. En la tarjeta tienes qué hay que hacer y la merma.'
+      : `No tengo nada que cumpla tal cual, pero hay ${n} bultos que se pueden transformar para conseguirlo. En cada tarjeta tienes qué hay que hacer y la merma.`
+  }
   switch (a.estado) {
     case 'encontrado': return n === 1 ? 'Tengo justo lo que pides. Añádelo al carrito o cancela para empezar de nuevo.'
       : `Tengo ${n} bultos que cumplen todo lo que pides. Elige cuál añadir al carrito o cancela para empezar de nuevo.`
@@ -222,8 +229,14 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
                 const b = item.origen ?? item
                 return (
                   <li key={item.id}>
-                    <span><b>{item.id}</b> · {b.grado} {b.acabado} · {b.formato} · {[b.espesor_mm, b.ancho_mm, b.largo_mm].filter(v => v != null).map(num).join(' × ')} mm
-                      {tipo === 'transformable' && ' (transformable)'}</span>
+                    {tipo === 'transformable' && transformacion(item) ? (() => {
+                      const t = transformacion(item)
+                      return <span><b>{item.id}</b> · {b.grado} {b.acabado} · {t.antes} → <b>{t.despues}</b>
+                        <br /><small>🔧 {t.acciones}{t.merma ? ` · ${t.merma}` : ''}</small></span>
+                    })() : (
+                      <span><b>{item.id}</b> · {b.grado} {b.acabado} · {b.formato} · {[b.espesor_mm, b.ancho_mm, b.largo_mm].filter(v => v != null).map(num).join(' × ')} mm
+                        {tipo === 'transformable' && ' (transformable)'}</span>
+                    )}
                     <button className="demo-salir" onClick={() => onQuitar(item.id)}>Quitar</button>
                   </li>
                 )
