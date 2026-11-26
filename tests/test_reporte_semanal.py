@@ -12,8 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from app import config
 from app.db import SCHEMA
-from app.main import obtener_reporte_semanal
+from app.main import obtener_reporte_semanal, obtener_tendencias_compras
 from app.reportes import registrar_compra, reporte_semanal
+from app.tendencias import tendencias_compras
 
 
 BULTO = {"id": "334", "formato": "bobina", "aisi": "304L/304", "acabado": "2B",
@@ -44,7 +45,7 @@ def test_reporte_filtra_la_semana_madrid_y_conserva_la_ficha(base):
         guardar(conexion, "ultima", inicio + timedelta(days=7) - milisegundo)
         guardar(conexion, "siguiente", inicio + timedelta(days=7))
         conexion.executescript(SCHEMA.read_text(encoding="utf-8"))
-    reporte = reporte_semanal(ahora=inicio + timedelta(days=2))
+    reporte = reporte_semanal(ahora=inicio + timedelta(days=7) - milisegundo)
     assert reporte["semana"] == {
         "inicio": "2026-11-23", "fin": "2026-11-29", "zona_horaria": "Europe/Madrid",
     }
@@ -90,3 +91,46 @@ def test_reporte_consolida_cada_bulto_sin_mezclar_unidades(base):
     assert filas["334"]["cantidades_sustraidas"] == [
         {"valor": 300.5, "unidad": "kg"}, {"valor": 2, "unidad": "piezas"},
     ]
+
+
+def test_tendencias_marca_historico_vacio(base):
+    informe = obtener_tendencias_compras(semanas=2, unidad="kg")
+    assert informe["materiales"] == []
+    assert all(s["estado"] == "sin_historial" for s in informe["semanas"])
+    assert all(b["cantidad"] is None for s in informe["semanas"] for b in s["barras"])
+
+
+def test_tendencias_convierte_toneladas_y_compara_semanas_cerradas(base):
+    ahora = datetime(2026, 11, 26, 10, tzinfo=timezone.utc)
+    with sqlite3.connect(base) as conexion:
+        for n, dia, valor, unidad in (
+            ("inicio", 2, 5, "kg"), ("previa", 9, 0.1, "t"), ("actual", 16, 150, "kg"),
+            ("bulto", 16, 2, "bultos"), ("futura", 27, 500, "kg"),
+        ):
+            registrar_compra(conexion, compra_id=n, bulto=BULTO, cantidad=valor, unidad=unidad,
+                             comprada_en=datetime(2026, 11, dia, 12, tzinfo=timezone.utc))
+    informe = tendencias_compras(5, "kg", ahora=ahora)
+    semanas = informe["semanas"]
+    assert [s["estado"] for s in semanas] == [
+        "sin_historial", "inicio_historial", "completa", "completa", "en_curso",
+    ]
+    bobinas = [s["barras"][0] for s in semanas]
+    assert [b["cantidad"] for b in bobinas] == [None, 5, 100, 150, 0]
+    assert bobinas[3]["tendencia"] == "sube"
+    assert bobinas[3]["variacion_pct"] == 50
+    assert bobinas[4]["variacion_pct"] is None
+    assert informe["materiales"][0]["comprado"] == 255
+    assert tendencias_compras(5, "bultos", ahora=ahora)["materiales"][0]["comprado"] == 2
+
+
+def test_tendencias_usa_la_ficha_consolidada_del_reporte_semanal(base):
+    ahora = datetime(2026, 11, 26, 10, tzinfo=timezone.utc)
+    with sqlite3.connect(base) as conexion:
+        guardar(conexion, "primero", ahora - timedelta(days=1))
+        registrar_compra(conexion, compra_id="segundo", bulto=dict(BULTO, ancho_mm=1250),
+                         cantidad=10, unidad="kg", comprada_en=ahora)
+    [compra] = reporte_semanal(ahora=ahora)["compras"]
+    [material] = tendencias_compras(1, "kg", ahora=ahora)["materiales"]
+    assert material["formato"] == compra["formato"] == "bobina"
+    assert material["ancho_mm"] == compra["caracteristicas"]["ancho_mm"] == 1250
+    assert material["comprado"] == compra["cantidades_sustraidas"][0]["valor"] == 310.5

@@ -1,7 +1,7 @@
 """Registro de compras confirmadas y lectura del reporte semanal."""
 
 from contextlib import closing
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 import json
 import math
@@ -35,21 +35,19 @@ def registrar_compra(
     )
 
 
-def reporte_semanal(*, ahora: datetime | None = None) -> dict:
-    fecha_local = (ahora or datetime.now(ZONA_REPORTE)).astimezone(ZONA_REPORTE).date()
-    inicio = fecha_local - timedelta(days=fecha_local.weekday())
+def reporte_de_semana(conexion: sqlite3.Connection, inicio: date, *, hasta_ms: int) -> dict:
+    """Construye el mismo reporte exportable para cualquier lunes del historial."""
     siguiente = inicio + timedelta(days=7)
     limites = [
         int(datetime.combine(fecha, time.min, ZONA_REPORTE).timestamp() * 1000)
         for fecha in (inicio, siguiente)
     ]
-    with closing(get_conn()) as conexion:
-        filas = conexion.execute(
-            """SELECT material_json, cantidad, unidad FROM compras
-               WHERE comprada_en_ms >= ? AND comprada_en_ms < ?
-               ORDER BY comprada_en_ms DESC, id""",
-            limites,
-        ).fetchall()
+    filas = conexion.execute(
+        """SELECT material_json, cantidad, unidad FROM compras
+           WHERE comprada_en_ms >= ? AND comprada_en_ms < ? AND comprada_en_ms <= ?
+           ORDER BY comprada_en_ms DESC, id""",
+        (*limites, hasta_ms),
+    ).fetchall()
 
     compras = {}
     cantidades = {}
@@ -74,6 +72,7 @@ def reporte_semanal(*, ahora: datetime | None = None) -> dict:
             caracteristicas["largo_mm"] = material["largo_mm"]
         compras[bulto_id] = {
             "nombre_material": f"{formato.capitalize()} de acero inoxidable" if formato else "Acero inoxidable",
+            "formato": formato,
             "caracteristicas": caracteristicas,
         }
     for bulto_id, compra in compras.items():
@@ -90,3 +89,11 @@ def reporte_semanal(*, ahora: datetime | None = None) -> dict:
         },
         "compras": list(compras.values()),
     }
+
+
+def reporte_semanal(*, ahora: datetime | None = None) -> dict:
+    ahora = (ahora or datetime.now(ZONA_REPORTE)).astimezone(ZONA_REPORTE)
+    fecha_local = ahora.date()
+    inicio = fecha_local - timedelta(days=fecha_local.weekday())
+    with closing(get_conn()) as conexion:
+        return reporte_de_semana(conexion, inicio, hasta_ms=int(ahora.timestamp() * 1000))

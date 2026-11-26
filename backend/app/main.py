@@ -1,7 +1,8 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
+from typing import Literal
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -10,6 +11,7 @@ from app.buscador import CAMPOS_VALORES, buscar_bultos, construir_objetivo, valo
 from app.conversacion import cargar_env, responder_chat
 from app.ventas import BultosNoDisponibles, vender
 from app.reportes import reporte_semanal
+from app.tendencias import tendencias_compras
 
 
 @asynccontextmanager
@@ -77,6 +79,14 @@ def health():
 @app.get("/reportes/compras/semanal")
 def obtener_reporte_semanal():
     return reporte_semanal()
+
+
+@app.get("/reportes/compras/tendencias")
+def obtener_tendencias_compras(
+    semanas: int = Query(default=8, ge=1, le=52),
+    unidad: Literal["kg", "bultos", "piezas"] = "kg",
+):
+    return tendencias_compras(semanas, unidad)
 
 
 class Venta(BaseModel):
