@@ -55,6 +55,8 @@ def main() -> int:
     parser.add_argument("--puerto-backend", type=int, default=8000)
     parser.add_argument("--puerto-frontend", type=int, default=5173)
     parser.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador")
+    parser.add_argument("--reiniciar-demo", action="store_true",
+                        help="vaciar las ventas de la demo y el reporte semanal (si no, se conservan)")
     args = parser.parse_args()
 
     if not (RAIZ / ".env").exists():
@@ -75,7 +77,8 @@ def main() -> int:
         print(f"Backend en {api} ...")
         backend = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
-             "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ)
+             "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ,
+            env={**os.environ, "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0"})
         if not esperar(f"{api}/health", 90, backend):
             print("El backend no ha arrancado. Revisa el error de arriba "
                   "(¿pip install -r backend/requirements.txt? ¿puerto ocupado?).")

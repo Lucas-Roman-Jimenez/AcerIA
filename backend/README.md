@@ -36,4 +36,19 @@ de la baja, un ID único por movimiento, la cantidad realmente descontada,
 la unidad y una fecha con zona horaria. Si una compra agrupa varios bultos,
 cada movimiento debe tener un ID distinto. La función usa la conexión
 recibida y el llamador controla el commit o rollback. El registro de compras
-se conserva cuando se vuelve a cargar la muestra de inventario.
+se conserva al reiniciar, salvo que se reinicie la demo (ver «Venta simulada del carrito»).
+
+## Venta simulada del carrito
+
+`POST /compras` con `{"bultos": ["334", "23"]}` vende los bultos del carrito
+(simulación para la demo: no toca los sistemas de AcerIA). En una sola
+transacción, cada bulto se registra con `registrar_compra()` (aparece en el
+reporte semanal, con su peso en kg) y pasa a estado `vendido`, así deja de
+salir en `/buscar`, `/chat` y `/stock`. Si alguno no existe o ya no está
+disponible responde `409` con `no_disponibles` y no vende ninguno.
+
+**Al reiniciar se conserva todo:** se recarga el Excel, pero los bultos que ya
+están en `compras` se vuelven a marcar como `vendido` y el reporte mantiene su
+historial. **Para empezar la demo de cero:** `python arrancar.py --reiniciar-demo`
+(o arrancar el backend con `ACERIA_REINICIAR_DEMO=1`): vacía `compras` y el
+inventario vuelve a estar completo.
