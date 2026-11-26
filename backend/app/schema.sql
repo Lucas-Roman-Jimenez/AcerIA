@@ -21,7 +21,7 @@ CREATE TABLE bultos (
     formato            TEXT NOT NULL
                        CHECK (formato IN ('chapa', 'bobina', 'fleje')),   -- deducido, no viene en el Excel
     estado             TEXT NOT NULL DEFAULT 'disponible'
-                       CHECK (estado IN ('disponible', 'reservado', 'bloqueado'))  -- no viene en el Excel
+                       CHECK (estado IN ('disponible', 'reservado', 'bloqueado', 'vendido'))  -- no viene en el Excel; «vendido» lo pone POST /compras
 );
 
 CREATE INDEX idx_busqueda ON bultos (estado, formato, espesor_mm);

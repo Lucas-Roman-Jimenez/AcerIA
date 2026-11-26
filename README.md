@@ -34,7 +34,7 @@ python arrancar.py                                            # backend + fronte
 
 Levanta el backend en http://127.0.0.1:8000 (desde la raíz, para que encuentre `llm/` y `reglas/`) y, cuando responde, el frontend en http://127.0.0.1:5173 conectado a él (sin datos simulados). Instala `frontend/node_modules` si falta y abre el navegador. `Ctrl+C` para los dos. Necesita Node.js y el `.env` de la raíz.
 
-Usa `127.0.0.1` y no `localhost`: en la red de la URJC `localhost` acaba en el proxy (SendaURJC). Opciones: `--sin-navegador`, `--puerto-backend`, `--puerto-frontend`.
+Usa `127.0.0.1` y no `localhost`: en la red de la URJC `localhost` acaba en el proxy (SendaURJC). Opciones: `--sin-navegador`, `--puerto-backend`, `--puerto-frontend` y `--reiniciar-demo` (vacía las ventas simuladas del carrito y el reporte semanal; sin ella, se conservan al reiniciar).
 
 ### Puesta en marcha
 
