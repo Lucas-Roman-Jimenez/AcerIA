@@ -285,8 +285,9 @@ def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo
         "agradecimiento": "De nada. ¿Necesitas buscar algo más?",
         "precio": f"No tengo información de precios: solo puedo decirte qué stock hay disponible. {buscar}",
         "plazo": f"No tengo información de plazos de entrega: solo puedo decirte qué stock hay disponible. {buscar}",
-        "reserva": ("No puedo reservar bultos: solo propongo los disponibles. "
-                    "La reserva se hace en el sistema de AcerIA. ¿Necesitas algo más?"),
+        # Las reservas las hace el carrito (Alonso, /reservas): el chat no reserva.
+        "reserva": ("Desde el chat no puedo reservar. Para reservar un bulto, añádelo al carrito: queda reservado "
+                    "a tu nombre hasta que lo vendas, lo quites o caduque la reserva. ¿Necesitas algo más?"),
         "consulta_tecnica": ("No puedo comparar propiedades de los materiales: solo uso lo que indica el catálogo. "
                              f"Si me dices para qué es{ejemplo_usos}, te digo qué grados indica."),
         "fuera_de_tema": "Solo puedo ayudarte a buscar material en el inventario. ¿Qué necesita tu cliente?",
