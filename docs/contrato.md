@@ -255,6 +255,44 @@ Sin la cabecera `X-Carrito`, todas responden 422 con `"Falta la cabecera X-Carri
 
 ---
 
+## 10. Reporte de reposición
+
+**Nuevo.** `GET /reportes/reposicion`, sin parámetros. Recomienda qué referencias reponer a partir de las ventas de las **últimas 4 semanas completas** (de lunes a domingo en `Europe/Madrid`, sin contar la semana en curso) y del stock con estado `disponible` en el momento de la consulta. Lo calcula `recomendaciones_reposicion()` en `backend/app/tendencias.py`.
+
+- **Referencia:** la misma clave que Tendencias: `formato`, `grado`, `acabado`, `espesor_mm`, `ancho_mm` y `largo_mm` (`null` si no aplica).
+- **Ventas que cuentan:** las de kg y t (se pasan a kg). Una venta en `bultos` cuenta con el peso del bulto solo si es un bulto entero y no tiene kg ni t registrados. Las de `piezas` no cuentan. Una referencia sin ventas contabilizables no aparece.
+- **Cobertura:** `stock ÷ (kg vendidos ÷ 28)`, en días. Los umbrales se evalúan antes de redondear.
+
+| Sección | Condición |
+| --- | --- |
+| `reponer` | Ventas en 2 semanas o más y cobertura < 7 días. |
+| `vigilar` | Ventas en 2 semanas o más y cobertura de 7 a 14 días, ambos incluidos. |
+| `puntual` | Ventas en una sola semana y menos de 2 t disponibles. |
+
+Las referencias que no entran en ninguna sección no se devuelven. Cada lista viene ordenada por menor cobertura y, si empatan, por mayor venta.
+
+```json
+{"periodo": {"inicio": "2026-10-26", "fin": "2026-11-22", "semanas": 4, "dias": 28,
+             "zona_horaria": "Europe/Madrid"},
+ "stock_a": "2026-11-26T12:00:00+01:00",
+ "umbrales": {"semanas_minimas_recurrente": 2, "cobertura_reponer_dias": 7,
+              "cobertura_vigilar_max_dias": 14, "puntual_stock_max_t": 2},
+ "filtro": {"vendido_min_t": 2, "stock_max_t": 2},
+ "secciones": {
+   "reponer": [{"formato": "bobina", "grado": "304", "acabado": "2B", "espesor_mm": 2.0,
+                "ancho_mm": 1250.0, "largo_mm": null, "seccion": "reponer",
+                "vendido_t": 3.0, "disponible_t": 0.45, "semanas_con_ventas": 3,
+                "cobertura_dias": 4.2, "cumple_filtro": true}],
+   "vigilar": [],
+   "puntual": []}}
+```
+
+- `vendido_t` y `disponible_t` van en toneladas con 3 decimales y `cobertura_dias` con 1 decimal.
+- `cumple_filtro` es `true` si se vendieron **más** de `filtro.vendido_min_t` y quedan **menos** de `filtro.stock_max_t` (límites estrictos). El frontend lo usa para el filtro opcional «Más de 2 t vendidas y menos de 2 t disponibles», que oculta filas pero no cambia la sección de ninguna referencia.
+- Los umbrales y el filtro vienen en la respuesta para que el frontend muestre los mismos valores que usa el backend.
+
+---
+
 ## Pendiente de confirmar con el mentor
 
 - Campos mínimos para buscar (`CAMPOS_MINIMOS` en `llm/interprete.py`; ahora `grado` y `espesor_mm`).
