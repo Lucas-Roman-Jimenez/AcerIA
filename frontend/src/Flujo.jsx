@@ -232,7 +232,7 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
                     {tipo === 'transformable' && transformacion(item) ? (() => {
                       const t = transformacion(item)
                       return <span><b>{item.id}</b> · {b.grado} {b.acabado} · {t.antes} → <b>{t.despues}</b>
-                        <br /><small>🔧 {t.acciones}{t.merma ? ` · ${t.merma}` : ''}</small></span>
+                        <br /><small>{t.acciones}{t.merma ? ` · ${t.merma}` : ''}</small></span>
                     })() : (
                       <span><b>{item.id}</b> · {b.grado} {b.acabado} · {b.formato} · {[b.espesor_mm, b.ancho_mm, b.largo_mm].filter(v => v != null).map(num).join(' × ')} mm
                         {tipo === 'transformable' && ' (transformable)'}</span>

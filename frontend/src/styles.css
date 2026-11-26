@@ -203,7 +203,7 @@ button:disabled { cursor: default; opacity: .5; }
 .tarjeta-origen { font-size: 11px; color: var(--tenue); margin-top: 2px; }
 .tarjeta-cuerpo:hover .tarjeta-origen { color: var(--acento); text-decoration: underline; }
 .tarjeta-comparar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--plata); padding: 0 14px 10px; cursor: pointer; }
-.tarjeta.transformable { border-left-style: dashed; }
+.tarjeta.transformable { border-left-style: solid; }
 .tarjeta.alternativa { border-left-color: var(--tenue); border-style: dashed; border-left-style: solid; }
 .tarjeta-cabeza { display: flex; justify-content: space-between; align-items: center; }
 .tarjeta-id { font-weight: 600; font-size: 16px; }
@@ -286,7 +286,7 @@ button:disabled { cursor: default; opacity: .5; }
 /* Detalle */
 .modal-fondo { position: fixed; inset: 0; background: rgba(0, 0, 0, .8); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 10; }
 .modal { background: var(--fondo-2); border: 1px solid var(--borde); border-top: 1px solid #fff; padding: 28px 32px; width: min(560px, 92vw); max-height: 88vh; overflow-y: auto; }
-.modal.transformable { border-top-style: dashed; }
+.modal.transformable { border-top-style: solid; }
 .modal-cabeza { display: flex; justify-content: space-between; align-items: center; }
 .modal h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 24px; letter-spacing: .4px; text-transform: uppercase; display: flex; gap: 12px; align-items: center; }
 .cerrar { background: none; border: 0; font-size: 28px; line-height: 1; }

@@ -138,7 +138,7 @@ function TarjetaTransformable({ item, b, t, onClick, comparando, onComparar }) {
           <span className="tarjeta-id">{item.id}</span>
           <span className="tarjeta-tipo">{ETIQUETAS.transformable}</span>
         </div>
-        <div className="tarjeta-requiere">🔧 Requiere transformación: no cumple tal cual</div>
+        <div className="tarjeta-requiere">Requiere transformación</div>
         <div className="tarjeta-paso tarjeta-obtienes"><span>Obtienes</span>{b.grado} {r.acabado ?? b.acabado} · {t.despues}</div>
         <div className="tarjeta-paso"><span>Sale de</span>{t.antes}{b.ubicacion ? ` · ${b.ubicacion}` : ''}</div>
         <div className="tarjeta-paso"><span>Hay que</span>{t.acciones}{t.merma ? ` · ${t.merma}` : ''}
