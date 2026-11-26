@@ -238,3 +238,75 @@ def test_la_api_de_busqueda_no_ofrece_bultos_reservados(base):
     assert "334" in ids(cliente.post("/buscar", json=ESPEC_334))
     reservar(["334"], "a")
     assert "334" not in ids(cliente.post("/buscar", json=ESPEC_334))
+
+
+# ---------- Paso 4: venta estricta, solo lo reservado por uno mismo ----------
+
+from app.ventas import vender  # noqa: E402
+
+
+def _estado(ruta, bulto_id):
+    with sqlite3.connect(ruta) as conn:
+        return conn.execute("SELECT estado FROM bultos WHERE id = ?", (bulto_id,)).fetchone()[0]
+
+
+def test_se_vende_lo_reservado_por_uno_mismo_y_la_reserva_desaparece(base):
+    reservar(["334", "23"], "a", ahora=T0)
+    r = vender(["334", "23"], "a", ahora=_min(5))
+    assert r["vendidos"] == ["334", "23"]
+    assert _estado(base, "334") == _estado(base, "23") == "vendido"
+    assert _num_reservas(base) == 0
+
+
+def test_no_se_vende_lo_que_no_esta_reservado(base):
+    with pytest.raises(BultosNoDisponibles) as e:
+        vender(["334"], "a", ahora=T0)
+    assert e.value.ids == ["334"]
+    assert _estado(base, "334") == "disponible"
+
+
+def test_no_se_vende_lo_reservado_por_otro(base):
+    reservar(["334"], "a", ahora=T0)
+    with pytest.raises(BultosNoDisponibles):
+        vender(["334"], "b", ahora=_min(1))
+    assert _estado(base, "334") == "disponible"
+    assert [m["bulto_id"] for m in mis_reservas("a", ahora=_min(1))] == ["334"]   # la reserva de a sigue
+
+
+def test_no_se_vende_con_la_reserva_caducada(base):
+    reservar(["334"], "a", ahora=T0)
+    with pytest.raises(BultosNoDisponibles):
+        vender(["334"], "a", ahora=_min(config.RESERVA_MINUTOS))
+    assert _estado(base, "334") == "disponible"
+
+
+def test_venta_estricta_es_todo_o_nada(base):
+    reservar(["334"], "a", ahora=T0)
+    with pytest.raises(BultosNoDisponibles) as e:
+        vender(["334", "23"], "a", ahora=_min(1))             # 23 no está reservado
+    assert e.value.ids == ["23"]
+    assert _estado(base, "334") == "disponible"
+    assert len(mis_reservas("a", ahora=_min(1))) == 1           # la reserva de 334 se conserva
+
+
+@pytest.mark.parametrize("titular", ["", "  ", None])
+def test_sin_titular_no_se_vende(base, titular):
+    reservar(["334"], "a", ahora=T0)
+    with pytest.raises(ValueError):
+        vender(["334"], titular, ahora=_min(1))
+
+
+def test_api_compras_usa_la_cabecera_x_carrito(base):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    cliente = TestClient(app)
+    reservar(["334"], "a")
+    otro = cliente.post("/compras", json={"bultos": ["334"]}, headers={"X-Carrito": "b"})
+    assert otro.status_code == 409 and otro.json()["detail"]["no_disponibles"] == ["334"]
+    sin_cabecera = cliente.post("/compras", json={"bultos": ["334"]})
+    assert sin_cabecera.status_code == 422
+    assert sin_cabecera.json()["detail"] == "El carrito está vacío o no es válido."
+    ok = cliente.post("/compras", json={"bultos": ["334"]}, headers={"X-Carrito": "a"})
+    assert ok.status_code == 200 and ok.json()["vendidos"] == ["334"]

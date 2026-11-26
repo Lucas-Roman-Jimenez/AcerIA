@@ -2,7 +2,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from typing import Literal
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -68,17 +68,25 @@ def obtener_tendencias_compras(
     return tendencias_compras(semanas, unidad)
 
 
+def titular_actual(x_carrito: str = Header("", max_length=100)) -> str:
+    """Quién reserva y vende. Provisional hasta el login (tarea 5): un ID aleatorio de carrito que el
+    frontend manda en la cabecera X-Carrito. Con login, saldrá del token y el resto no cambia."""
+    return x_carrito.strip()
+
+
 class Venta(BaseModel):
     bultos: list[str]               # IDs de los bultos del carrito
 
 
 @app.post("/compras")
-def comprar(v: Venta):
-    """Vende (simulado) los bultos del carrito: pasan a «vendido» y aparecen en el reporte semanal."""
+def comprar(v: Venta, titular: str = Depends(titular_actual)):
+    """Vende (simulado) los bultos del carrito: pasan a «vendido» y aparecen en el reporte semanal.
+    Solo se venden los bultos reservados por el titular (tarea 4)."""
     try:
-        return vender(v.bultos)
+        return vender(v.bultos, titular)
     except BultosNoDisponibles as e:
-        raise HTTPException(409, {"mensaje": "Algún bulto ya no está disponible; no se ha vendido nada.",
+        raise HTTPException(409, {"mensaje": "Algún bulto no está reservado a tu nombre o ya no está disponible; "
+                                             "no se ha vendido nada.",
                                   "no_disponibles": e.ids})
     except ValueError as e:
         log.info("Venta rechazada: %s", e)                 # el detalle, al log; al cliente, un texto fijo
