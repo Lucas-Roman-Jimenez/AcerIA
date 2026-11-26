@@ -40,33 +40,33 @@ def test_una_propuesta_del_modelo_no_pide_aclaracion_si_el_pedido_ya_es_valido()
     assert resultado.pregunta is None
 
 
-def test_post_busqueda_elige_entre_los_campos_que_distinguen_el_stock():
-    cliente = ClienteFalso(['{"campo":"ancho_mm"}'])
+# Después de buscar, la pregunta NO pasa por el LLM (decisión de Nacho, Parte 4): es la pregunta de la
+# demo (RF-07) y tiene que salir siempre igual y en ~1 s. Se pregunta por el primer campo que distingue
+# el stock, en el orden de ORDEN_DISTINGUIR (acabado, grado, formato, medidas).
+
+def test_post_busqueda_pregunta_por_el_primer_campo_que_distingue_sin_llm(monkeypatch):
+    import llm.interprete as interprete
+
+    def sin_llm():
+        raise AssertionError("pregunta_tras_busqueda no debe llamar al LLM")
+    monkeypatch.setattr(interprete, "_cliente_defecto", sin_llm)
     esp = Especificacion(grado="304", espesor_mm=2)
-    pregunta = pregunta_tras_busqueda(esp, BULTOS, historial=HISTORIAL, cliente=cliente)
-
-    assert pregunta == "Tengo 304 de 2 mm con ancho de 1250 y 1500 mm. ¿Cuál prefieres?"
-    contexto = json.loads(cliente.llamadas[0][1])
-    assert contexto["opciones_por_campo"] == {"acabado": ["2B", "BA"], "ancho_mm": [1250, 1500]}
-    assert HISTORIAL[0]["texto"] in contexto["conversacion"]
+    pregunta = pregunta_tras_busqueda(esp, BULTOS, historial=HISTORIAL)
+    assert pregunta == "Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?"
 
 
-def test_post_busqueda_no_repite_una_pregunta_elegida_por_el_llm():
+def test_post_busqueda_no_repite_la_misma_pregunta():
     esp = Especificacion(grado="304", espesor_mm=2)
-    pregunta = "Tengo 304 de 2 mm con ancho de 1250 y 1500 mm. ¿Cuál prefieres?"
+    pregunta = "Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?"
     historial = [
         *HISTORIAL,
         {"rol": "asistente", "texto": pregunta},
         {"rol": "comercial", "texto": "Enséñame las opciones."},
     ]
-    cliente = ClienteFalso([])
-    assert pregunta_tras_busqueda(esp, BULTOS, historial=historial, cliente=cliente) is None
-    assert not cliente.llamadas
+    assert pregunta_tras_busqueda(esp, BULTOS, historial=historial) is None
 
 
-@pytest.mark.parametrize("respuesta", ['{"campo":"largo_mm"}', "Inválida", ErrorLLM("proveedor caído")])
-def test_post_busqueda_usa_una_pregunta_valida_si_falla_la_eleccion(respuesta):
-    cliente = ClienteFalso([respuesta])
+def test_post_busqueda_es_determinista():
     esp = Especificacion(grado="304", espesor_mm=2)
-    pregunta = pregunta_tras_busqueda(esp, BULTOS, historial=HISTORIAL, cliente=cliente)
-    assert pregunta == "Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?"
+    preguntas = {pregunta_tras_busqueda(esp, BULTOS, historial=HISTORIAL) for _ in range(5)}
+    assert preguntas == {"Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?"}

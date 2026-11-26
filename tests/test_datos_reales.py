@@ -11,6 +11,8 @@ DATOS = Path(__file__).resolve().parents[1] / "datos"
 def test_catalogo_de_stock_conserva_los_codigos_y_las_medidas_observadas():
     catalogo = Catalogo.cargar(DATOS)
     assert catalogo.normalizar("acabado", "nr.1") == "NR.1"
+    assert catalogo.normalizar("acabado", "2R") == "BA"
+    assert catalogo.normalizar("acabado", "brillante") == "BA"
     assert catalogo.normalizar("acabado", "N4-G-180") == "N4-G-180"
     assert catalogo.normalizar("grado", "AISI 304L") == "304L"
     assert catalogo.productos_compatibles("304", "NR.1", "bobina", 3, 1500)

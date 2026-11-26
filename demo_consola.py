@@ -41,7 +41,7 @@ def buscar_simulado(esp):
 
 def main():
     cargar_env()
-    catalogo = Catalogo.cargar(RAIZ / "datos_ejemplo")
+    catalogo = Catalogo.cargar(RAIZ / "datos_ejemplo")   # la demo busca en el inventario de ejemplo
     historial = []
     print("Asistente AcerIA (demo). Escribe tu petición; 'nueva' reinicia, 'salir' termina.\n")
     while True:
@@ -64,9 +64,8 @@ def main():
             salida = r.pregunta
         else:
             resultado = buscar_simulado(r.especificacion)
-            salida = (pregunta_tras_busqueda(
-                r.especificacion, resultado["exactos"], historial=historial, catalogo=catalogo,
-            ) or responder(resultado, r.especificacion, catalogo=catalogo))
+            salida = (pregunta_tras_busqueda(r.especificacion, resultado["exactos"], historial=historial)
+                      or responder(resultado, r.especificacion, catalogo=catalogo))
         historial.append({"rol": "asistente", "texto": salida})
         print(f"Asistente> {salida}\n")
 

@@ -39,6 +39,9 @@ class Especificacion:
     faltan: list[str] = field(default_factory=list)
     # Avisos para el usuario: valores descartados, combinaciones inexistentes...
     avisos: list[str] = field(default_factory=list)
+    # Campos que el comercial ha dicho que le dan igual («me da igual el acabado»):
+    # no se preguntan ni cuentan como «faltan».
+    indiferentes: list[str] = field(default_factory=list)
 
     def tiene(self, campo: str) -> bool:
         """True si el campo tiene valor o hay opciones para él."""

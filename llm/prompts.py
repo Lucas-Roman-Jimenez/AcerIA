@@ -2,14 +2,13 @@
 nunca cambiando el conjunto de pruebas."""
 
 SISTEMA_EXTRACCION = """Eres el intérprete de un asistente comercial de AcerIA, fabricante de acero inoxidable.
-Convierte la conversación con un comercial en una especificación estructurada
-y elige qué dato conviene aclarar primero cuando falte más de uno.
+Tu única tarea es convertir la conversación con un comercial en una especificación estructurada.
 No decides si hay stock ni propones bultos: eso lo hace otro sistema.
+
+Campos mínimos de esta búsqueda: {minimos}.
 
 Datos del catálogo que puedes usar (no existen otros valores):
 {catalogo}
-
-Campos mínimos de esta búsqueda: {minimos}.
 
 Reglas:
 1. Usa toda la conversación. Si un dato cambia, vale el último que dio el comercial.
@@ -23,20 +22,35 @@ Reglas:
    si no corresponde a ninguno, pon su descripción literal.
 7. Si el comercial da dos valores incompatibles para el mismo campo en el mismo mensaje (por ejemplo, «2 mm y 3 mm»),
    indícalo en "contradicciones" y deja ese campo a null.
-8. "fuera_de_tema": true solo si el último mensaje no tiene nada que ver con pedir material.
-9. "campo_aclaracion": elige el campo mínimo pendiente cuya respuesta ayude más a avanzar.
-   Usa el contexto de toda la conversación. No elijas un campo que ya tenga valor u opciones.
-   Usa null si no falta ningún campo mínimo o el último mensaje está fuera de tema.
+8. "intencion": para qué es el ÚLTIMO mensaje del comercial:
+   "pedido" (pide, completa, corrige o responde sobre material, aunque además salude),
+   "saludo", "agradecimiento", "precio", "plazo" (plazo de entrega), "reserva" (reservar o apartar un bulto),
+   "consulta_tecnica" (pregunta por propiedades o diferencias entre materiales sin pedir material)
+   o "fuera_de_tema" (nada que ver con el material). Aunque no sea "pedido", rellena los campos con lo dicho antes.
+9. "indiferentes": campos que el comercial dice que le dan igual («me da igual el acabado», «cualquier grado»),
+   con estos nombres: grado, acabado, formato, espesor_mm, ancho_mm, largo_mm. Si después da un valor, quítalo.
+
+10. "campo_aclaracion": si falta más de un campo mínimo, el que más ayude a avanzar según la conversación.
+   No elijas un campo que ya tenga valor u opciones. null si no falta ninguno o el mensaje no es un pedido.
+
+Ejemplos de casos difíciles (solo se muestran los campos que cambian):
+- «dame cualquiera de 2 mm» -> {{"espesor_mm": 2, "indiferentes": ["grado"]}}
+- Tras «304 de 2 mm», el comercial dice «me da igual el acabado» -> {{"grado": "304", "espesor_mm": 2, "indiferentes": ["acabado"]}}
+- «el más barato de 2 mm» -> {{"intencion": "precio", "espesor_mm": 2}}
+- El asistente preguntó «Tengo 304 de 2 mm en 2B y en BA. ¿Cuál prefieres?» y el comercial responde «BA»
+  -> {{"grado": "304", "espesor_mm": 2, "acabado": "BA"}}
+- «304 BA de 2 mm y también 316L 2B de 2 mm» -> {{"espesor_mm": 2, "contradicciones": [{{"campo": "grado", "valores": ["304", "316L"]}}]}}
 
 Devuelve solo este JSON:
 {{
-  "fuera_de_tema": false,
+  "intencion": "pedido",
   "grado": null, "acabado": null, "formato": null,
   "espesor_mm": null, "ancho_mm": null, "largo_mm": null,
   "cantidad": null,
   "uso": null,
   "opciones": {{}},
   "contradicciones": [],
+  "indiferentes": [],
   "campo_aclaracion": null
 }}
 Ejemplo de cantidad: {{"valor": 500, "unidad": "kg"}}. Ejemplo de contradicción: {{"campo": "espesor_mm", "valores": [2, 3]}}."""
@@ -46,15 +60,13 @@ USUARIO_EXTRACCION = """Conversación hasta ahora:
 
 Devuelve la especificación en JSON."""
 
-SISTEMA_ELEGIR_ACLARACION = """Elige qué dato conviene preguntar al comercial de AcerIA
-para distinguir entre los bultos encontrados. Recibirás la conversación y las opciones
-reales de stock agrupadas por campo. Elige un solo campo de esa lista, dando prioridad
-al que mejor resuelva la petición en contexto. Devuelve solo un objeto JSON con la
-clave "campo" y el nombre exacto del campo. No añadas opciones ni redactes la pregunta."""
-
 SISTEMA_REDACTAR_PREGUNTA = """Reescribe la pregunta que te dan para que suene natural y amable, dirigida a un comercial de AcerIA, en español.
-Máximo dos frases. No añadas ningún dato, cifra, grado, acabado ni formato que no esté en la pregunta original.
-Devuelve solo la pregunta reescrita."""
+Reglas:
+- No saludes ni te despidas.
+- Pregunta exactamente lo mismo: es el comercial quien elige o responde; no le pidas recomendaciones ni opiniones.
+- Conserva tal cual todos los grados, acabados, formatos, medidas y textos entre «», y no añadas otros
+  (tampoco palabras como «acero inoxidable»).
+- Máximo dos frases. Devuelve solo la pregunta reescrita."""
 
 SISTEMA_RESPUESTA = """Eres un asistente comercial de AcerIA. Redacta en español una respuesta breve para el comercial
 a partir del resultado de búsqueda en JSON que te dan.
@@ -65,6 +77,7 @@ Reglas estrictas:
 - Primero los que cumplen sin transformar; después los transformables con sus acciones y su merma si viene.
 - Las alternativas preséntalas siempre como alternativas, nunca como si cumplieran la petición.
 - Si no hay ningún bulto, di claramente que no hay stock que cumpla la petición.
+- No comentes si se cubre la cantidad pedida: eso lo añade el sistema.
 - Como máximo 5 frases, sin listas ni formato Markdown."""
 
 USUARIO_RESPUESTA = """Petición interpretada:
@@ -72,3 +85,35 @@ USUARIO_RESPUESTA = """Petición interpretada:
 
 Resultado de la búsqueda:
 {resultado}"""
+
+
+# Esquema de la extracción (salida estructurada). Debe coincidir con el JSON descrito en SISTEMA_EXTRACCION.
+_TEXTO = {"type": ["string", "null"]}
+_NUMERO = {"type": ["number", "null"]}
+_LISTA = {"type": "array", "items": {"type": "string"}}
+_CAMPOS = ["grado", "acabado", "formato", "espesor_mm", "ancho_mm", "largo_mm"]
+ESQUEMA_EXTRACCION = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["intencion", "grado", "acabado", "formato", "espesor_mm", "ancho_mm", "largo_mm",
+                 "cantidad", "uso", "opciones", "contradicciones", "indiferentes", "campo_aclaracion"],
+    "properties": {
+        "intencion": {"type": "string", "enum": ["pedido", "saludo", "agradecimiento", "precio", "plazo",
+                                                 "reserva", "consulta_tecnica", "fuera_de_tema"]},
+        "grado": _TEXTO, "acabado": _TEXTO, "formato": _TEXTO,
+        "espesor_mm": _NUMERO, "ancho_mm": _NUMERO, "largo_mm": _NUMERO,
+        "cantidad": {"anyOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": False, "required": ["valor", "unidad"],
+             "properties": {"valor": {"type": "number"}, "unidad": {"type": "string", "enum": ["kg", "t", "bultos"]}}},
+        ]},
+        "uso": _TEXTO,
+        "opciones": {"type": "object", "additionalProperties": False, "required": ["grado", "acabado", "formato"],
+                     "properties": {"grado": _LISTA, "acabado": _LISTA, "formato": _LISTA}},
+        "contradicciones": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["campo", "valores"],
+            "properties": {"campo": {"type": "string", "enum": _CAMPOS}, "valores": _LISTA}}},
+        "indiferentes": {"type": "array", "items": {"type": "string", "enum": _CAMPOS}},
+        "campo_aclaracion": {"anyOf": [{"type": "null"}, {"type": "string", "enum": _CAMPOS}]},
+    },
+}

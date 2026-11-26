@@ -1,7 +1,11 @@
 // Lectura orientativa del texto contra el catálogo. La interpretación válida es siempre la del backend.
 import fichas from './fichas_aceria.json'
+import glosario from '../../datos/glosario.json'
 
-const GLOSARIO = { brillante: ['BA', '2R'], mate: ['2B'], 'en caliente': ['1D'] }
+const GLOSARIO = { mate: ['2B'], 'en caliente': ['1D'] }
+const ALIAS_ACABADO = Object.fromEntries(glosario.terminos
+  .filter(t => t.campo === 'acabado' && t.valores.length === 1)
+  .map(t => [t.termino.toLowerCase(), t.valores[0]]))
 const FORMATOS = {
   chapa: 'chapa|lamina|plancha|placa|hoja',
   bobina: 'bobina|rollo',
@@ -110,7 +114,10 @@ export function interpretarTexto(texto) {
     if (!esp.grado && !esp.opciones.grado) esp.opciones.grado = unicos(fuentes.map(nombreGrado))
   }
   const acabado = t.match(/\b(ba|2r|2b|2d|1d)\b/)
-  if (acabado) esp.acabado = acabado[1].toUpperCase()
+  if (acabado) esp.acabado = ALIAS_ACABADO[acabado[1]] ?? acabado[1].toUpperCase()
+  else if (ALIAS_ACABADO.brillante && /\bbrillantes?\b/.test(t) && !/\b(no|sin)\s+(acabado\s+)?brillantes?\b/.test(t)) {
+    esp.acabado = ALIAS_ACABADO.brillante
+  }
   else for (const [k, v] of Object.entries(GLOSARIO)) if (t.includes(k)) esp.opciones.acabado = v
   const formato = Object.entries(FORMATOS).find(([, palabras]) => new RegExp(`\\b(${palabras})(s|es)?\\b`).test(t))
   if (formato) esp.formato = formato[0]

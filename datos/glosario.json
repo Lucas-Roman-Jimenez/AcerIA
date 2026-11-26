@@ -2,6 +2,19 @@
   "_aviso": "Equivalencias verificadas en las fichas técnicas, el contrato y el documento de tareas. Los términos pendientes están fuera del glosario operativo.",
   "terminos": [
     {
+      "termino": "brillante",
+      "campo": "acabado",
+      "valores": ["BA"],
+      "detectar_en_peticion": true,
+      "fuente": "AcerIA, chapa laminada en frío: 2R (BA), brillante. "
+    },
+    {
+      "termino": "2R",
+      "campo": "acabado",
+      "valores": ["BA"],
+      "fuente": "AcerIA, tabla de acabados: 2R (EN 10088-2) y BA (ASTM). El inventario usa BA. "
+    },
+    {
       "termino": "dos be",
       "campo": "acabado",
       "valores": [
@@ -363,10 +376,6 @@
     }
   ],
   "pendientes_de_confirmacion": [
-    {
-      "termino": "brillante",
-      "motivo": "Ejemplo del PDF de tareas. El inventario contiene BA y carece de 2R como acabado superior."
-    },
     {
       "termino": "inox normal",
       "motivo": "Ejemplo del PDF de tareas pendiente de respaldo comercial."

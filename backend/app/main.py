@@ -6,11 +6,13 @@ from pydantic import BaseModel
 
 from app.db import crear_db, disponibles
 from app.buscador import CAMPOS_VALORES, buscar_bultos, construir_objetivo, valores_disponibles
+from app.conversacion import cargar_env, responder_chat
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     crear_db()          # crea la base de datos al arrancar (RNF-12)
+    cargar_env()        # clave y modelo del LLM desde el .env de la raíz (RNF-13)
     yield
 
 
@@ -69,6 +71,13 @@ def health():
 
 @app.post("/chat")
 def chat(m: MensajeChat):
+    """Conversación real: módulo LLM + buscar_bultos() (exactos y transformables), en app/conversacion.py."""
+    return compatibilizar(responder_chat(m.conversacion_id, m.mensaje or m.texto or ""))
+
+
+@app.post("/chat/prueba")
+def chat_prueba(m: MensajeChat):
+    """Respuestas FALSAS de antes, por si el frontend las necesita para probar sin LLM."""
     r = respuesta_base(m.conversacion_id)
     texto = (m.mensaje or m.texto or "").lower()
 

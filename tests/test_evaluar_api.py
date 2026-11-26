@@ -128,7 +128,7 @@ def test_evaluar_registra_error_de_red_y_continua():
 
     assert informe["interpretacion"]["total"] == 24
     assert informe["interpretacion"]["aciertos"] == 0
-    assert informe["resultados"]["total"] == 16
+    assert informe["resultados"]["total"] == 17
     assert informe["resultados"]["aciertos"] == 0
     assert "API no disponible" in informe["resultados"]["fallos"][0]["error"]
     assert informe["reglas_locales"]["aciertos"] == 8

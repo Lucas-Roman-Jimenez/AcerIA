@@ -1,0 +1,107 @@
+"""Arranca la aplicación completa en modo real con un solo comando (RNF-12).
+
+    python arrancar.py                 # backend + frontend y abre el navegador
+    python arrancar.py --sin-navegador
+
+Levanta el backend (FastAPI, desde la raíz para que encuentre llm/ y reglas/) y, cuando responde,
+el frontend (Vite) conectado a él. Usa 127.0.0.1 y no «localhost»: en algunas redes (p. ej. la
+de la URJC) «localhost» acaba en el proxy. Ctrl+C para los dos.
+
+Requisitos: pip install -r requirements.txt -r backend/requirements.txt, Node.js y el .env en la raíz.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+import webbrowser
+from pathlib import Path
+
+RAIZ = Path(__file__).resolve().parent
+HOST = "127.0.0.1"
+
+
+def esperar(url: str, segundos: float, proceso: subprocess.Popen) -> bool:
+    limite = time.time() + segundos
+    while time.time() < limite:
+        if proceso.poll() is not None:          # el proceso ha terminado: no tiene sentido esperar más
+            return False
+        try:
+            with urllib.request.urlopen(url, timeout=2):
+                return True
+        except OSError:
+            time.sleep(0.5)
+    return False
+
+
+def parar(*procesos: subprocess.Popen) -> None:
+    for p in procesos:
+        if p and p.poll() is None:
+            p.terminate()
+    for p in procesos:
+        if p:
+            try:
+                p.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                p.kill()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--puerto-backend", type=int, default=8000)
+    parser.add_argument("--puerto-frontend", type=int, default=5173)
+    parser.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador")
+    args = parser.parse_args()
+
+    if not (RAIZ / ".env").exists():
+        print("Aviso: no hay .env en la raíz. El chat no podrá llamar al LLM (ver README, «Configuración del LLM»).")
+    npm = shutil.which("npm")
+    if not npm:
+        print("Falta Node.js (npm) para el frontend: https://nodejs.org")
+        return 1
+    frontend = RAIZ / "frontend"
+    if not (frontend / "node_modules").exists():
+        print("Instalando las dependencias del frontend (npm install)...")
+        subprocess.run([npm, "install", "--no-audit", "--no-fund"], cwd=frontend, check=True)
+
+    api = f"http://{HOST}:{args.puerto_backend}"
+    web = f"http://{HOST}:{args.puerto_frontend}"
+    backend = front = None
+    try:
+        print(f"Backend en {api} ...")
+        backend = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
+             "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ)
+        if not esperar(f"{api}/health", 90, backend):
+            print("El backend no ha arrancado. Revisa el error de arriba "
+                  "(¿pip install -r backend/requirements.txt? ¿puerto ocupado?).")
+            return 1
+
+        print(f"Frontend en {web} (modo real, VITE_API_URL={api}) ...")
+        front = subprocess.Popen(
+            [npm, "run", "dev", "--", "--host", HOST, "--port", str(args.puerto_frontend), "--strictPort"],
+            cwd=frontend, env={**os.environ, "VITE_API_URL": api})
+        if not esperar(web, 60, front):
+            print("El frontend no ha arrancado. Revisa el error de arriba (¿puerto ocupado?).")
+            return 1
+
+        print(f"\nListo: abre {web}   (Ctrl+C para parar)\n")
+        if not args.sin_navegador:
+            webbrowser.open(web)
+        while backend.poll() is None and front.poll() is None:
+            time.sleep(1)
+        print("Uno de los dos procesos se ha parado; cierro el otro.")
+        return 1
+    except KeyboardInterrupt:
+        print("\nParando...")
+        return 0
+    finally:
+        parar(front, backend)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

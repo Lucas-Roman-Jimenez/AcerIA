@@ -5,6 +5,13 @@ const ETIQUETAS = { exacto: 'Cumple', transformable: 'Transformable', alternativ
 
 const num = v => String(v).replace('.', ',')
 
+// El motor de reglas devuelve cada acción como objeto {regla, descripcion, parametros, merma_kg, orden}.
+// Se aceptan también textos (respuestas de prueba) y se muestran en el orden de aplicación (RF-13).
+const textoAccion = a => (typeof a === 'string' ? a : a?.descripcion ?? a?.regla ?? '')
+const acciones = item => [...(item.acciones ?? [])]
+  .sort((x, y) => (x?.orden ?? 0) - (y?.orden ?? 0))
+  .map(textoAccion)
+
 function medidas(b) {
   return [b.espesor_mm, b.ancho_mm, b.largo_mm].filter(v => v != null).map(num).join(' × ') + ' mm'
 }
@@ -35,7 +42,7 @@ export function Tarjeta({ tipo, item, onClick, comparando, onComparar }) {
         </div>
         {tipo === 'transformable' && (
           <div className="tarjeta-acciones">
-            {item.acciones.join(' · ')}
+            {acciones(item).join(' · ')}
             {item.merma_kg != null && <> · merma {num(item.merma_kg)} kg</>}
             {item.merma_pct != null && <> ({num(item.merma_pct)} %)</>}
             {item.num_operaciones > 1 && <> · {item.num_operaciones} operaciones</>}
@@ -145,7 +152,7 @@ export function Detalle({ item: { tipo, item }, esp, onCerrar }) {
         {tipo === 'transformable' && (
           <div className="modal-acciones">
             <h3>Acciones</h3>
-            <ol>{item.acciones.map((a, i) => <li key={i}>{a}</li>)}</ol>
+            <ol>{acciones(item).map((a, i) => <li key={i}>{a}</li>)}</ol>
             {item.merma_kg != null && (
               <p>Merma estimada: <b>{num(item.merma_kg)} kg</b>{item.merma_pct != null && <> ({num(item.merma_pct)} %)</>}</p>
             )}
@@ -166,7 +173,7 @@ const FILAS_COMPARAR = [
     return d != null && d !== b[k] ? `${b[k] ?? '—'} → ${d}` : b[k]
   }]),
   ['Ubicación', (t) => datosBulto(t.tipo, t.item).ubicacion],
-  ['Acciones', (t) => t.item.acciones?.join(' · ') || 'Ninguna'],
+  ['Acciones', (t) => acciones(t.item).join(' · ') || 'Ninguna'],
   ['Operaciones', (t) => t.item.num_operaciones ?? (t.tipo === 'exacto' ? 0 : t.item.acciones?.length)],
   ['Merma', (t) => (t.item.merma_kg != null ? `${num(t.item.merma_kg)} kg${t.item.merma_pct != null ? ` (${num(t.item.merma_pct)} %)` : ''}` : t.tipo === 'exacto' ? '0 kg' : null)],
 ]
