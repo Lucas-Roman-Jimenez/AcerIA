@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { enviarMensaje, resumenStock, consultarValores } from './api.js'
+import { enviarMensaje, resumenStock, consultarValores, venderCarrito } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
 import { Acero, Dibujo } from './Acero.jsx'
@@ -9,6 +9,7 @@ import { Consulta, textoConsulta } from './Consulta.jsx'
 import { Uso, construirUso } from './Uso.jsx'
 import { Cercanos } from './Cercanos.jsx'
 import { sugerirCorreccion } from './sugerir.js'
+import { pideBorrarConsulta, pideQuitar, frasesQuitar, textoNoSeleccionado } from './quitar.js'
 import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
 import { ReporteSemanal } from './ReporteSemanal.jsx'
 
@@ -118,8 +119,9 @@ export default function App() {
     }
   }
 
+  // Si el usuario ha salido a otro chat mientras se esperaba la respuesta, esta solo se guarda en «Recientes».
   const guardar = conv => {
-    setActual(conv)
+    setActual(a => (a.id === conv.id ? conv : a))
     setConversaciones(cs => [conv, ...cs.filter(c => c.id !== conv.id)])
   }
 
@@ -132,6 +134,20 @@ export default function App() {
     const base = { ...conv, creada: conv.creada ?? new Date(), mensajes: [...conv.mensajes, { rol: 'comercial', texto: mostrado ?? limpio }] }
     // Erratas («bbbobina»): se pregunta antes de buscar, sin llamar al backend.
     const sugerencia = !sinCorregir && sugerirCorreccion(limpio)
+    const entendido = sugerencia?.corregido ?? limpio
+    // «Borra la consulta», «empezar de nuevo», «olvídalo»…: se vuelve a la página principal.
+    if (!sinCorregir && pideBorrarConsulta(entendido)) {
+      salir()
+      setAvisoInicio('He borrado la consulta. Puedes escribir una petición nueva.')
+      return
+    }
+    // «Quita el espesor», «bórrame el 2B»…: solo se quita lo que está seleccionado.
+    const quitar = sinCorregir ? null : pideQuitar(entendido, conv.ultima?.especificacion)
+    if (quitar?.quitar?.length) return enviar(frasesQuitar(quitar.quitar).backend, conv, { sinCorregir: true, mostrado: limpio })
+    if (quitar) {
+      guardar({ ...base, mensajes: [...base.mensajes, { rol: 'asistente', texto: textoNoSeleccionado(quitar.noSeleccionados) }] })
+      return
+    }
     // Si con las erratas corregidas es una pregunta (por lo que hay o por el uso), se responde directamente.
     const pregunta = sugerencia && (detectarUso(sugerencia.corregido) || detectarConsulta(sugerencia.corregido))
     if (pregunta) return enviar(sugerencia.corregido, conv, { sinCorregir: true, mostrado: limpio })
@@ -169,10 +185,16 @@ export default function App() {
       }
       const r = await enviarMensaje(conv.id, limpio)
       const analisis = r.tipo !== 'error' && r.especificacion ? await analizar(r).catch(() => null) : null
-      if (analisis?.estado === 'todo_mal') {
+      // El backend descarta sin aviso los valores que no existen: si el mensaje traía medidas o números
+      // y no se ha entendido ningún dato, también cuenta como «todo incorrecto».
+      const e = r.especificacion ?? {}
+      const sinNingunDato = r.tipo !== 'error' && !conv.ultima?.especificacion
+        && ['grado', 'acabado', 'formato', 'espesor_mm', 'ancho_mm', 'largo_mm'].every(k => e[k] == null)
+        && !Object.keys(e.opciones ?? {}).length && /\d/.test(limpio)
+      if (analisis?.estado === 'todo_mal' || sinNingunDato) {
         nuevaConsulta()
         setConversaciones(cs => cs.filter(c => c.id !== base.id))
-        setAvisoInicio(`Ningún dato de «${limpio}» existe o está en stock${analisis.avisos.length ? ` (${analisis.avisos.join(' ')})` : ''}. Escribe una nueva petición.`)
+        setAvisoInicio(`Ningún dato de «${limpio}» existe o está en stock${analisis?.avisos?.length ? ` (${analisis.avisos.join(' ')})` : ''}. Escribe una nueva petición.`)
         return
       }
       const textoBot = r.tipo === 'error' ? r.error
@@ -217,10 +239,26 @@ export default function App() {
     setComparar([])
   }
 
+  // Salir: desde cualquier punto del flujo se vuelve a la pantalla de inicio limpia. El carrito se conserva.
+  function salir() {
+    setDemo(null)
+    setVerCarrito(false)
+    setVerComparacion(false)
+    setVerReporte(false)
+    setAvisoInicio(null)
+    nuevaConsulta()
+  }
+
+  // Al añadir un material al carrito se empieza un chat nuevo para la siguiente petición.
   function alternarCarrito(tipo, item) {
-    setCarrito(cs => cs.some(c => c.item.id === item.id)
-      ? cs.filter(c => c.item.id !== item.id)
-      : [...cs, { tipo, item }])
+    if (carrito.some(c => c.item.id === item.id)) {
+      setCarrito(cs => cs.filter(c => c.item.id !== item.id))
+      return
+    }
+    setCarrito(cs => [...cs, { tipo, item }])
+    nuevaConsulta()
+    const b = item.origen ?? item
+    setAvisoInicio(`Añadido al carrito: bulto ${item.id}${b.grado ? ` (${[b.grado, b.acabado, b.formato].filter(Boolean).join(' ')})` : ''}. Puedes hacer una petición nueva.`)
   }
 
   function alternarComparar(tipo, item) {
@@ -258,6 +296,7 @@ export default function App() {
   const totalBultos = stock.reduce((n, s) => n + s.bultos, 0)
   const hoy = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
   const previa = vacio && texto.trim() ? interpretarTexto(texto) : null
+
 
   if (verReporte) {
     return <div className="app"><ReporteSemanal onVolver={() => setVerReporte(false)} /></div>
@@ -346,6 +385,16 @@ export default function App() {
           ) : (
             <section className="conversacion">
               <div className="mensajes">
+                <div className="barra-consulta">
+                  <div className="barra-consulta-texto">
+                    <span className="barra-consulta-etiqueta">Consulta en curso</span>
+                    <span className="barra-consulta-titulo">{actual.mensajes[0]?.texto}</span>
+                  </div>
+                  <button type="button" className="salir-flujo" onClick={salir}
+                    title="Salir de esta consulta y volver al inicio. El carrito se conserva.">
+                    <span aria-hidden>✕</span> Salir de la consulta
+                  </button>
+                </div>
                 {actual.mensajes.map((m, i) => (
                   <div key={i} className={`mensaje ${m.rol} ${m.error ? 'error' : ''}`}>
                     <p>{m.texto}</p>
@@ -436,14 +485,21 @@ export default function App() {
             <button type="submit" className="icono" title="Enviar" disabled={pensando || !texto.trim()}>→</button>
           </form>
           <div className="estado-dictado" role="status">{estadoDictado ? '' : mensajeDictado}</div>
-          <Casillas texto={texto} base={esp} onElegir={enviar} deshabilitado={pensando} />
+          <Casillas texto={texto} base={esp} onElegir={enviar} deshabilitado={pensando}
+            onQuitar={k => { const f = frasesQuitar([k]); enviar(f.backend, actual, { sinCorregir: true, mostrado: f.visible }) }} />
         </main>
       </div>
 
       {detalle && <Detalle item={detalle} esp={esp} onCerrar={() => setDetalle(null)} />}
       {verCarrito && (
         <Carrito carrito={carrito} onQuitar={id => setCarrito(cs => cs.filter(c => c.item.id !== id))}
-          onVaciar={() => setCarrito([])} onCerrar={() => setVerCarrito(false)} />
+          onVaciar={() => setCarrito([])} onCerrar={() => setVerCarrito(false)}
+          onVender={async ids => {
+            const r = await venderCarrito(ids)
+            setCarrito([])
+            resumenStock().then(setStock).catch(() => {})     // la cinta de stock ya no los cuenta
+            return r
+          }} />
       )}
       {verComparacion && comparar.length > 1 && (
         <Comparador seleccion={comparar} onQuitar={t => alternarComparar(t.tipo, t.item)} onCerrar={() => setVerComparacion(false)} />

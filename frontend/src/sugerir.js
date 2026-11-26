@@ -20,10 +20,15 @@ const BASE = [
   'tenemos', 'tienen', 'existen', 'quedan', 'cuales', 'cuantos', 'cuantas', 'ensename', 'muestrame', 'dime', 'lista', 'listado',
   'stock', 'catalogo', 'opciones',
   // preguntas por el uso («¿cuál es mejor para hornos?»)
-  'mejor', 'recomiendas', 'recomienda', 'recomendarias', 'aconsejas', 'adecuado', 'indicado', 'conviene', 'sirve', 'aguanta',
+  'mejor', 'recomiendas', 'recomienda', 'recomiendame', 'recomendarme', 'recomendar', 'aconsejame', 'sugiereme', 'sugieres',
+  'austenitico', 'austeniticos', 'ferriticos', 'martensiticos', 'inoxidables', 'familia', 'recomendarias', 'aconsejas', 'adecuado', 'indicado', 'conviene', 'sirve', 'aguanta',
   'resiste', 'resistente', 'oxide', 'oxida', 'corrosion', 'soldar', 'soldadura', 'doblar', 'calor', 'temperatura', 'temperaturas',
   'cocina', 'cuchillos', 'cubiertos', 'ambiente', 'marino', 'quimica', 'alimentaria', 'escape', 'tubos', 'tuberias', 'tanques',
   'decoracion', 'electrodomesticos', 'industria', 'industrial', 'exterior', 'interior',
+  // quitar datos o borrar la consulta
+  'quita', 'quitar', 'quitame', 'borra', 'borrar', 'borrame', 'elimina', 'eliminar', 'eliminame', 'descarta', 'olvida',
+  'olvidalo', 'consulta', 'busqueda', 'peticion', 'conversacion', 'empezar', 'empieza', 'reinicia', 'reiniciar', 'cancela',
+  'cancelar', 'nuevo', 'nueva', 'cero', 'principio', 'inicio', 'todo',
 ]
 const normaliza = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 const VOCABULARIO = new Set([
@@ -35,7 +40,9 @@ const VOCABULARIO = new Set([
 const CORRIENTES = new Set(['hola', 'para', 'como', 'esta', 'este', 'quiero', 'necesito', 'tengo', 'tiene', 'cliente',
   'hoy', 'gracias', 'algo', 'ahora', 'otra', 'otro', 'otras', 'otros', 'mismo', 'misma', 'cual', 'donde', 'cuanto',
   'mano', 'mesa', 'casa', 'cosa', 'nada', 'todo', 'toda', 'bien', 'malo', 'mala', 'alto', 'alta', 'baja', 'bajo',
-  'grande', 'buena', 'bueno', 'vale', 'venta', 'precio', 'plazo', 'largos', 'tengo', 'tener', 'saber', 'todos', 'todas', 'sobre', 'entre'])
+  'grande', 'buena', 'bueno', 'vale', 'venta', 'precio', 'plazo', 'largos', 'tengo', 'tener', 'saber', 'todos', 'todas', 'sobre', 'entre',
+  'media', 'medio', 'dame', 'deme', 'mira', 'pero', 'nueve', 'larga', 'corta', 'corto', 'ancha', 'coste', 'color', 'colores',
+  'pedido', 'pedidos', 'clientes', 'viernes', 'esperar', 'espera', 'playa', 'valga', 'grandes', 'cuanta'])
 
 function distancia(a, b) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i])
@@ -51,19 +58,30 @@ function distancia(a, b) {
 
 const sinRepetidas = w => w.replace(/(.)\1+/g, '$1')
 
+// Singular o plural de una palabra conocida («kilo», «hornos», «hojas»): no es una errata.
+const conocida = w => (/ss$/.test(w) ? [w] : [w, w.replace(/es$/, ''), w.replace(/s$/, ''), `${w}s`, `${w}es`])
+  .some(x => VOCABULARIO.has(x) || CORRIENTES.has(x))
+// Dos letras intercambiadas («mjeor», «brora»).
+const intercambio = (a, b) => a.length === b.length
+  && [...a].filter((c, i) => c !== b[i]).length === 2 && [...a].sort().join('') === [...b].sort().join('')
+
 function parecida(palabra) {
   const w = normaliza(palabra)
-  if (w.length < 4 || /\d/.test(w) || VOCABULARIO.has(w) || CORRIENTES.has(w)) return null
+  if (w.length < 4 || /\d/.test(w) || conocida(w)) return null
   // «bbbobina», «chappa»: letras repetidas de más.
   const colapsada = sinRepetidas(w)
   const porRepetidas = [...VOCABULARIO].find(v => sinRepetidas(v) === colapsada)
   if (porRepetidas) return porRepetidas
-  const maximo = w.length >= 7 ? 2 : 1
+  // Palabras cortas: cambiar una letra suele dar otra palabra real («dame»/«dime», «pero»/«cero», «color»/«calor»),
+  // así que solo se corrige si falta una letra («chpa») o hay dos intercambiadas («mjeor»).
+  const maximo = w.length >= 9 ? 2 : 1
   let mejor = null
   for (const v of VOCABULARIO) {
     if (Math.abs(v.length - w.length) > maximo) continue
     const d = distancia(w, v)
-    if (d <= maximo && (!mejor || d < mejor.d)) mejor = { v, d }
+    if (d > maximo) continue
+    if (w.length <= 5 && !(v.length === w.length + 1 || intercambio(w, v))) continue
+    if (!mejor || d < mejor.d) mejor = { v, d }
   }
   return mejor?.v ?? null
 }

@@ -50,7 +50,11 @@ export function detectarConsulta(texto) {
 const VACIAS = new Set(['para', 'que', 'una', 'uno', 'unos', 'unas', 'con', 'del', 'los', 'las', 'por', 'como', 'esta', 'este',
   'estar', 'cerca', 'muy', 'mas', 'acero', 'inox', 'inoxidable', 'chapa', 'bobina', 'fleje', 'cliente', 'quiere', 'necesita',
   'necesito', 'recomiendas', 'recomienda', 'recomendarias', 'aconsejas', 'mejor', 'sirve', 'usar', 'uso', 'cual', 'cuales',
-  'tipo', 'grado', 'material', 'hacer', 'valdria', 'vale', 'puedo', 'pongo', 'seria', 'donde', 'tiene', 'tener', 'algo'])
+  'tipo', 'grado', 'material', 'hacer', 'valdria', 'vale', 'puedo', 'pongo', 'seria', 'donde', 'tiene', 'tener', 'algo',
+  'recomiendame', 'recomendarme', 'recomiendes', 'recomendar', 'recomendacion', 'aconsejame', 'aconsejarias', 'aconsejar',
+  'sugieres', 'sugiereme', 'sugerir', 'dime', 'dame', 'general', 'cualquier', 'bueno', 'buena', 'opcion', 'opciones',
+  'familia', 'aceros', 'inoxidables', 'materiales', 'metal', 'metales', 'austenitico', 'austeniticos', 'ferritico',
+  'ferriticos', 'duplex', 'martensitico', 'martensiticos'])
 const raiz = w => w.slice(0, 5)
 const palabrasSignificativas = s => normaliza(s).split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !VACIAS.has(w))
 const SALINO = /\b(mar|marino|marina|costa|costero|salino|salina|salada|salado|sal|salitre|playa|cloruro|cloruros)s?\b/
@@ -96,7 +100,8 @@ export function detectarUso(texto) {
     || /\b(que|cual|cuales|dime|necesito|busco|quiero saber)\b/.test(t) || CONSEJO.test(t)
   const deUso = /\b(para|uso|aplicacion|va a (estar|ir|usarse)|en un|en una|en el|en la|expuest\w*|contra|frente)\b/.test(t)
     || /\b(resist\w*|aguant\w*|soport\w*|sold\w*|oxid\w*|corro\w*|dobl\w*|dur\w*|fuerte|duradero|barat\w*|car\w*|ligero|pesado|magnetic\w*|iman|conduc\w*)\b/.test(t)
-  if (!pregunta || !deUso || interpretarTexto(texto).grado) return null
+  const pideConsejo = /\b(recomiend\w*|recomendar\w*|aconsej\w*|sugier\w*|sugerir\w*)\b/.test(t)
+  if (!pregunta || !(deUso || pideConsejo) || interpretarTexto(texto).grado) return null
   // «¿Qué espesores hay para bobina?» es una pregunta por lo que hay, no por el uso.
   if (detectarConsulta(texto) && !CONSEJO.test(t)) return null
   return { texto }
@@ -122,6 +127,7 @@ export function recomendarPorUso(texto) {
     }
   }
   const raices = unicos(palabrasSignificativas(ampliar(normaliza(texto))).map(raiz))
+  if (!raices.length) return recomendacionGeneral(normaliza(texto))
   const puntuadas = APLICACIONES.map(a => ({
     ...a, puntos: raices.filter(r => a.raices.has(r)).reduce((s, r) => s + 1 / FRECUENCIA[r], 0),
   })).filter(a => a.puntos > 0)
@@ -137,6 +143,23 @@ export function recomendarPorUso(texto) {
     }
   }
   return { criterio: 'aplicacion', grados: [...porGrado.values()] }
+}
+
+// «¿Qué inoxidable me recomiendas?» sin decir para qué: los grados que su ficha describe como de uso general
+// (o, si se nombra una familia sin ese dato, los de esa familia). Siempre con la frase de la ficha que lo respalda.
+const GENERAL = /uso mas extendido|versatil|aleacion base/
+function recomendacionGeneral(t) {
+  const familia = Object.keys(FAMILIAS).find(f => t.includes(f.slice(0, -1)))
+  const candidatas = fichas.filter(f => f.aisi && (!familia || f.familia === FAMILIAS[familia]))
+  let elegidas = candidatas.flatMap(f => frasesDe(f.descripcion).filter(d => GENERAL.test(normaliza(d))).map(d => ({ f, d })))
+  const deUsoGeneral = elegidas.length > 0
+  if (!deUsoGeneral) elegidas = candidatas.map(f => ({ f, d: frasesDe(f.descripcion)[0] }))
+  const porGrado = new Map()
+  for (const { f, d } of elegidas) {
+    const g = nombreGrado(f)
+    if (!porGrado.has(g)) porGrado.set(g, { grado: g, ficha: f, motivo: `su ficha dice: «${d}»` })
+  }
+  return { criterio: 'general', familia: familia ? FAMILIAS[familia] : null, deUsoGeneral, grados: [...porGrado.values()] }
 }
 
 export function interpretarTexto(texto) {

@@ -13,6 +13,8 @@ const CAMPOS = [
   ['formato', 'Formato'],
   ['ancho_mm', 'Ancho', 'mm'],
 ]
+// El stock trae grados dobles («304L/304»): cuenta como elegido si coincide con cualquiera de ellos.
+const igual = (a, b) => a === b || String(a).toUpperCase().split('/').map(x => x.trim()).includes(String(b).toUpperCase())
 const conUnidad = (unidad, v) => `${num(v)}${unidad ? ' ' + unidad : ''}`
 
 // Filtros de un campo: lo ya elegido en los demás. Así, al elegir 2 mm, el resto solo ofrece lo que hay en 2 mm.
@@ -24,14 +26,13 @@ function filtrosSin(esp, campo) {
 
 // Datos del metal: lo que se va reconociendo al escribir y lo ya entendido en la conversación.
 // Cada casilla se pulsa para ver los valores en stock con el resto de lo elegido.
-export function Casillas({ texto, base, onElegir, deshabilitado }) {
+export function Casillas({ texto, base, onElegir, onQuitar, deshabilitado }) {
   const [abierto, setAbierto] = useState(null)
   const [valores, setValores] = useState({})
   const raiz = useRef(null)
   const previa = texto.trim() ? interpretarTexto(texto) : null
   const valor = k => previa?.[k] ?? base?.[k] ?? null
   const opciones = k => previa?.opciones?.[k] ?? base?.opciones?.[k]
-  const cualquiera = k => (base?.indiferentes?.includes(k) ? 'Cualquiera' : null)
   const clave = JSON.stringify(CAMPOS.map(([k]) => base?.[k] ?? null))
 
   // Valores en stock de cada campo con lo ya elegido; se recalculan al cambiar cualquier dato.
@@ -53,16 +54,25 @@ export function Casillas({ texto, base, onElegir, deshabilitado }) {
     return () => { document.removeEventListener('mousedown', cerrar); document.removeEventListener('keydown', escape) }
   }, [abierto])
 
+  const esElegido = (k, v) => base?.[k] != null && igual(v, base[k])
+
   function elegir(k, v) {
     setAbierto(null)
     onElegir(fraseCambio(k, v))
+  }
+
+  // Deseleccionar: el dato deja de filtrar (queda en «indiferentes» del backend).
+  function quitar(k) {
+    setAbierto(null)
+    onQuitar(k)
   }
 
   const largo = valor('largo_mm')
   return (
     <div className="casillas" aria-live="polite" ref={raiz}>
       {CAMPOS.map(([k, etiqueta, unidad]) => {
-        const v = valor(k) != null ? conUnidad(unidad, valor(k)) : lista(opciones(k)) ?? cualquiera(k)
+        // Un dato quitado («me da igual») queda vacío, como al principio: se puede volver a elegir cualquier valor.
+        const v = valor(k) != null ? conUnidad(unidad, valor(k)) : lista(opciones(k)) ?? null
         const enStock = valores[k]
         return (
           <div key={k} className="casilla-bloque">
@@ -73,6 +83,11 @@ export function Casillas({ texto, base, onElegir, deshabilitado }) {
               <span className="casilla-etiqueta">{etiqueta} ⌄</span>
               <span className="casilla-valor">{v ?? (enStock ? `${enStock.length} en stock` : '—')}</span>
             </button>
+            {base?.[k] != null && (
+              <button type="button" className="casilla-quitar" disabled={deshabilitado}
+                title={`Quitar ${etiqueta.toLowerCase()}`} aria-label={`Quitar ${etiqueta.toLowerCase()}`}
+                onClick={() => quitar(k)}>✕</button>
+            )}
             {abierto === k && (
               <div className="casilla-opciones" role="listbox" aria-label={`${etiqueta} en stock`}>
                 <div className="casilla-opciones-titulo">
@@ -83,10 +98,11 @@ export function Casillas({ texto, base, onElegir, deshabilitado }) {
                   : (
                     <div className="editor-lista">
                       {enStock.map(o => (
-                        <button key={o.valor} type="button" role="option" aria-selected={o.valor === base?.[k]}
-                          className={`chip-stock ${o.valor === base?.[k] ? 'elegido' : ''}`} disabled={deshabilitado}
-                          onClick={() => elegir(k, o.valor)} title={`${o.bultos} bultos · ${num(o.toneladas)} t`}>
-                          {conUnidad(unidad, o.valor)} <small>{o.bultos}</small>
+                        <button key={o.valor} type="button" role="option" aria-selected={esElegido(k, o.valor)}
+                          className={`chip-stock ${esElegido(k, o.valor) ? 'elegido' : ''}`} disabled={deshabilitado}
+                          onClick={() => (esElegido(k, o.valor) ? quitar(k) : elegir(k, o.valor))}
+                          title={esElegido(k, o.valor) ? 'Pulsa para quitarlo' : `${o.bultos} bultos · ${num(o.toneladas)} t`}>
+                          {conUnidad(unidad, o.valor)} <small>{esElegido(k, o.valor) ? '✕' : o.bultos}</small>
                         </button>
                       ))}
                     </div>

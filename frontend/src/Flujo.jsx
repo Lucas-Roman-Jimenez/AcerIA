@@ -15,7 +15,14 @@ const num = v => String(v).replace('.', ',')
 const etiqueta = k => CAMPOS.find(c => c[0] === k)?.[1] ?? k
 const unidad = k => CAMPOS.find(c => c[0] === k)?.[2]
 const conUnidad = (k, v) => `${num(v)}${unidad(k) ? ' ' + unidad(k) : ''}`
-export const fraseCambio = (k, v) => `El ${etiqueta(k).toLowerCase()} es ${conUnidad(k, v)}`
+// El inventario trae grados dobles («304L/304») que el intérprete no reconoce: se envía una de sus partes
+// (la preferida si está, si no la primera). El buscador acepta cualquier bulto que tenga esa designación.
+export function gradoParaBackend(valor, preferido) {
+  const partes = String(valor).split('/').map(p => p.trim()).filter(Boolean)
+  if (partes.length < 2) return valor
+  return partes.find(p => p.toUpperCase() === String(preferido ?? '').toUpperCase()) ?? partes[0]
+}
+export const fraseCambio = (k, v) => `El ${etiqueta(k).toLowerCase()} es ${k === 'grado' ? gradoParaBackend(v) : conUnidad(k, v)}`
 
 const hayStock = async filtros => (await consultarValores('grado', filtros)).total_bultos > 0
 
@@ -159,14 +166,29 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
       {activo && (
         <div className="flujo-acciones">
           <span className="tenue">También puedes escribir más datos o la petición entera abajo.</span>
-          <button type="button" className="demo-salir" onClick={onCancelar}>Cancelar y volver al inicio</button>
         </div>
       )}
     </div>
   )
 }
 
-export function Carrito({ carrito, onQuitar, onVaciar, onCerrar }) {
+export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
+  const [vendiendo, setVendiendo] = useState(false)
+  const [mensaje, setMensaje] = useState(null)   // {tipo: 'ok' | 'error', texto}
+
+  async function confirmarVenta() {
+    setVendiendo(true)
+    setMensaje(null)
+    try {
+      const r = await onVender(carrito.map(c => c.item.id))
+      setMensaje({ tipo: 'ok', texto: `Vendidos ${r.vendidos.length} bultos. Ya no salen en el stock y aparecen en el reporte semanal.` })
+    } catch (e) {
+      setMensaje({ tipo: 'error', texto: e.message })
+    } finally {
+      setVendiendo(false)
+    }
+  }
+
   return (
     <div className="modal-fondo" onClick={onCerrar}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -174,7 +196,8 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar }) {
           <h2>Carrito</h2>
           <button className="demo-salir" onClick={onCerrar}>Cerrar</button>
         </div>
-        {carrito.length === 0 ? <p className="tenue">Aún no has añadido nada.</p> : (
+        {mensaje && <p className={mensaje.tipo === 'error' ? 'carrito-error' : 'carrito-ok'}>{mensaje.texto}</p>}
+        {carrito.length === 0 ? (!mensaje && <p className="tenue">Aún no has añadido nada.</p>) : (
           <>
             <ul className="carrito-lista">
               {carrito.map(({ tipo, item }) => {
@@ -188,7 +211,15 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar }) {
                 )
               })}
             </ul>
-            <button className="demo-salir" onClick={onVaciar}>Vaciar carrito</button>
+            <div className="carrito-pie">
+              <button className="demo-salir" onClick={onVaciar} disabled={vendiendo}>Vaciar carrito</button>
+              {onVender && (
+                <button className="carrito-boton" onClick={confirmarVenta} disabled={vendiendo}>
+                  {vendiendo ? 'Vendiendo…' : `Confirmar venta (${carrito.length})`}
+                </button>
+              )}
+            </div>
+            <p className="tenue">Simulación para la demo: no se envía nada a los sistemas de AcerIA.</p>
           </>
         )}
       </div>
