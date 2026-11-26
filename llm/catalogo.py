@@ -25,14 +25,20 @@ class Catalogo:
         self.productos: list[dict[str, Any]] = catalogo.get("productos", [])
         self.usos: list[dict[str, Any]] = catalogo.get("usos", [])
         self.terminos: list[dict[str, Any]] = glosario.get("terminos", [])
-        # Catálogo real (Lucas): se puede desactivar la validación de combinaciones y cada ficha
-        # relaciona el grado comercial (AISI, p. ej. 304) con su designación EN (1.4301).
         self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
         self.grados_en_por_comercial: dict[str, set[str]] = {}
-        for ficha in catalogo.get("fichas", []):
-            grado = ficha.get("grado_comercial")
-            if grado:
-                self.grados_en_por_comercial.setdefault(grado, set()).add(ficha["en"])
+        nomenclatura = catalogo.get("nomenclatura_grados")
+        if nomenclatura:
+            for en, referencias in nomenclatura["grados"].items():
+                for fuente in referencias.get("fichas", []) + referencias.get("otras_fuentes", []):
+                    grado = fuente["grado_comercial"]
+                    if grado:
+                        self.grados_en_por_comercial.setdefault(grado, set()).add(en)
+        else:
+            for ficha in catalogo.get("fichas", []):
+                grado = ficha.get("grado_comercial")
+                if grado:
+                    self.grados_en_por_comercial.setdefault(grado, set()).add(ficha["en"])
 
     @classmethod
     def cargar(cls, carpeta: Path | str = RUTA_DATOS) -> "Catalogo":
