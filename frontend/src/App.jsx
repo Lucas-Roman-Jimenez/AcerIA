@@ -173,12 +173,11 @@ export default function App() {
     setPensando(true)
     try {
       const recomendacion = !usoDeObra && detectarUso(limpio) && recomendarPorUso(limpio)
-      // Lo que pregunta no aparece en las fichas técnicas: no se inventa (RNF-01), se manda a un comercial y se empieza de cero.
+      // Lo que pregunta no aparece en las fichas técnicas: no se inventa (RNF-01); se responde en el chat
+      // y se manda a un comercial, sin borrar la conversación.
       if (recomendacion && !recomendacion.grados.length) {
-        const textoBot = `Lo que preguntas («${limpio}») no aparece en las fichas técnicas de AcerIA, así que no puedo recomendarte nada fiable. Pregúntalo a un comercial. Mientras, puedes escribir una petición nueva.`
-        nuevaConsulta()
-        setConversaciones(cs => cs.filter(c => c.id !== base.id))
-        setAvisoInicio(textoBot)
+        const textoBot = `Lo que preguntas («${limpio}») no aparece en las fichas técnicas de AcerIA, así que no puedo recomendarte nada fiable. Pregúntalo a un comercial o dime otro dato del material.`
+        guardar({ ...base, mensajes: [...base.mensajes, { rol: 'asistente', texto: textoBot }] })
         if (vozActiva) leerEnAlto(textoBot)
         return
       }
@@ -202,10 +201,11 @@ export default function App() {
       const sinNingunDato = r.tipo !== 'error' && !e.uso && !conv.ultima?.especificacion
         && ['grado', 'acabado', 'formato', 'espesor_mm', 'ancho_mm', 'largo_mm'].every(k => e[k] == null)
         && !Object.keys(e.opciones ?? {}).length && /\d/.test(limpio)
+      // Nada de lo pedido existe o está en stock: se dice en el chat, sin borrar la conversación.
       if (analisis?.estado === 'todo_mal' || sinNingunDato) {
-        nuevaConsulta()
-        setConversaciones(cs => cs.filter(c => c.id !== base.id))
-        setAvisoInicio(`Ningún dato de «${limpio}» existe o está en stock${analisis?.avisos?.length ? ` (${analisis.avisos.join(' ')})` : ''}. Escribe una nueva petición.`)
+        const textoBot = `Ningún dato de «${limpio}» existe o está en stock${analisis?.avisos?.length ? ` (${analisis.avisos.join(' ')})` : ''}. Prueba con otra petición o elige en las casillas de abajo lo que sí hay.`
+        guardar({ ...base, mensajes: [...base.mensajes, { rol: 'asistente', texto: textoBot }] })
+        if (vozActiva) leerEnAlto(textoBot)
         return
       }
       const textoBot = r.tipo === 'error' ? r.error
