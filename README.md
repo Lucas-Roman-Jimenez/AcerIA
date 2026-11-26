@@ -141,11 +141,14 @@ llm/
   catalogo.py     valores válidos, combinaciones, usos y glosario
   prompts.py      prompts de extracción, redacción de preguntas y respuesta
   interprete.py   interpretar() y pregunta_tras_busqueda()
-  respuesta.py    responder() con plantilla de respaldo
+  modelos.py      validación con Pydantic de la salida del LLM (forma y tipos)
+  respuesta.py    responder() con plantilla de respaldo y recomendación si «me da igual»
   control.py      control anti-invención de cifras, valores y bultos
+  aviso.py        aviso de contenido generado por IA (AI Act art. 50, docs/legal_ia.md)
   proveedores.py  Anthropic, OpenAI y ClienteFalso para tests
 tests/test_llm.py    tests sin conexión (pytest)
 tests/bateria_llm.py escenarios contra el LLM y los datos reales (a mano)
 docs/contrato.md     contrato JSON completo con ejemplos
+docs/legal_ia.md     uso de IA, Reglamento de IA de la UE y datos (RGPD)
 docs/guion_demo.md   conversación de la demo con las respuestas reales
 ```

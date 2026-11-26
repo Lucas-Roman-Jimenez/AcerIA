@@ -16,6 +16,7 @@ from . import prompts
 from .catalogo import Catalogo
 from .contrato import CAMPOS_NUMERO, CAMPOS_TEXTO, Cantidad, Especificacion, ResultadoInterpretacion
 from .control import conserva_datos, fmt_num, lista_o, lista_y, no_inventa
+from .modelos import Extraccion
 from .proveedores import ClienteLLM, ErrorLLM, crear_cliente
 
 # Datos mínimos para poder buscar. PENDIENTE DE CONFIRMAR CON EL MENTOR.
@@ -73,34 +74,22 @@ def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequen
 
 # ------------------------------------------------------------------ validación
 
-def _num(v) -> Optional[float]:
-    try:
-        x = float(str(v).replace(",", "."))
-        return x if x > 0 else None
-    except (TypeError, ValueError):
-        return None
-
-
 def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion, dict[str, Any]]:
     """Devuelve la especificación limpia y los problemas detectados (para decidir la pregunta)."""
     esp = Especificacion()
-    intencion = bruto.get("intencion") or ("fuera_de_tema" if bruto.get("fuera_de_tema") else "pedido")
+    # Forma y tipos con Pydantic (llm/modelos.py, RNF-14): lo mal formado se descarta, nunca rompe.
+    ext = Extraccion.desde_llm(bruto)
+    intencion = ext.intencion or ("fuera_de_tema" if ext.fuera_de_tema else "pedido")
     problemas: dict[str, Any] = {"invalidos": [], "contradiccion": None, "combinacion": None,
                                  "uso_desconocido": None, "opciones_dudosas": None,
                                  "intencion": intencion if intencion in INTENCIONES else "pedido",
-                                 "campo_aclaracion": bruto.get("campo_aclaracion")}
+                                 "campo_aclaracion": ext.campo_aclaracion}
+    opciones_brutas = ext.opciones
 
-    # Tipos robustos (RNF-14): lo que no tenga la forma esperada se descarta, nunca rompe.
-    opciones_brutas = bruto.get("opciones") if isinstance(bruto.get("opciones"), dict) else {}
-    opciones_brutas = {c: ([v] if isinstance(v, str) else v) for c, v in opciones_brutas.items()
-                       if isinstance(v, (list, str))}
-
+    # Valores contra el catálogo de AcerIA: lo decide el código (RNF-02).
     for campo in CAMPOS_TEXTO:
-        v = bruto.get(campo)
-        if isinstance(v, list):            # varios valores en el campo: se tratan como opciones
-            opciones_brutas.setdefault(campo, [str(x) for x in v if isinstance(x, (str, int, float))])
-            continue
-        if v in (None, "") or isinstance(v, bool) or not isinstance(v, (str, int, float)):
+        v = getattr(ext, campo)
+        if v is None:
             continue
         norm = catalogo.normalizar(campo, v)
         if norm:
@@ -110,13 +99,10 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.avisos.append(f"«{v}» no es un {NOMBRE_CAMPO[campo]} del catálogo.")
 
     for campo in CAMPOS_NUMERO:
-        x = _num(bruto.get(campo))
-        if x is not None:
-            setattr(esp, campo, x)
+        setattr(esp, campo, getattr(ext, campo))
 
-    cant = bruto.get("cantidad")
-    if isinstance(cant, dict) and _num(cant.get("valor")) and cant.get("unidad") in ("kg", "t", "bultos"):
-        esp.cantidad = Cantidad(_num(cant["valor"]), cant["unidad"])
+    if ext.cantidad:
+        esp.cantidad = Cantidad(ext.cantidad.valor, ext.cantidad.unidad)
 
     for campo, valores in opciones_brutas.items():
         if campo not in CAMPOS_TEXTO or getattr(esp, campo) is not None:
@@ -142,7 +128,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.opciones[campo] = validos
 
     # Uso (RF-26): solo se traduce a grados si el catálogo lo respalda.
-    uso_txt = bruto.get("uso") if isinstance(bruto.get("uso"), str) else None
+    uso_txt = ext.uso
     if uso_txt:
         uso = catalogo.uso(uso_txt)
         if uso:
@@ -161,14 +147,10 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.avisos.append(f"El catálogo no indica qué grado es adecuado para «{uso_txt}».")
 
     # Campos que al comercial le dan igual: no se preguntan ni cuentan como «faltan».
-    indif = bruto.get("indiferentes") if isinstance(bruto.get("indiferentes"), list) else []
-    esp.indiferentes = [c for c in indif if isinstance(c, str)
-                        and c in CAMPOS_TEXTO + CAMPOS_NUMERO and getattr(esp, c) is None]
+    esp.indiferentes = [c for c in ext.indiferentes if getattr(esp, c) is None]
     esp.opciones = {c: v for c, v in esp.opciones.items() if c not in esp.indiferentes}
 
-    contr_brutas = bruto.get("contradicciones") if isinstance(bruto.get("contradicciones"), list) else []
-    contr = [c for c in contr_brutas if isinstance(c, dict) and isinstance(c.get("campo"), str)
-             and isinstance(c.get("valores", []), list)]
+    contr = [c.model_dump() for c in ext.contradicciones]
     if contr:
         problemas["contradiccion"] = contr[0]
         if contr[0]["campo"] in CAMPOS_TEXTO + CAMPOS_NUMERO:
