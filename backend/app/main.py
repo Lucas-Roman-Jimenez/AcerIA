@@ -2,7 +2,9 @@ import os
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from typing import Literal
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,7 +15,8 @@ from app.conversacion import cargar_env, responder_chat
 from app.ventas import BultosNoDisponibles, vender
 from app.reservas import liberar, liberar_todas, mis_reservas, reservar
 from app.reportes import reporte_diario_inventario, reporte_semanal
-from app.modelos import PATRON_CARRITO, CampoStock, Especificacion, Formato, ListaBultos, MensajeChat
+from app.modelos import (MENSAJE_GENERAL, PATRON_CARRITO, CampoStock, Especificacion, Formato, ListaBultos,
+                         MensajeChat, errores_legibles)
 from app.tendencias import tendencias_compras
 
 
@@ -31,6 +34,14 @@ log = logging.getLogger("aceria")
 app = FastAPI(title="Asistente de inventario AcerIA", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES,   # nunca "*": otra web podría vender bultos
                    allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type", "X-Carrito"])
+
+
+@app.exception_handler(RequestValidationError)
+async def datos_no_validos(request: Request, exc: RequestValidationError):
+    """Tarea 6: todo 422 de validación con el mismo formato, en español y sin repetir lo enviado.
+    {"detail": "Datos no válidos.", "errores": [{"campo": "espesor_mm", "mensaje": "debe ser mayor que 0"}]}"""
+    return JSONResponse(status_code=422,
+                        content={"detail": MENSAJE_GENERAL, "errores": errores_legibles(exc.errors())})
 
 
 def compatibilizar(r: dict) -> dict:

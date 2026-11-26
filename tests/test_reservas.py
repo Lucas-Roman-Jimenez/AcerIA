@@ -376,7 +376,8 @@ def test_api_sin_cabecera_x_carrito_da_422(api, metodo, ruta, cuerpo):
 
 def test_api_reservar_sin_bultos_da_422_con_texto_fijo(api):
     r = api.post("/reservas", json={"bultos": []}, headers=_h("a"))
-    assert r.status_code == 422 and r.json()["detail"] == "No hay bultos que reservar."
+    assert r.status_code == 422                                   # tarea 6: lo valida Pydantic
+    assert r.json() == {"detail": "Datos no válidos.", "errores": [{"campo": "bultos", "mensaje": "no puede estar vacío"}]}
 
 
 def test_api_cabecera_x_carrito_demasiado_larga_da_422(api):

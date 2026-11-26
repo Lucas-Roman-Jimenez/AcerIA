@@ -64,7 +64,7 @@ class Especificacion(BaseModel):
 
 class ListaBultos(BaseModel):
     """Entrada de POST /reservas y POST /compras: los IDs del carrito."""
-    bultos: Annotated[list[IdBulto], Field(max_length=config.MAX_BULTOS_CARRITO)]
+    bultos: Annotated[list[IdBulto], Field(min_length=1, max_length=config.MAX_BULTOS_CARRITO)]
 
 
 class MensajeChat(BaseModel):
@@ -83,3 +83,75 @@ class MensajeChat(BaseModel):
     @property
     def contenido(self) -> str:
         return self.mensaje or self.texto or ""
+
+
+# ---------- Errores 422: claros, en español y sin repetir lo que se ha enviado ----------
+
+MENSAJE_GENERAL = "Datos no válidos."
+_ORIGENES = {"body", "query", "header", "path", "cookie"}
+_CABECERAS = {"x-carrito": "X-Carrito"}
+
+
+def _num(v) -> str:
+    return f"{v:g}" if isinstance(v, (int, float)) else str(v)
+
+
+def _campo(loc) -> str:
+    """('body', 'bultos', 3) -> 'bultos[3]';  ('header', 'x-carrito') -> 'X-Carrito';  ('body',) -> 'cuerpo'."""
+    partes = list(loc[1:] if loc and loc[0] in _ORIGENES else loc)
+    if loc and loc[0] == "body" and partes and isinstance(partes[0], int):
+        return "cuerpo"                                            # JSON mal formado: la posición no es un campo
+    texto = ""
+    for p in partes:
+        texto += f"[{p}]" if isinstance(p, int) else (f".{p}" if texto else str(p))
+    return _CABECERAS.get(texto, texto) or "cuerpo"
+
+
+def _mensaje(error: dict) -> str:
+    tipo, ctx = error.get("type", ""), error.get("ctx") or {}
+    if tipo == "missing":
+        return "es obligatorio"
+    if tipo in ("float_parsing", "float_type", "int_parsing", "int_type", "int_from_float", "finite_number"):
+        return "debe ser un número"
+    if tipo == "greater_than":
+        return f"debe ser mayor que {_num(ctx.get('gt'))}"
+    if tipo == "greater_than_equal":
+        return f"debe ser como mínimo {_num(ctx.get('ge'))}"
+    if tipo == "less_than":
+        return f"debe ser menor que {_num(ctx.get('lt'))}"
+    if tipo == "less_than_equal":
+        return f"debe ser como máximo {_num(ctx.get('le'))}"
+    if tipo == "string_too_short":
+        return "no puede estar vacío"
+    if tipo == "string_too_long":
+        return f"como mucho {ctx.get('max_length')} caracteres"
+    if tipo == "too_short":
+        return "no puede estar vacío" if ctx.get("min_length") == 1 else f"como mínimo {ctx.get('min_length')} elementos"
+    if tipo == "too_long":
+        return f"como mucho {ctx.get('max_length')} elementos"
+    if tipo == "literal_error":
+        return f"debe ser uno de: {str(ctx.get('expected', '')).replace(' or ', ', ')}"
+    if tipo == "string_pattern_mismatch":
+        return "solo admite letras, números, guiones y guiones bajos"
+    if tipo == "string_type":
+        return "debe ser un texto"
+    if tipo == "list_type":
+        return "debe ser una lista"
+    if tipo in ("dict_type", "model_type", "model_attributes_type"):
+        return "debe ser un objeto JSON"
+    if tipo == "json_invalid":
+        return "el JSON no es válido"
+    if tipo == "value_error" and ctx.get("error"):
+        return str(ctx["error"])                                   # nuestros propios mensajes (p. ej. «falta el mensaje»)
+    return "no es válido"
+
+
+def errores_legibles(errores: list[dict]) -> list[dict]:
+    """Errores de Pydantic -> [{campo, mensaje}]. Nunca incluye el valor recibido ni enlaces internos."""
+    vistos, salida = set(), []
+    for e in errores:
+        par = (_campo(tuple(e.get("loc", ()))), _mensaje(e))
+        if par not in vistos:
+            vistos.add(par)
+            salida.append({"campo": par[0], "mensaje": par[1]})
+    return salida

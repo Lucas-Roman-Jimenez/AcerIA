@@ -151,3 +151,59 @@ def test_ninguna_entrada_mala_provoca_un_500(cliente):
     respuestas = [cliente.post("/buscar", json=c) for c in MALAS_BUSQUEDAS.values()]
     respuestas += [cliente.get(f"/stock/valores?{q}") for q in MALOS_VALORES.values()]
     assert all(r.status_code < 500 for r in respuestas)
+
+
+# ---------- Paso 3: un único formato de 422, en español y sin repetir lo enviado ----------
+
+def _errores(r):
+    assert r.status_code == 422
+    datos = r.json()
+    assert datos["detail"] == "Datos no válidos."
+    return {e["campo"]: e["mensaje"] for e in datos["errores"]}
+
+
+def test_422_dice_que_campo_falla_y_por_que(cliente):
+    errores = _errores(cliente.post("/buscar", json={"formato": "tubo", "espesor_mm": -1, "grado": "3" * 60}))
+    assert errores == {
+        "formato": "debe ser uno de: 'chapa', 'bobina', 'fleje'",
+        "espesor_mm": "debe ser mayor que 0",
+        "grado": f"como mucho {config.MAX_LONGITUD_VALOR} caracteres",
+    }
+
+
+@pytest.mark.parametrize("hacer,campo,mensaje", [
+    (lambda c: c.post("/buscar", json={"espesor_mm": "abc"}), "espesor_mm", "debe ser un número"),
+    (lambda c: c.post("/buscar", json={"ancho_mm": config.MAX_ANCHO_MM + 1}), "ancho_mm", f"debe ser como máximo {config.MAX_ANCHO_MM}"),
+    (lambda c: c.post("/buscar", json=[1, 2]), "cuerpo", "debe ser un objeto JSON"),
+    (lambda c: c.post("/buscar", content="{malo", headers={"Content-Type": "application/json"}), "cuerpo", "el JSON no es válido"),
+    (lambda c: c.post("/reservas", json={"bultos": []}, headers=H), "bultos", "no puede estar vacío"),
+    (lambda c: c.post("/reservas", json={"bultos": "334"}, headers=H), "bultos", "debe ser una lista"),
+    (lambda c: c.post("/reservas", json={"bultos": [1]}, headers=H), "bultos[0]", "debe ser un texto"),
+    (lambda c: c.post("/reservas", json={}, headers=H), "bultos", "es obligatorio"),
+    (lambda c: c.get("/reservas", headers={"X-Carrito": "a b"}), "X-Carrito", "solo admite letras, números, guiones y guiones bajos"),
+    (lambda c: c.get("/stock/resumen?limite=0"), "limite", "debe ser como mínimo 1"),
+    (lambda c: c.get("/stock/valores?campo=zzz"), "campo", "debe ser uno de: 'grado', 'acabado', 'formato', 'espesor_mm', 'ancho_mm'"),
+    (lambda c: c.post("/chat", json={}), "cuerpo", "falta el mensaje"),
+], ids=["no-numero", "maximo", "no-objeto", "json-roto", "lista-vacia", "no-lista", "no-texto", "falta",
+        "cabecera", "limite", "campo", "chat-vacio"])
+def test_cada_error_en_espanol(cliente, hacer, campo, mensaje):
+    assert _errores(hacer(cliente)) == {campo: mensaje}
+
+
+def test_422_no_repite_lo_enviado(cliente):
+    """Lo que se envía no vuelve en la respuesta: ni el valor (aquí 100 KB), ni el tipo interno, ni enlaces de Pydantic."""
+    secreto = "SECRETO" * 15000
+    for r in [cliente.post("/buscar", json={"grado": secreto}),
+              cliente.post("/reservas", json={"bultos": [secreto]}, headers=H),
+              cliente.post("/chat", json={"mensaje": secreto})]:
+        texto = r.text
+        assert r.status_code == 422 and "SECRETO" not in texto
+        assert "input" not in r.json() and "pydantic" not in texto.lower() and "type" not in texto
+        assert len(texto) < 500
+
+
+def test_los_422_propios_conservan_su_texto(cliente):
+    """Los que no son de Pydantic siguen con su mensaje fijo de siempre."""
+    assert cliente.get("/reservas").json() == {"detail": "Falta la cabecera X-Carrito."}
+    r = cliente.post("/compras", json={"bultos": ["334"]})                     # sin X-Carrito
+    assert r.status_code == 422 and r.json() == {"detail": "El carrito está vacío o no es válido."}
