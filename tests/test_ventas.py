@@ -19,6 +19,7 @@ from app import config  # noqa: E402
 from app.db import crear_db, disponibles  # noqa: E402
 from app.main import app  # noqa: E402
 from app.reportes import reporte_semanal  # noqa: E402
+from app.reservas import reservar  # noqa: E402
 from app.ventas import BultosNoDisponibles, vender  # noqa: E402
 
 
@@ -31,6 +32,15 @@ def base(tmp_path, monkeypatch):
     return config.DB_PATH
 
 
+TITULAR = "carrito-test"
+
+
+def reservar_y_vender(ids, titular=TITULAR, **kw):
+    """Venta estricta (tarea 4): primero se reserva, como hace el frontend al añadir al carrito."""
+    reservar(ids, titular)
+    return vender(ids, titular, **kw)
+
+
 def estado(base, bulto_id):
     with sqlite3.connect(base) as c:
         return c.execute("SELECT estado FROM bultos WHERE id = ?", (bulto_id,)).fetchone()[0]
@@ -38,7 +48,7 @@ def estado(base, bulto_id):
 
 def test_vender_marca_vendido_y_aparece_en_el_reporte(base):
     ahora = datetime.now(timezone.utc)
-    r = vender(["334", "23"], ahora=ahora)
+    r = reservar_y_vender(["334", "23"], ahora=ahora)
     assert r["vendidos"] == ["334", "23"]
     assert estado(base, "334") == estado(base, "23") == "vendido"
     assert not {"334", "23"} & {b["id"] for b in disponibles()}          # ya no salen en /buscar ni /chat
@@ -54,16 +64,17 @@ def test_vender_marca_vendido_y_aparece_en_el_reporte(base):
 
 
 def test_si_un_bulto_no_esta_disponible_no_se_vende_ninguno(base):
-    vender(["334"])
+    reservar_y_vender(["334"])
+    reservar(["23"], TITULAR)
     with pytest.raises(BultosNoDisponibles) as e:
-        vender(["23", "334", "no-existe"])
+        vender(["23", "334", "no-existe"], TITULAR)
     assert e.value.ids == ["334", "no-existe"]
     assert estado(base, "23") == "disponible"                            # todo o nada
     assert len(reporte_semanal()["compras"]) == 1
 
 
 def test_al_reiniciar_se_conservan_las_ventas_y_el_reporte(base):
-    vender(["334"])
+    reservar_y_vender(["334"])
     crear_db()                                                           # arranque normal: se recarga el Excel
     assert estado(base, "334") == "vendido"
     assert estado(base, "23") == "disponible"
@@ -71,7 +82,7 @@ def test_al_reiniciar_se_conservan_las_ventas_y_el_reporte(base):
 
 
 def test_reiniciar_la_demo_deja_todo_como_al_principio(base):
-    vender(["334"])
+    reservar_y_vender(["334"])
     crear_db(reiniciar_ventas=True)                                      # python arrancar.py --reiniciar-demo
     assert estado(base, "334") == "disponible"
     assert reporte_semanal()["compras"] == []
@@ -79,7 +90,7 @@ def test_reiniciar_la_demo_deja_todo_como_al_principio(base):
 
 @pytest.mark.parametrize("valor,vendido", [("0", True), ("1", False)])
 def test_el_arranque_del_backend_respeta_la_opcion_de_reinicio(base, monkeypatch, valor, vendido):
-    vender(["334"])
+    reservar_y_vender(["334"])
     monkeypatch.setenv("ACERIA_REINICIAR_DEMO", valor)
     with TestClient(app):                                                # ejecuta el arranque (lifespan)
         pass
@@ -87,7 +98,8 @@ def test_el_arranque_del_backend_respeta_la_opcion_de_reinicio(base, monkeypatch
 
 
 def test_endpoint_compras(base):
-    cliente = TestClient(app)
+    cliente = TestClient(app, headers={"X-Carrito": TITULAR})
+    reservar(["334"], TITULAR)
     ok = cliente.post("/compras", json={"bultos": ["334"]})
     assert ok.status_code == 200 and ok.json()["vendidos"] == ["334"]
     repetida = cliente.post("/compras", json={"bultos": ["334"]})

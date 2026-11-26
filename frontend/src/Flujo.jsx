@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { consultarValores, buscarStock } from './api.js'
-import { Tarjeta } from './Tarjetas.jsx'
+import { Tarjeta, transformacion } from './Tarjetas.jsx'
 
 // Campos que el comercial puede dar, en el orden en que se dan por buenos.
 export const CAMPOS = [
@@ -11,6 +11,8 @@ export const CAMPOS = [
   ['ancho_mm', 'Ancho', 'mm'],
 ]
 const MAX_RESULTADOS = 10
+// Con más de estas opciones, si aún falta algún dato, se pregunta antes de enseñarlas.
+const MAX_SIN_PREGUNTAR = 4
 const num = v => String(v).replace('.', ',')
 const etiqueta = k => CAMPOS.find(c => c[0] === k)?.[1] ?? k
 const unidad = k => CAMPOS.find(c => c[0] === k)?.[2]
@@ -33,8 +35,11 @@ export async function analizar(r) {
   const dados = CAMPOS.map(c => c[0]).filter(k => esp[k] != null)
   const correctos = {}
   const fallan = []
+  // Si el backend ha encontrado bultos que cumplen o transformables, todo lo pedido se puede conseguir:
+  // un ancho o un espesor que no está tal cual en stock puede salir cortando o laminando (motor de reglas).
+  const conResultados = Boolean(r.exactos?.length || r.transformables?.length)
   for (const k of dados) {
-    if (await hayStock({ ...correctos, [k]: esp[k] })) correctos[k] = esp[k]
+    if (conResultados || await hayStock({ ...correctos, [k]: esp[k] })) correctos[k] = esp[k]
     else fallan.push(k)
   }
   const avisos = esp.avisos ?? []
@@ -63,29 +68,38 @@ export async function analizar(r) {
 
   const faltan = CAMPOS.map(c => c[0]).filter(k => esp[k] == null && !esp.indiferentes?.includes(k))
   const completo = faltan.length === 0
+
+  // Más de MAX_SIN_PREGUNTAR opciones y aún falta algún dato: se pregunta antes de enseñarlas.
+  // Solo se ofrecen los campos que separan el stock (más de un valor), así cada respuesta reduce la lista.
+  const cribar = lista.length > MAX_SIN_PREGUNTAR && !completo
+    ? (await Promise.all(faltan.filter(k => !esp.opciones?.[k]).map(async k => ({
+      campo: k, valores: (await consultarValores(k, correctos)).valores,
+    })))).filter(c => c.valores.length > 1).slice(0, 3)
+    : []
+
   let estado
   if (fallan.length || avisos.length) estado = 'fallos'
-  else if (lista.length > MAX_RESULTADOS && !completo) estado = 'criba'
+  else if (cribar.length) estado = 'criba'
   else if (!lista.length) estado = 'sin_stock'
   else estado = completo ? 'encontrado' : 'parcial'
 
-  // Para cribar: valores en stock de los campos que aún no ha dicho, con lo que ya es correcto.
-  const cribar = estado === 'criba' || (estado === 'fallos' && lista.length > MAX_RESULTADOS)
-    ? await Promise.all(faltan.filter(k => !esp.opciones?.[k]).slice(0, 3).map(async k => ({
-      campo: k, valores: (await consultarValores(k, correctos)).valores,
-    })))
-    : []
-
-  return { estado, correctos, fallan: opcionesFallo, avisos, lista, total: lista.length, cribar, esp }
+  const soloTransformables = lista.length > 0 && lista.every(l => l.tipo === 'transformable')
+  return { estado, correctos, fallan: opcionesFallo, avisos, lista, total: lista.length, cribar, esp, soloTransformables }
 }
 
 export function textoAnalisis(a) {
   const n = a.total
+  // Sin bultos que cumplan tal cual: no se dice «tengo lo que pides», sino que hay que transformarlos.
+  if (a.soloTransformables && (a.estado === 'encontrado' || a.estado === 'parcial')) {
+    return n === 1
+      ? 'No tengo nada que cumpla tal cual, pero hay 1 bulto que se puede transformar para conseguirlo. En la tarjeta tienes qué hay que hacer y la merma.'
+      : `No tengo nada que cumpla tal cual, pero hay ${n} bultos que se pueden transformar para conseguirlo. En cada tarjeta tienes qué hay que hacer y la merma.`
+  }
   switch (a.estado) {
     case 'encontrado': return n === 1 ? 'Tengo justo lo que pides. Añádelo al carrito o cancela para empezar de nuevo.'
       : `Tengo ${n} bultos que cumplen todo lo que pides. Elige cuál añadir al carrito o cancela para empezar de nuevo.`
     case 'parcial': return `Con lo que me has dicho hay ${n} material${n === 1 ? '' : 'es'} en stock. Elige uno o dame más datos para afinar.`
-    case 'criba': return `Con lo que me has dicho hay ${n} materiales en stock: son demasiados. Dime más datos para cribar.`
+    case 'criba': return `Con lo que me has dicho hay ${n} ${a.soloTransformables ? 'bultos que se pueden transformar' : 'materiales en stock'}. Para enseñarte solo los que te sirven, dime un dato más:`
     case 'sin_stock': return 'No hay stock con esa combinación. Prueba a cambiar algún dato.'
     case 'fallos': return n
       ? `Lo que pides no está en stock tal cual. Te enseño ${Math.min(n, MAX_RESULTADOS)} opciones que cumplen el resto de requisitos; abajo puedes cambiar lo que falla.`
@@ -111,7 +125,21 @@ function ValoresStock({ campo, valores, onElegir, deshabilitado }) {
 
 export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCarrito, onAbrir, deshabilitado }) {
   const [abierto, setAbierto] = useState(null)
+  const [reservando, setReservando] = useState(null)       // id del bulto que se está reservando
+  const [ocupados, setOcupados] = useState({})            // id -> por qué no se ha podido añadir
   const enCarrito = id => carrito.some(c => c.item.id === id)
+
+  async function pulsarCarrito(tipo, item) {
+    setReservando(item.id)
+    setOcupados(o => ({ ...o, [item.id]: undefined }))
+    try {
+      await onCarrito(tipo, item)
+    } catch (e) {
+      setOcupados(o => ({ ...o, [item.id]: e.message }))
+    } finally {
+      setReservando(null)
+    }
+  }
   const visibles = a.estado === 'criba' ? [] : a.lista.slice(0, MAX_RESULTADOS)
   const filas = a.estado === 'fallos' ? a.fallan : a.cribar.map(c => ({ ...c, pedido: null }))
 
@@ -135,9 +163,13 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
             <div key={`${tipo}-${item.id}`} className="flujo-tarjeta">
               <Tarjeta tipo={tipo} item={item} onClick={() => onAbrir({ tipo, item })} />
               <button type="button" className={`carrito-boton ${enCarrito(item.id) ? 'dentro' : ''}`}
-                onClick={() => onCarrito(tipo, item)}>
-                {enCarrito(item.id) ? '✓ En el carrito' : '+ Añadir al carrito'}
+                disabled={reservando === item.id || Boolean(ocupados[item.id])}
+                onClick={() => pulsarCarrito(tipo, item)}>
+                {reservando === item.id ? 'Reservando…'
+                  : ocupados[item.id] ? 'No disponible'
+                  : enCarrito(item.id) ? '✓ En el carrito' : '+ Añadir al carrito'}
               </button>
+              {ocupados[item.id] && <p className="carrito-error" role="alert">{ocupados[item.id]}</p>}
             </div>
           ))}
         </div>
@@ -146,7 +178,7 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
       {activo && filas.length > 0 && (
         <div className="cercanos">
           <div className="cercanos-titulo">
-            {a.estado === 'fallos' ? 'Pulsa lo que falla y elige un valor que sí hay en stock:' : 'Elige un dato más para cribar:'}
+            {a.estado === 'fallos' ? 'Pulsa lo que falla y elige un valor que sí hay en stock:' : 'Elige un dato más:'}
           </div>
           <div className="cercanos-fila">
             {filas.map(f => (
@@ -204,8 +236,14 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
                 const b = item.origen ?? item
                 return (
                   <li key={item.id}>
-                    <span><b>{item.id}</b> · {b.grado} {b.acabado} · {b.formato} · {[b.espesor_mm, b.ancho_mm, b.largo_mm].filter(v => v != null).map(num).join(' × ')} mm
-                      {tipo === 'transformable' && ' (transformable)'}</span>
+                    {tipo === 'transformable' && transformacion(item) ? (() => {
+                      const t = transformacion(item)
+                      return <span><b>{item.id}</b> · {b.grado} {b.acabado} · {t.antes} → <b>{t.despues}</b>
+                        <br /><small>{t.acciones}{t.merma ? ` · ${t.merma}` : ''}</small></span>
+                    })() : (
+                      <span><b>{item.id}</b> · {b.grado} {b.acabado} · {b.formato} · {[b.espesor_mm, b.ancho_mm, b.largo_mm].filter(v => v != null).map(num).join(' × ')} mm
+                        {tipo === 'transformable' && ' (transformable)'}</span>
+                    )}
                     <button className="demo-salir" onClick={() => onQuitar(item.id)}>Quitar</button>
                   </li>
                 )
