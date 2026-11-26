@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { cargarReporteSemanal } from './api.js'
+import { Tendencias } from './Tendencias.jsx'
 
 const numero = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 6 })
 const fecha = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'UTC' })
@@ -83,6 +84,7 @@ export function ReporteSemanal({ onVolver }) {
           ))}
         </ul>
       )}
+      <Tendencias />
     </main>
   )
 }

@@ -458,3 +458,39 @@ button:disabled { cursor: default; opacity: .5; }
 .logo-texto { color: #fff; }
 .punto { color: var(--metal); }
 .altavoz { color: var(--metal); }
+
+/* Tendencias de compras (Tendencias.jsx) */
+.tendencias { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--borde); }
+.tend-cabecera { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.tend-cabecera h2 { margin: 0; font-size: 1.3rem; }
+.tend-controles { display: flex; flex-wrap: wrap; gap: 12px; font-size: .85rem; color: var(--tenue); }
+.tend-controles select { background: var(--superficie); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 4px 8px; font: inherit; }
+.tend-leyenda { display: flex; gap: 16px; list-style: none; padding: 0; margin: 16px 0 8px; font-size: .8rem; color: var(--tenue); text-transform: capitalize; }
+.tend-leyenda li::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: var(--color); }
+.bobina { --color: var(--azul-claro); }
+.chapa { --color: var(--naranja); }
+.fleje { --color: var(--metal); }
+.tend-zona { display: flex; align-items: flex-start; gap: 8px; margin-top: 28px; }
+.tend-eje { position: relative; flex: none; height: 180px; min-width: 48px; margin-top: 4px; font-size: .7rem; color: var(--tenue); text-align: right; }
+.tend-marca { position: absolute; right: 0; transform: translateY(50%); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tend-eje-unidad { position: absolute; right: 0; top: -20px; font-weight: 600; }
+.tend-grafico { flex: 1; min-width: 0; display: flex; gap: 6px; list-style: none; padding: 4px 0 0; margin: 0; overflow-x: auto; }
+.tend-grafico .tend-barras { background-image: linear-gradient(to top, var(--borde) 1px, transparent 1px); background-size: 100% 25%; background-position: bottom; }
+.tend-semana { flex: 1 0 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: .75rem; }
+.tend-barras { display: flex; align-items: flex-end; gap: 3px; height: 180px; width: 100%; justify-content: center; border-bottom: 1px solid var(--borde); }
+.tend-columna { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; width: 14px; }
+.tend-barra { width: 100%; min-height: 0; background: var(--color); border-radius: 3px 3px 0 0; transition: height var(--suave); }
+.tend-semana.sin_historial .tend-barras { opacity: .35; }
+.tend-semana.en_curso .tend-fecha { color: var(--texto); font-weight: 600; }
+.tend-fecha { color: var(--tenue); }
+.tend-estado { color: var(--tenue); font-size: .7rem; }
+.tend-var { font-size: .65rem; white-space: nowrap; margin-bottom: 2px; }
+.tend-var.sube { color: #5ad17a; }
+.tend-var.baja { color: var(--error); }
+.tend-var.estable { color: var(--tenue); }
+.tendencias h3 { margin: 28px 0 8px; font-size: 1rem; }
+.tend-tabla { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.tend-tabla th { text-align: left; color: var(--tenue); font-weight: 500; }
+.tend-tabla th, .tend-tabla td { padding: 8px 6px; border-bottom: 1px solid var(--borde); }
+.tend-tabla td:first-child { text-transform: capitalize; }
+@media (prefers-reduced-motion: reduce) { .tend-barra { transition: none; } }
