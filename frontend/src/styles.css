@@ -115,8 +115,8 @@ button:disabled { cursor: default; opacity: .5; }
 .reporte-botones .nueva { border: 1px solid var(--borde); }
 .reporte-tabla-scroll { overflow-x: auto; }
 .reporte-tabla { width: 100%; border-collapse: collapse; }
-.reporte-tabla :is(th, td) { padding: 12px; text-align: right; border-bottom: 1px solid var(--borde); }
-.reporte-tabla th:first-child { text-align: left; text-transform: capitalize; }
+.reporte-tabla :is(th, td) { padding: 12px; text-align: left; border-bottom: 1px solid var(--borde); }
+.reporte-tabla :is(th, td):last-child { text-align: right; overflow-wrap: anywhere; }
 .reporte-compras { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--borde); }
 .reporte-compra { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--borde); }
 .reporte-compra h2 { font-size: 1.1rem; margin: 0 0 10px; }

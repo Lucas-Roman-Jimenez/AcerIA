@@ -21,6 +21,15 @@ python -m uvicorn app.main:app --app-dir backend
 disponibles. El backend comprueba cada resultado del motor y ordena por
 porcentaje de merma y número de operaciones.
 
+## Reporte diario de inventario
+
+`GET /reportes/inventario/diario` devuelve el título, la fecha en
+`Europe/Madrid` y las combinaciones de `datos/catalogo.json` sin bultos
+físicos en inventario. El identificador combina formato, grado, acabado,
+espesor y ancho. La fecha de agotamiento se obtiene de la última baja
+registrada en compras y es `null` cuando el historial no la acredita.
+Los bultos reservados o bloqueados siguen contando como stock físico.
+
 ## Reporte semanal de compras
 
 `GET /reportes/compras/semanal` devuelve el título, la semana de lunes a

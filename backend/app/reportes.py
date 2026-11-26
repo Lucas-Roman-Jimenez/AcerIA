@@ -1,5 +1,6 @@
 """Reportes de compras confirmadas e inventario."""
 
+from collections import defaultdict
 from contextlib import closing
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
@@ -8,37 +9,109 @@ import math
 import sqlite3
 from zoneinfo import ZoneInfo
 
-from app.db import COLUMNAS, get_conn
+from app.db import COLUMNAS, get_conn, grados
+from llm.catalogo import Catalogo
 
 
 ZONA_REPORTE = ZoneInfo("Europe/Madrid")
 UNIDADES_COMPRA = {"kg", "t", "bultos", "piezas"}
 
 
-def reporte_diario_inventario(*, ahora: datetime | None = None) -> dict:
-    """Fotografía del stock actual, con las mismas reservas vigentes que el buscador."""
-    momento = (ahora or datetime.now(ZONA_REPORTE)).astimezone(ZONA_REPORTE)
-    with closing(get_conn()) as conexion:
-        formatos = [dict(fila) for fila in conexion.execute(
-            """SELECT b.formato, COUNT(*) AS total_bultos,
-                      SUM(b.estado = 'disponible' AND r.bulto_id IS NULL) AS disponibles,
-                      SUM(b.estado = 'reservado' OR r.bulto_id IS NOT NULL) AS reservados,
-                      SUM(b.estado = 'bloqueado') AS bloqueados,
-                      ROUND(SUM(b.peso_kg), 2) AS peso_kg
-               FROM bultos b
-               LEFT JOIN reservas r ON r.bulto_id = b.id
-                   AND b.estado = 'disponible' AND r.expira_en_ms > ?
-               WHERE b.estado <> 'vendido'
-               GROUP BY b.formato
-               ORDER BY b.formato""",
-            (int(momento.timestamp() * 1000),),
-        )]
+def _clave_producto(formato: str, acabado: str, grado: str) -> tuple[str, str, str]:
+    return formato.casefold(), acabado.casefold(), grado.casefold()
+
+
+def _medida_en_catalogo(limites, medida: float) -> bool:
+    return limites is None or limites[0] <= medida <= limites[1]
+
+
+def _productos_del_bulto(bulto, por_clave):
+    for grado in grados(bulto):
+        clave = _clave_producto(bulto["formato"], bulto["acabado"], grado)
+        for indice, producto in por_clave.get(clave, ()):
+            if (_medida_en_catalogo(producto.get("espesor_mm"), bulto["espesor_mm"])
+                    and _medida_en_catalogo(producto.get("ancho_mm"), bulto["ancho_mm"])):
+                yield indice
+
+
+def _texto_medida(limites) -> str:
+    if limites is None:
+        return "-"
+    extremos = [format(Decimal(str(n)).normalize(), "f") for n in limites]
+    return extremos[0] if extremos[0] == extremos[1] else f"{extremos[0]}–{extremos[1]}"
+
+
+def _material_agotado(producto: dict, catalogo: Catalogo, fecha_agotado: str | None) -> dict:
+    formato, grado, acabado = (producto[campo] for campo in ("formato", "grado", "acabado"))
+    espesor = _texto_medida(producto.get("espesor_mm"))
+    ancho = _texto_medida(producto.get("ancho_mm"))
+    nombre_grado = catalogo.etiqueta_en(grado) if grado.startswith("1.") and grado[2:].isdigit() else grado
+    medidas = [f"{v.replace('.', ',')} mm {etiqueta}"
+               for v, etiqueta in ((espesor, "de espesor"), (ancho, "de ancho")) if v != "-"]
     return {
-        "titulo": "Reporte diario de inventario",
+        "id": "|".join((formato, grado, acabado, espesor, ancho)),
+        "nombre": " · ".join([f"{formato.capitalize()} de acero inoxidable {nombre_grado}", acabado, *medidas]),
+        "fecha_sin_stock": fecha_agotado,
+    }
+
+
+def reporte_diario_inventario(*, ahora: datetime | None = None, catalogo: Catalogo | None = None) -> dict:
+    """Combinaciones del catálogo sin unidades físicas y última baja acreditada por compras."""
+    momento = (ahora or datetime.now(ZONA_REPORTE)).astimezone(ZONA_REPORTE)
+    catalogo = catalogo if catalogo is not None else Catalogo.cargar()
+    productos = catalogo.productos
+    por_clave = defaultdict(list)
+    for indice, producto in enumerate(productos):
+        clave = _clave_producto(producto["formato"], producto["acabado"], producto["grado"])
+        por_clave[clave].append((indice, producto))
+
+    with closing(get_conn()) as conexion:
+        conexion.execute("BEGIN")
+        bultos = conexion.execute(
+            "SELECT id, aisi, euronorma, acabado, formato, espesor_mm, ancho_mm, estado FROM bultos"
+        ).fetchall()
+        compras = conexion.execute(
+            "SELECT material_json, comprada_en_ms FROM compras WHERE comprada_en_ms <= ?",
+            (int(momento.timestamp() * 1000),),
+        ).fetchall()
+
+    con_stock = set()
+    vendidos_por_producto = defaultdict(set)
+    ids_actuales = set()
+    for bulto in bultos:
+        ids_actuales.add(bulto["id"])
+        indices = _productos_del_bulto(bulto, por_clave)
+        if bulto["estado"] == "vendido":
+            for indice in indices:
+                vendidos_por_producto[indice].add(bulto["id"])
+        else:
+            con_stock.update(indices)
+
+    bajas = {}
+    for compra in compras:
+        bulto = json.loads(compra["material_json"])
+        id_bulto = bulto["id"]
+        bajas[id_bulto] = max(bajas.get(id_bulto, compra["comprada_en_ms"]), compra["comprada_en_ms"])
+        # El inventario de origen puede haber dejado de incluir un bulto ya vendido.
+        if id_bulto not in ids_actuales and all(bulto.get(campo) is not None for campo in
+                                                ("formato", "acabado", "espesor_mm", "ancho_mm")):
+            for indice in _productos_del_bulto(bulto, por_clave):
+                vendidos_por_producto[indice].add(id_bulto)
+
+    materiales = []
+    for indice, producto in enumerate(productos):
+        if indice in con_stock:
+            continue
+        ids_vendidos = vendidos_por_producto[indice]
+        fecha_agotado = None
+        if ids_vendidos and ids_vendidos <= bajas.keys():
+            ultimo_ms = max(bajas[id_bulto] for id_bulto in ids_vendidos)
+            fecha_agotado = datetime.fromtimestamp(ultimo_ms / 1000, ZONA_REPORTE).date().isoformat()
+        materiales.append(_material_agotado(producto, catalogo, fecha_agotado))
+    return {
+        "titulo": "Reporte diario",
         "fecha": momento.date().isoformat(),
-        "consultado_en": momento.isoformat(timespec="seconds"),
-        "zona_horaria": ZONA_REPORTE.key,
-        "formatos": formatos,
+        "materiales_sin_stock": materiales,
     }
 
 
