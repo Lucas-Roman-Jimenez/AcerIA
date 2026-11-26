@@ -11,6 +11,8 @@ export const CAMPOS = [
   ['ancho_mm', 'Ancho', 'mm'],
 ]
 const MAX_RESULTADOS = 10
+// Con más de estas opciones, si aún falta algún dato, se pregunta antes de enseñarlas.
+const MAX_SIN_PREGUNTAR = 4
 const num = v => String(v).replace('.', ',')
 const etiqueta = k => CAMPOS.find(c => c[0] === k)?.[1] ?? k
 const unidad = k => CAMPOS.find(c => c[0] === k)?.[2]
@@ -63,18 +65,20 @@ export async function analizar(r) {
 
   const faltan = CAMPOS.map(c => c[0]).filter(k => esp[k] == null && !esp.indiferentes?.includes(k))
   const completo = faltan.length === 0
+
+  // Más de MAX_SIN_PREGUNTAR opciones y aún falta algún dato: se pregunta antes de enseñarlas.
+  // Solo se ofrecen los campos que separan el stock (más de un valor), así cada respuesta reduce la lista.
+  const cribar = lista.length > MAX_SIN_PREGUNTAR && !completo
+    ? (await Promise.all(faltan.filter(k => !esp.opciones?.[k]).map(async k => ({
+      campo: k, valores: (await consultarValores(k, correctos)).valores,
+    })))).filter(c => c.valores.length > 1).slice(0, 3)
+    : []
+
   let estado
   if (fallan.length || avisos.length) estado = 'fallos'
-  else if (lista.length > MAX_RESULTADOS && !completo) estado = 'criba'
+  else if (cribar.length) estado = 'criba'
   else if (!lista.length) estado = 'sin_stock'
   else estado = completo ? 'encontrado' : 'parcial'
-
-  // Para cribar: valores en stock de los campos que aún no ha dicho, con lo que ya es correcto.
-  const cribar = estado === 'criba' || (estado === 'fallos' && lista.length > MAX_RESULTADOS)
-    ? await Promise.all(faltan.filter(k => !esp.opciones?.[k]).slice(0, 3).map(async k => ({
-      campo: k, valores: (await consultarValores(k, correctos)).valores,
-    })))
-    : []
 
   const soloTransformables = lista.length > 0 && lista.every(l => l.tipo === 'transformable')
   return { estado, correctos, fallan: opcionesFallo, avisos, lista, total: lista.length, cribar, esp, soloTransformables }
@@ -92,7 +96,7 @@ export function textoAnalisis(a) {
     case 'encontrado': return n === 1 ? 'Tengo justo lo que pides. Añádelo al carrito o cancela para empezar de nuevo.'
       : `Tengo ${n} bultos que cumplen todo lo que pides. Elige cuál añadir al carrito o cancela para empezar de nuevo.`
     case 'parcial': return `Con lo que me has dicho hay ${n} material${n === 1 ? '' : 'es'} en stock. Elige uno o dame más datos para afinar.`
-    case 'criba': return `Con lo que me has dicho hay ${n} materiales en stock: son demasiados. Dime más datos para cribar.`
+    case 'criba': return `Con lo que me has dicho hay ${n} ${a.soloTransformables ? 'bultos que se pueden transformar' : 'materiales en stock'}. Para enseñarte solo los que te sirven, dime un dato más:`
     case 'sin_stock': return 'No hay stock con esa combinación. Prueba a cambiar algún dato.'
     case 'fallos': return n
       ? `Lo que pides no está en stock tal cual. Te enseño ${Math.min(n, MAX_RESULTADOS)} opciones que cumplen el resto de requisitos; abajo puedes cambiar lo que falla.`
@@ -171,7 +175,7 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
       {activo && filas.length > 0 && (
         <div className="cercanos">
           <div className="cercanos-titulo">
-            {a.estado === 'fallos' ? 'Pulsa lo que falla y elige un valor que sí hay en stock:' : 'Elige un dato más para cribar:'}
+            {a.estado === 'fallos' ? 'Pulsa lo que falla y elige un valor que sí hay en stock:' : 'Elige un dato más:'}
           </div>
           <div className="cercanos-fila">
             {filas.map(f => (
