@@ -37,3 +37,6 @@ ORDEN_TRANSFORMABLES = ("num_operaciones", "merma_pct", "id")
 
 # RF-29. Máximo de alternativas cercanas cuando no hay stock.
 MAX_ALTERNATIVAS = 3
+
+# Tarea 4. Minutos que dura la reserva de un bulto en el carrito; al caducar vuelve a estar disponible.
+RESERVA_MINUTOS = 15
