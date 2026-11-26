@@ -93,8 +93,9 @@ export function Reposicion() {
           )}
         </div>
         {datos && (
-          <label className="repo-filtro">
+          <label className="interruptor repo-filtro">
             <input type="checkbox" checked={filtrar} onChange={e => setFiltrar(e.target.checked)} />
+            <span className="interruptor-pista" aria-hidden />
             Más de {toneladas.format(datos.filtro.vendido_min_t)} t vendidas y menos
             de {toneladas.format(datos.filtro.stock_max_t)} t disponibles
           </label>

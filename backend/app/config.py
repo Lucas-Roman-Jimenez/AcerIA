@@ -7,7 +7,14 @@ DATA = BASE / "data"
 
 INVENTARIO = DATA / "inventario.xlsx"
 ESTADOS_DEMO = DATA / "estados_demo.csv"   # opcional: id;estado para simular reservados/bloqueados
-DB_PATH = DATA / "aceria.db"
+DB_PATH = Path(os.environ.get("ACERIA_DB_PATH") or (DATA / "aceria.db"))
+
+# Fichas técnicas en PDF (app/fichas.py): catálogo de Lucas, carpeta del workspace de Databricks donde
+# están los PDF y caché local (los PDF no se suben a git: **/*.pdf en .gitignore).
+CATALOGO = BASE.parent / "datos" / "catalogo.json"
+DATABRICKS_FICHAS = os.environ.get("DATABRICKS_FICHAS") or "/Shared/Dataset-aceria"
+FICHAS_DIR = DATA / "fichas"
+FICHAS_TIMEOUT_S = 30
 
 
 # Orígenes que pueden llamar a la API desde el navegador (CORS). arrancar.py pasa el del frontend;

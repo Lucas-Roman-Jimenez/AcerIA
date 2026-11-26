@@ -24,12 +24,83 @@ function filtrosSin(esp, campo) {
   return f
 }
 
+// Cifra que cuenta desde 0 (o desde la anterior) hasta su valor, con frenada al final.
+const sinMovimiento = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+function Contador({ n }) {
+  const [v, setV] = useState(0)
+  const desde = useRef(0)
+  useEffect(() => {
+    if (sinMovimiento()) { setV(n); desde.current = n; return }
+    const inicio = performance.now(), a = desde.current, dur = 750
+    let id = requestAnimationFrame(function paso(t) {
+      const x = Math.min(1, (t - inicio) / dur)
+      setV(Math.round(a + (n - a) * (1 - Math.pow(2, -10 * x))))
+      if (x < 1) id = requestAnimationFrame(paso)
+      else { setV(n); desde.current = n }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [n])
+  return <>{v.toLocaleString('es-ES')}</>
+}
+
+// Foco de luz que sigue al ratón dentro de la casilla
+function foco(e) {
+  const c = e.currentTarget.getBoundingClientRect()
+  e.currentTarget.style.setProperty('--mx', `${e.clientX - c.left}px`)
+  e.currentTarget.style.setProperty('--my', `${e.clientY - c.top}px`)
+}
+
+// Regla de rayitas sobre las casillas: el indicador azul sigue al cursor (con suavidad) solo mientras está
+// dentro de la zona, y las rayitas cercanas crecen a su paso. Se pinta con requestAnimationFrame, sin re-render.
+const RAYAS = 96
+function useRegla(zona) {
+  const rayas = useRef([])
+  const indicador = useRef(null)
+  useEffect(() => {
+    const el = zona.current
+    if (!el) return
+    const quieto = sinMovimiento()
+    let objetivo = null, x = null, id = 0
+    const pintar = () => {
+      id = 0
+      if (objetivo == null) return
+      x = x == null || quieto ? objetivo : x + (objetivo - x) * 0.2
+      indicador.current.style.transform = `translateX(${x}px)`
+      const ancho = el.clientWidth
+      rayas.current.forEach((r, i) => {
+        if (!r) return
+        const d = (((i + 0.5) / RAYAS) * ancho - x) / 30
+        const g = Math.exp(-d * d)
+        r.style.transform = `scaleY(${1 + 1.7 * g})`
+        r.style.opacity = String(0.35 + 0.65 * g)
+      })
+      if (Math.abs(objetivo - x) > 0.3) id = requestAnimationFrame(pintar)
+    }
+    const mover = e => {
+      const c = el.getBoundingClientRect()
+      objetivo = Math.max(0, Math.min(c.width, e.clientX - c.left))
+      el.classList.add('regla-activa')
+      if (!id) id = requestAnimationFrame(pintar)
+    }
+    const fuera = () => {
+      objetivo = null; x = null
+      el.classList.remove('regla-activa')
+      rayas.current.forEach(r => { if (r) { r.style.transform = ''; r.style.opacity = '' } })
+    }
+    el.addEventListener('pointermove', mover)
+    el.addEventListener('pointerleave', fuera)
+    return () => { cancelAnimationFrame(id); el.removeEventListener('pointermove', mover); el.removeEventListener('pointerleave', fuera) }
+  }, [zona])
+  return { rayas, indicador }
+}
+
 // Datos del metal: lo que se va reconociendo al escribir y lo ya entendido en la conversación.
 // Cada casilla se pulsa para ver los valores en stock con el resto de lo elegido.
 export function Casillas({ texto, base, onElegir, onQuitar, deshabilitado }) {
   const [abierto, setAbierto] = useState(null)
   const [valores, setValores] = useState({})
   const raiz = useRef(null)
+  const regla = useRegla(raiz)
   const previa = texto.trim() ? interpretarTexto(texto) : null
   const valor = k => previa?.[k] ?? base?.[k] ?? null
   const opciones = k => previa?.opciones?.[k] ?? base?.opciones?.[k]
@@ -70,18 +141,24 @@ export function Casillas({ texto, base, onElegir, onQuitar, deshabilitado }) {
   const largo = valor('largo_mm')
   return (
     <div className="casillas" aria-live="polite" ref={raiz}>
-      {CAMPOS.map(([k, etiqueta, unidad]) => {
+      <div className="regla" aria-hidden>
+        {Array.from({ length: RAYAS }, (_, i) => <span key={i} ref={el => { regla.rayas.current[i] = el }} />)}
+        <span className="regla-indicador" ref={regla.indicador} />
+      </div>
+      {CAMPOS.map(([k, etiqueta, unidad], i) => {
         // Un dato quitado («me da igual») queda vacío, como al principio: se puede volver a elegir cualquier valor.
         const v = valor(k) != null ? conUnidad(unidad, valor(k)) : lista(opciones(k)) ?? null
         const enStock = valores[k]
         return (
-          <div key={k} className="casilla-bloque">
+          <div key={k} className="casilla-bloque" style={{ '--i': i }}>
             <button type="button" className={`casilla ${v ? 'llena' : ''} ${abierto === k ? 'abierta' : ''}`}
               disabled={deshabilitado} aria-expanded={abierto === k}
               title={`Ver los ${etiqueta.toLowerCase()}s que hay en stock`}
-              onClick={() => setAbierto(abierto === k ? null : k)}>
+              onPointerMove={foco} onClick={() => setAbierto(abierto === k ? null : k)}>
               <span className="casilla-etiqueta">{etiqueta} ⌄</span>
-              <span className="casilla-valor">{v ?? (enStock ? `${enStock.length} en stock` : '—')}</span>
+              <span className="casilla-valor">
+                {v ?? (enStock ? <><b className="casilla-num"><Contador n={enStock.length} /></b> en stock</> : '—')}
+              </span>
             </button>
             {base?.[k] != null && (
               <button type="button" className="casilla-quitar" disabled={deshabilitado}

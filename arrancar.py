@@ -82,7 +82,8 @@ def main() -> int:
             [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
              "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ,
             env={**os.environ, "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0",
-                 "ACERIA_VENTAS_DEMO": "0" if args.sin_ventas_demo else "1",
+                 # Una base propia (ACERIA_DB_PATH, p. ej. python -m demo_reportes) trae ya sus compras.
+                 "ACERIA_VENTAS_DEMO": "0" if args.sin_ventas_demo or os.environ.get("ACERIA_DB_PATH") else "1",
                  "ACERIA_CORS_ORIGENES": web})
         if not esperar(f"{api}/health", 90, backend):
             print("El backend no ha arrancado. Revisa el error de arriba "

@@ -148,10 +148,10 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
       {Object.keys(a.correctos).length > 0 && (
         <div className="flujo-datos">
           {Object.entries(a.correctos).map(([k, v]) => (
-            <span key={k} className="flujo-dato ok">{etiqueta(k)}: {conUnidad(k, v)} ✓</span>
+            <span key={k} className="flujo-dato ok"><span className="flujo-dato-etq">{etiqueta(k)}</span> <b>{conUnidad(k, v)}</b></span>
           ))}
           {a.fallan.map(f => (
-            <span key={f.campo} className="flujo-dato mal">{etiqueta(f.campo)}: {conUnidad(f.campo, f.pedido)} ✗ sin stock</span>
+            <span key={f.campo} className="flujo-dato mal"><span className="flujo-dato-etq">{etiqueta(f.campo)}</span> <b>{conUnidad(f.campo, f.pedido)}</b> <span className="flujo-dato-marca">✗ sin stock</span></span>
           ))}
         </div>
       )}
@@ -212,8 +212,8 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
     setVendiendo(true)
     setMensaje(null)
     try {
-      const r = await onVender(carrito.map(c => c.item.id))
-      setMensaje({ tipo: 'ok', texto: `Vendidos ${r.vendidos.length} bultos. Ya no salen en el stock y aparecen en el reporte semanal.` })
+      await onVender(carrito.map(c => c.item.id))
+      setMensaje({ tipo: 'ok', texto: 'Compra procesada' })
     } catch (e) {
       setMensaje({ tipo: 'error', texto: e.message })
     } finally {
@@ -257,7 +257,6 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
                 </button>
               )}
             </div>
-            <p className="tenue">Simulación para la demo: no se envía nada a los sistemas de AcerIA.</p>
           </>
         )}
       </div>

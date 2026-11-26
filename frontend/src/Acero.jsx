@@ -16,27 +16,38 @@ export function Dibujo({ formato, acabado }) {
   return <img src={`/materiales/${f}-${ac}.webp`} alt={`${f} ${ac}`} className="acero-svg" />
 }
 
+// «Sistemas de escape, Tubos» → «Sistemas de escape y tubos.»: las aplicaciones de la ficha como un párrafo.
+function enFrase(aplicaciones) {
+  const xs = aplicaciones.map(a => a.replace(/\.$/, '').trim()).filter(Boolean)
+    .map((a, i) => (i && !/^[A-Z0-9]{2,}/.test(a) ? a[0].toLowerCase() + a.slice(1) : a))
+  if (!xs.length) return ''
+  return `${xs.length > 1 ? `${xs.slice(0, -1).join(', ')} y ${xs.at(-1)}` : xs[0]}.`
+}
+
+// Vitrina del material: el render en grande sobre un fondo topográfico, el nombre centrado
+// (familia en fino, grado en grueso) y para qué se usa, todo sacado de la ficha técnica de AcerIA.
 export function Acero({ esp, id }) {
   const grado = esp.grado ?? (esp.opciones?.grado?.length === 1 ? esp.opciones.grado[0] : null)
   if (!grado && !esp.formato) return null
   const acabado = esp.acabado ?? (esp.opciones?.acabado?.length === 1 ? esp.opciones.acabado[0] : null)
+  // Del remoto: las fichas del grado (puede haber varias) y el nombre unificado del grado.
   const fichas = fichasDelGrado(grado)
   const ficha = fichas.length === 1 ? fichas[0] : null
+  const detalle = [acabado ?? esp.opciones?.acabado?.join('/'), esp.formato].filter(Boolean).join(' · ')
   return (
-    <div className="acero">
-      <Dibujo formato={esp.formato} acabado={acabado} id={`acero-${id}`} />
-      <div className="acero-info">
-        <div className="acero-nombre">
-          {[gradoVisible(grado), acabado ?? esp.opciones?.acabado?.join('/'), esp.formato].filter(Boolean).join(' · ')}
-        </div>
-        {ficha?.familia && (
-          <>
-            <div className="acero-familia">Inoxidable {ficha.familia}</div>
-            <ul>{ficha.aplicaciones.slice(0, 4).map(a => <li key={a}>{a.replace(/\.$/, '')}</li>)}</ul>
-          </>
-        )}
-        {fichas.length > 0 && <small className="fuente">Referencias AcerIA · {fichas.map(f => `${f.mat} (EN ${f.en})`).join(', ')}</small>}
+    <figure className="acero vitrina">
+      <div className="vitrina-escena">
+        <Dibujo formato={esp.formato} acabado={acabado} id={`acero-${id}`} />
       </div>
-    </div>
+      <figcaption className="vitrina-pie">
+        <div className="vitrina-nombre">
+          <span className="vitrina-fina">{ficha?.familia ? `Inoxidable ${ficha.familia}` : 'Acero inoxidable'}</span>
+          <span className="vitrina-gruesa">{grado ? gradoVisible(grado) : esp.formato}</span>
+        </div>
+        {detalle && <div className="vitrina-meta">{detalle}</div>}
+        {ficha?.aplicaciones?.length > 0 && <p className="vitrina-desc">{enFrase(ficha.aplicaciones.slice(0, 5))}</p>}
+        {fichas.length > 0 && <small className="fuente">Referencias AcerIA · {fichas.map(f => `${f.mat} (EN ${f.en})`).join(', ')}</small>}
+      </figcaption>
+    </figure>
   )
 }

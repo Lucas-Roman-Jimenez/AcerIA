@@ -8,7 +8,7 @@ const VISTAS = [
   ['reposicion', 'Reposición', Reposicion],
 ]
 
-export function Reportes({ vista, onCambiarVista, onVolver }) {
+export function Reportes({ vista, onCambiarVista }) {
   const [actual, , Vista] = VISTAS.find(([id]) => id === vista) ?? VISTAS[0]
   return (
     <main className="reportes">
@@ -19,7 +19,6 @@ export function Reportes({ vista, onCambiarVista, onVolver }) {
             {nombre}
           </button>
         ))}
-        <button type="button" className="nueva" onClick={onVolver}>Volver al chat</button>
       </nav>
       <Vista />
     </main>

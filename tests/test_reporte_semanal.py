@@ -67,6 +67,31 @@ def test_reporte_diario_lista_productos_agotados_y_fecha_de_la_ultima_baja(base)
     assert reporte["materiales_sin_stock"][0]["nombre"] == "Chapa de acero inoxidable 304 · 2B · 2 mm de espesor · 1250 mm de ancho"
 
 
+def test_reporte_diario_no_repite_un_material_con_varios_nombres_de_grado(base):
+    """El catálogo repite cada combinación con cada nombre (304, 304L, 1.4301, 1.4307): se lista una vez."""
+    ahora = datetime(2026, 11, 26, 12, tzinfo=timezone.utc)
+    medidas = {"formato": "chapa", "acabado": "2B", "espesor_mm": [2, 2], "ancho_mm": [1250, 1250]}
+    sin_bultos = {"formato": "chapa", "acabado": "BA", "espesor_mm": [1, 1], "ancho_mm": [1000, 1000]}
+    productos = ([dict(medidas, grado=g) for g in ("304", "304L", "1.4301", "1.4307")]
+                 + [dict(sin_bultos, grado=g) for g in ("430", "1.4016")])
+    nomenclatura = {"referencia": "AISI", "referencias_en": {}, "grados": {
+        "304": {"sistema": "AISI", "en": ["1.4301"]}, "304L": {"sistema": "AISI", "en": ["1.4307"]},
+        "430": {"sistema": "AISI", "en": ["1.4016"]}}}
+    catalogo = Catalogo({"grados": ["304", "304L", "430"], "acabados": ["2B", "BA"], "formatos": ["chapa"],
+                         "productos": productos, "nomenclatura_grados": nomenclatura}, {})
+    with sqlite3.connect(base) as conexion:
+        conexion.execute(
+            """INSERT INTO bultos (id, ancho_mm, estado, formato, aisi, euronorma, peso_kg, acabado, espesor_mm)
+               VALUES ('doble', 1250, 'vendido', 'chapa', '304L/304', '1.4301/1.4307', 100, '2B', 2)""")
+        registrar_compra(conexion, compra_id="doble", comprada_en=ahora, cantidad=1, unidad="bultos",
+                         bulto=dict(BULTO, id="doble", formato="chapa", ancho_mm=1250))
+    materiales = reporte_diario_inventario(ahora=ahora, catalogo=catalogo)["materiales_sin_stock"]
+    assert [(m["id"], m["fecha_sin_stock"]) for m in materiales] == [
+        ("chapa|304/304L|2B|2|1250", "2026-11-26"), ("chapa|430|BA|1|1000", None),
+    ]
+    assert materiales[0]["nombre"] == "Chapa de acero inoxidable 304 / 304L · 2B · 2 mm de espesor · 1250 mm de ancho"
+
+
 def test_reporte_filtra_la_semana_madrid_y_conserva_la_ficha(base):
     # En noviembre, las 23:00 UTC del domingo son las 00:00 del lunes en Madrid.
     inicio = datetime(2026, 11, 22, 23, tzinfo=timezone.utc)

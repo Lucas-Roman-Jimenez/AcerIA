@@ -1,22 +1,25 @@
 {
-  "fecha": "2026-11-25",
+  "fecha": "2026-11-26",
   "rama": "main",
-  "revision_evaluada": "65e9d4b",
-  "estado_evaluacion": "parcial",
+  "revision_evaluada": "93c3807",
+  "estado_evaluacion": "completa salvo voz",
   "metodo": {
     "inventario": "backend/data/inventario.xlsx",
     "bultos_disponibles": 2411,
-    "endpoint": "POST /buscar",
-    "ejecucion": "FastAPI TestClient en el mismo proceso con una base SQLite temporal",
-    "peticiones": 18,
-    "tiempo_ms_mediana": 9.7,
-    "tiempo_ms_maximo": 16.5,
-    "alcance": "Coincidencias de referencia y dos rutas de transformación del contrato. La latencia es local."
+    "endpoints": [
+      "POST /buscar",
+      "POST /chat"
+    ],
+    "ejecucion": "python -m tests.evaluar_api contra el servidor real (uvicorn en 127.0.0.1:8000) con la base de datos real",
+    "llm": "system.ai.claude-sonnet-5-5 por el AI Gateway de Databricks",
+    "catalogo": "datos/catalogo.json y datos/glosario.json reales",
+    "duracion_s": 53,
+    "alcance": "Resultados y transformaciones por /buscar; interpretación y orientaciones de obra por /chat con el LLM real; reglas locales del motor."
   },
   "umbral_pct": 85,
   "resultados": {
-    "total": 16,
-    "aciertos": 16,
+    "total": 17,
+    "aciertos": 17,
     "porcentaje": 100.0,
     "cumple_umbral": true,
     "fallos": []
@@ -61,10 +64,18 @@
     }
   ],
   "interpretacion": {
-    "estado": "no_medida",
-    "casos_preparados": 26,
-    "umbral_pct": 85,
-    "motivo": "POST /chat sigue simulado. El entorno carece de configuración para un proveedor LLM."
+    "total": 26,
+    "aciertos": 26,
+    "porcentaje": 100.0,
+    "cumple_umbral": true,
+    "fallos": []
+  },
+  "orientaciones_obra": {
+    "total": 5,
+    "aciertos": 5,
+    "porcentaje": 100.0,
+    "cumple_umbral": true,
+    "fallos": []
   },
   "voz": {
     "estado": "no_medida",

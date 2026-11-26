@@ -3,6 +3,10 @@ import { chatFalso, resumenFalso, valoresFalsos, buscarFalso } from './mock.js'
 // Sin VITE_API_URL se usa la API falsa (src/mock.js).
 const API = import.meta.env.VITE_API_URL
 
+// PDF de la ficha técnica de AcerIA («MAT 120»). Lo sirve el backend (lo trae de Databricks y lo guarda
+// en caché); sin backend no hay fichas.
+export const urlFicha = mat => (API ? `${API}/fichas/${encodeURIComponent(mat)}` : null)
+
 export async function enviarMensaje(conversacionId, texto) {
   if (!API) return chatFalso(conversacionId, texto)
   const r = await fetch(`${API}/chat`, {
