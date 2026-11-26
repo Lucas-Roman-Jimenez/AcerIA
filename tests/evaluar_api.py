@@ -77,14 +77,28 @@ def _sin_stock(respuesta, _esperado):
     }
 
 
+def _id_natural(bulto_id):
+    """'99' < '100' como número; los ID con letras van detrás, en orden alfabético.
+
+    Copia de backend/app/buscador.py::id_natural: el evaluador habla con la API por HTTP
+    y no importa el backend.
+    """
+    texto = str(bulto_id)
+    return (0, int(texto), "") if texto.isdigit() else (1, 0, texto)
+
+
 def _criterio_transformable(item):
+    """RF-14: nº de operaciones > % de merma > ID (backend/app/config.py::ORDEN_TRANSFORMABLES)."""
     porcentaje = item.get("merma_pct")
     operaciones = item.get("num_operaciones")
+    bulto_id = item.get("bulto_id")
     if type(porcentaje) not in (int, float) or not math.isfinite(porcentaje):
         return None
     if type(operaciones) is not int:
         return None
-    return porcentaje, operaciones
+    if bulto_id is None:
+        return None
+    return operaciones, porcentaje, _id_natural(bulto_id)
 
 
 def _resultado_transformable(respuesta, esperado):

@@ -51,9 +51,10 @@ def test_solo_resultados_omite_chat_y_la_metrica_de_interpretacion():
 
 @pytest.mark.parametrize(
     "orden,correcto",
-    [((0, 1, 2), True), ((1, 0, 2), False), ((0, 2, 1), False), ((0, 1, 2, 3), False)],
-    ids=["porcentaje-antes-que-kilos", "porcentaje-incorrecto", "desempate-incorrecto",
-         "porcentaje-ausente"],
+    [((1, 4, 0, 2), True), ((4, 1, 0, 2), False), ((1, 2, 4, 0), False),
+     ((1, 0, 4, 2), False), ((1, 4, 0, 2, 3), False)],
+    ids=["operaciones-merma-id", "operaciones-incorrecto", "merma-incorrecto",
+         "id-incorrecto", "porcentaje-ausente"],
 )
 def test_resultados_comprueba_el_orden_de_transformables(orden, correcto):
     archivo = Path(__file__).with_name("casos_evaluacion.json")
@@ -63,6 +64,7 @@ def test_resultados_comprueba_el_orden_de_transformables(orden, correcto):
         {"bulto_id": "11", "merma_kg": 10, "merma_pct": 10, "num_operaciones": 1},
         {"bulto_id": "12", "merma_kg": 5, "merma_pct": 10, "num_operaciones": 2},
         {"bulto_id": "13", "merma_kg": 10, "num_operaciones": 1},
+        {"bulto_id": "9", "merma_kg": 100, "merma_pct": 5, "num_operaciones": 2},   # empata con "10": va antes
     ]
 
     def enviar(ruta, datos):
