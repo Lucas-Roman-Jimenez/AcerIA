@@ -221,6 +221,10 @@ Al quitarlo del carrito, o cuando caduca la reserva, vuelve a estar disponible. 
 | `GET /reservas` | Al recargar la página | 200 `{"reservas": [...], "minutos": 15}`: tus reservas vigentes, en el orden en que se añadieron. |
 | `POST /compras` con `{"bultos": [...]}` | Al confirmar la venta | **Cambia:** solo vende los bultos con reserva vigente **tuya**. Si no, 409 con `no_disponibles` y no se vende nada. Al vender se borran esas reservas. |
 
+**Límite por carrito:** un carrito puede tener como mucho `config.MAX_RESERVAS_CARRITO` (50) bultos reservados a la vez; renovar los propios no suma. Si `POST /reservas` lo pasaría, responde 409 `{"detail": {"mensaje": "Un carrito puede tener como mucho 50 bultos reservados; no se ha reservado nada.", "maximo": 50}}` (sin `no_disponibles`) y no reserva nada.
+
+**Host:** la API solo responde a los nombres de `config.HOSTS_PERMITIDOS` (`127.0.0.1` y `localhost`; otro despliegue: `ACERIA_HOSTS`). Con otro `Host` responde 400. Frena el «DNS rebinding».
+
 Sin la cabecera `X-Carrito`, todas responden 422 con `"Falta la cabecera X-Carrito."`. En `/compras`, el texto es `"El carrito está vacío o no es válido."`. Una lista de bultos vacía, de más de 200 o con IDs de más de 50 caracteres da el 422 de la sección 9.
 
 ---

@@ -81,6 +81,7 @@ export async function reservarBultos(ids) {
     body: JSON.stringify({ bultos: ids }),
   })
   const datos = await r.json().catch(() => ({}))
+  if (r.status === 409 && datos.detail?.maximo) throw new Error(datos.detail.mensaje)   // límite por carrito
   if (r.status === 409) {
     const ocupados = datos.detail?.no_disponibles ?? ids
     throw new Error(`${ocupados.length === 1 ? `El bulto ${ocupados[0]}` : `Los bultos ${ocupados.join(', ')}`} `

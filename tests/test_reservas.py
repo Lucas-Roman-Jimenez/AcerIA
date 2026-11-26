@@ -398,3 +398,52 @@ def test_cors_no_deja_a_otra_web_quitar_reservas(api):
         "Origin": "https://web-maliciosa.example", "Access-Control-Request-Method": "DELETE",
         "Access-Control-Request-Headers": "x-carrito"})
     assert "access-control-allow-origin" not in r.headers
+
+
+# ---------- Seguridad: límite por carrito y cabecera Host ----------
+
+from app.reservas import DemasiadasReservas  # noqa: E402
+
+
+def _disponibles(ruta, n):
+    with sqlite3.connect(ruta) as conn:
+        return [f[0] for f in conn.execute(
+            "SELECT id FROM bultos WHERE estado = 'disponible' ORDER BY id LIMIT ?", (n,))]
+
+
+def test_un_carrito_no_pasa_del_maximo_de_reservas(base, monkeypatch):
+    monkeypatch.setattr(config, "MAX_RESERVAS_CARRITO", 3)
+    a, b, c, d = _disponibles(base, 4)
+    reservar([a, b], "x", ahora=T0)
+    with pytest.raises(DemasiadasReservas):
+        reservar([c, d], "x", ahora=T0)                  # 2 + 2 > 3: no se reserva nada
+    assert [r["bulto_id"] for r in mis_reservas("x", ahora=T0)] == [a, b]
+    reservar([a, b, c], "x", ahora=_min(1))              # renovar lo propio no suma: 3 justos
+    reservar([d], "y", ahora=_min(1))                    # el límite es por carrito
+
+
+def test_al_caducar_las_reservas_dejan_de_contar(base, monkeypatch):
+    monkeypatch.setattr(config, "MAX_RESERVAS_CARRITO", 2)
+    a, b, c = _disponibles(base, 3)
+    reservar([a, b], "x", ahora=T0)
+    reservar([c], "x", ahora=_min(config.RESERVA_MINUTOS + 1))
+    assert [r["bulto_id"] for r in mis_reservas("x", ahora=_min(config.RESERVA_MINUTOS + 1))] == [c]
+
+
+def test_api_limite_por_carrito_da_409_con_mensaje(api, base, monkeypatch):
+    monkeypatch.setattr(config, "MAX_RESERVAS_CARRITO", 1)
+    a, b = _disponibles(base, 2)
+    assert api.post("/reservas", json={"bultos": [a]}, headers=_h("x")).status_code == 200
+    r = api.post("/reservas", json={"bultos": [b]}, headers=_h("x"))
+    assert r.status_code == 409
+    assert r.json()["detail"]["maximo"] == 1 and "como mucho 1" in r.json()["detail"]["mensaje"]
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1:8000", "localhost:8000"])
+def test_la_api_acepta_los_hosts_locales(api, host):
+    assert api.get("/health", headers={"Host": host}).status_code == 200
+
+
+def test_la_api_rechaza_otro_host_dns_rebinding(api):
+    r = api.post("/reservas", json={"bultos": ["334"]}, headers={"Host": "web-maliciosa.example:8000", **_h("a")})
+    assert r.status_code == 400
