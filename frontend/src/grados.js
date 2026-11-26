@@ -51,6 +51,25 @@ export function gradoVisible(valor, euronorma) {
   }).join('/')
 }
 
+// Referencias de un material: la internacional (designación EN del inventario, p. ej. 1.4301/1.4307) y las
+// de AcerIA (códigos MAT de sus fichas, de menor a mayor). Sin EN en el bulto, las EN de sus fichas.
+export function referenciasDelGrado(valor, euronorma) {
+  const fichasGrado = fichasDelGrado(valor, euronorma)
+  const en = componentes(euronorma).length ? componentes(euronorma) : [...new Set(fichasGrado.map(f => f.en))]
+  const numero = mat => Number(String(mat).replace(/\D/g, '')) || 0
+  const mat = [...new Set(fichasGrado.map(f => f.mat))].sort((a, b) => numero(a) - numero(b))
+  return { en, mat }
+}
+
+// «EN 1.4301/1.4307» y «MAT 120/140» (con `max`, «MAT 120/140/150 +2»). null si no hay.
+export const textoEN = ({ en }) => (en.length ? `EN ${en.join('/')}` : null)
+export function textoMAT({ mat }, max = Infinity) {
+  if (!mat.length) return null
+  const numeros = mat.map(a => String(a).replace(/^MAT\s*/i, ''))
+  const resto = numeros.length - max
+  return `MAT ${numeros.slice(0, max).join('/')}${resto > 0 ? ` +${resto}` : ''}`
+}
+
 export function fichasDelGrado(valor, euronorma) {
   const gradosEN = new Set(componentes(euronorma).map(normalizar))
   const resultados = new Map()
