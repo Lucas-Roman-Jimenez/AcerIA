@@ -1,6 +1,7 @@
 """Tests de /chat (backend/app/conversacion.py): módulo LLM + buscador + motor de reglas.
 
-Sin clave ni conexión: el LLM se sustituye por ClienteFalso. Usan la BD real (se crea con crear_db()).
+Sin clave ni conexión: el LLM se sustituye por ClienteFalso. Usan el inventario real cargado en una
+base temporal (crear_db()), así no dependen de lo vendido en la demo ni tocan backend/data/aceria.db.
 Ejecutar desde la raíz del repositorio:  python -m pytest -q
 """
 import json
@@ -38,12 +39,17 @@ CATALOGO = Catalogo({
 
 
 @pytest.fixture(scope="module")
-def api():
+def api(tmp_path_factory):
+    """Inventario real en una base temporal: no depende de las ventas de la demo ni toca aceria.db."""
+    from app import config, conversacion
     from app.db import crear_db
-    crear_db()
-    from app import conversacion
     from app.main import app
-    return TestClient(app), conversacion
+    carpeta = tmp_path_factory.mktemp("chat")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(config, "DB_PATH", carpeta / "inventario.db")
+        mp.setattr(config, "ESTADOS_DEMO", carpeta / "sin_estados_demo.csv")
+        crear_db()
+        yield TestClient(app), conversacion
 
 
 @pytest.fixture
@@ -68,6 +74,8 @@ def test_exactos_reales_con_formato_de_la_api(api, llm_falso):
     assert r["exactos"] and all(b["acabado"] == "2B" and b["espesor_mm"] == 2 for b in r["exactos"])
     assert r["texto"].startswith("Hay ") and r["especificacion"]["grado"] == "304"
     assert r["criterio_orden"]
+    assert r["aviso_ia"]["generado_por_ia"] is True                    # AI Act art. 50.2 (docs/legal_ia.md)
+    assert r["aviso_ia"]["texto"].startswith("Respuesta generada por IA")
 
 
 def test_transformables_por_chat_con_bulto_de_origen_y_ordenados(api, llm_falso):
@@ -169,6 +177,7 @@ def test_error_del_llm_deja_reintentar(api, llm_falso):
     llm_falso(ErrorLLM("caído"))
     r = chat(cliente, "304 de 2 mm", conv="error")
     assert r["estado"] == "error" and r["tipo"] == "error" and r["error"]
+    assert r["aviso_ia"] is None                                       # el error no es texto generado
     assert conversacion.conversaciones["error"] == []                 # el mensaje fallido no queda
 
 

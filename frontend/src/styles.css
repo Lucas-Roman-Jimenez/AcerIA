@@ -132,9 +132,6 @@ button:disabled { cursor: default; opacity: .5; }
 @keyframes desliza { to { transform: translateX(-33.33%); } }
 
 /* Cuerpo */
-.cuerpo { flex: 1; display: flex; min-height: 0; }
-.lateral { width: 250px; background: var(--fondo); border-right: 1px solid var(--borde); padding: 20px 0; overflow-y: auto; flex-shrink: 0; }
-.lateral-titulo { padding: 8px 18px 14px; font-size: 14px; font-weight: 600; color: var(--plata); }
 .reciente {
   display: block; width: 100%; text-align: left; background: none; border: 0; border-left: 2px solid transparent; padding: 9px 18px;
   font-size: 14px; color: var(--plata);
@@ -494,3 +491,133 @@ button:disabled { cursor: default; opacity: .5; }
 .tend-tabla th, .tend-tabla td { padding: 8px 6px; border-bottom: 1px solid var(--borde); }
 .tend-tabla td:first-child { text-transform: capitalize; }
 @media (prefers-reduced-motion: reduce) { .tend-barra { transition: none; } }
+/* Título de la portada que se escribe como en un teclado */
+.escritura { display: grid; }
+.escritura-hueco, .escritura-texto { grid-area: 1 / 1; }
+.escritura-hueco { visibility: hidden; }
+.escritura-cursor { display: inline-block; width: .08em; height: .95em; margin-left: .08em; vertical-align: -.1em;
+  background: var(--naranja); border-radius: 1px; }
+.escritura-cursor.parpadea { animation: cursor-parpadea 1.05s steps(1) infinite; }
+@keyframes cursor-parpadea { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .escritura-cursor { display: none; } }
+
+/* ===== Botones de agua: al pasar el ratón se llenan de agua con la superficie ondulando; al pulsar, una onda ===== */
+.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+.icono, .valor-stock, .demo-siguiente, .editor form button {
+  position: relative; overflow: hidden; isolation: isolate;
+  --agua: var(--azul); --agua-texto: #fff;
+  /* Ola en forma de máscara: el color sale de --agua y se puede cambiar por botón */
+  --ola: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M0 6 C 20 0 40 0 60 6 S 100 12 120 6 V12 H0 Z'/%3E%3C/svg%3E");
+}
+/* Agua principal y ola de fondo, más clara y a contrapaso */
+:is(.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+.icono, .valor-stock, .demo-siguiente, .editor form button)::before,
+:is(.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+.icono, .valor-stock, .demo-siguiente, .editor form button)::after {
+  content: ""; position: absolute; z-index: -1; left: 0; width: 100%; height: calc(100% + 22px); top: 100%;
+  background: var(--agua); pointer-events: none;
+  -webkit-mask: var(--ola) repeat-x 0 0 / 70px 18px, linear-gradient(#000, #000) no-repeat 0 17px / 100% 100%;
+          mask: var(--ola) repeat-x 0 0 / 70px 18px, linear-gradient(#000, #000) no-repeat 0 17px / 100% 100%;
+  transition: top 1.1s cubic-bezier(.45, .1, .3, 1);
+  animation: olas 1.6s linear infinite;
+}
+:is(.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+.icono, .valor-stock, .demo-siguiente, .editor form button)::after {
+  opacity: .45; animation-duration: 2.3s; animation-direction: reverse; transition-delay: .06s;
+}
+:is(.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+.icono, .valor-stock, .demo-siguiente, .editor form button):is(:hover, :focus-visible):not(:disabled)::before { top: -19px; }
+:is(.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+.icono, .valor-stock, .demo-siguiente, .editor form button):is(:hover, :focus-visible):not(:disabled)::after { top: -22px; }
+@keyframes olas { to { -webkit-mask-position: 70px 0, 0 17px; mask-position: 70px 0, 0 17px; } }
+
+/* El agua llena el botón: el fondo de reposo no cambia y el texto pasa al color de encima del agua */
+:is(.opcion, .nueva, .salir-flujo, .icono, .valor-stock):hover:not(:disabled) { background: none; border-color: var(--azul); color: var(--agua-texto); }
+.valor-stock:hover:not(:disabled) { background: none; }
+.opcion.activa { --agua: var(--azul-hover); }
+.opcion.activa:hover:not(:disabled) { background: var(--azul); }
+.microfono, .demo-boton, .demo-siguiente, .editor form button { --agua: #1A6BC2; }
+.microfono:hover:not(:disabled), .demo-boton:hover:not(:disabled) { background: var(--azul); border-color: var(--azul); color: #fff; }
+.boton-destacado, .carrito-boton { --agua: #FFB45E; --agua-texto: var(--tinta); }
+.boton-destacado:hover, .carrito-boton:hover:not(:disabled) { background: var(--naranja); border-color: var(--naranja); color: var(--tinta); }
+.carrito-boton.dentro { --agua: var(--naranja); }
+.carrito-boton.dentro:hover:not(:disabled) { background: none; color: var(--tinta); }
+.microfono.escuchando { --agua: #ff7a7a; }
+
+/* Onda al pulsar (la crea agua.js en el punto del clic) */
+.onda-agua {
+  position: absolute; z-index: -1; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .38) 0%, rgba(255, 255, 255, .16) 40%, transparent 70%);
+  transform: scale(0); animation: onda-agua .75s ease-out forwards;
+}
+@keyframes onda-agua { to { transform: scale(1); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+  .icono, .valor-stock, .demo-siguiente, .editor form button)::before,
+  :is(.boton-destacado, .carrito-boton, .microfono, .opcion, .nueva, .demo-boton, .salir-flujo,
+  .icono, .valor-stock, .demo-siguiente, .editor form button)::after { animation: none; transition-duration: .01s; }
+}
+
+/* ===== Barra lateral de arriba abajo: ACERIA, accesos con icono y conversaciones recientes ===== */
+.app { flex-direction: row; }
+.contenido { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.contenido .principal { flex: 1; min-height: 0; }
+.lateral {
+  width: 264px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;
+  background: var(--fondo-2); border-right: 1px solid var(--borde); padding: 18px 10px 12px;
+}
+.lateral .marca { display: flex; align-items: center; gap: 12px; padding: 6px 10px 18px; background: none; border: 0; color: #fff; cursor: pointer; }
+.lateral .logo-texto { font-size: 38px; }
+.lateral-menu { display: flex; flex-direction: column; gap: 2px; padding-bottom: 14px; border-bottom: 1px solid var(--borde); }
+.lateral-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px;
+  background: none; color: var(--plata); font: inherit; font-size: 15px; font-weight: 500; text-align: left; cursor: pointer;
+  transition: background var(--suave), color var(--suave);
+}
+.lateral-item:hover:not(:disabled) { background: var(--superficie); color: #fff; }
+.lateral-item:disabled { opacity: .45; cursor: default; }
+.lateral-item.destacado { background: var(--superficie); color: #fff; }
+.lateral-item.destacado:hover { background: var(--azul); }
+.lateral-item .contador { margin-left: auto; }
+.icono-lateral { flex-shrink: 0; color: var(--metal); transition: color var(--suave); }
+.lateral-item:hover:not(:disabled) .icono-lateral, .lateral-item.destacado .icono-lateral { color: #fff; }
+.lateral-titulo { padding: 18px 12px 8px; font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--tenue); }
+.lateral-lista { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.lateral-vacio { margin: 4px 12px; font-size: 13px; color: var(--tenue); }
+.lateral .reciente { border-left: 0; border-radius: 10px; padding: 9px 12px; }
+.lateral .reciente:hover { background: var(--superficie); }
+.lateral .reciente.activa { background: rgba(0, 75, 141, .35); color: #fff; }
+.cabecera { padding: 0 40px; }
+.ticker { margin: 0 40px; }
+@media (max-width: 900px) { .lateral { width: 210px; } }
+/* Sin menú en la cabecera: durante la conversación queda una franja de vídeo con las utilidades */
+.cabecera { height: 56px; }
+.app.portada .cabecera { height: clamp(220px, 32vh, 360px); }
+
+/* ===== Botones rectangulares: nada de píldoras ni círculos, esquinas apenas redondeadas ===== */
+.nueva, .demo-boton, .opcion, .microfono, .icono, .editor form button, .chip-stock, .demo-siguiente, .demo-salir,
+.carrito-boton, .salir-flujo, .boton-destacado, .valor-stock, .entrada, .flujo-dato, .tarjeta-tipo, .pildora,
+.reintentar, .casilla-quitar { border-radius: 8px; }
+.chip-stock, .flujo-dato, .tarjeta-tipo, .casilla-quitar { border-radius: 6px; }
+.entrada { border-radius: 12px; }
+.icono { width: 56px; height: 56px; }
+
+/* ===== Mensajes como bocadillos: bordes redondeados y piquito hacia quien habla ===== */
+.mensaje p { position: relative; border-radius: 20px; margin-bottom: 8px; }
+.mensaje p::after {
+  content: ""; position: absolute; bottom: -7px; width: 14px; height: 14px; transform: rotate(45deg); pointer-events: none;
+}
+/* Comercial: bocadillo azul relleno, piquito abajo a la derecha */
+.mensaje.comercial p { border-radius: 20px; }
+.mensaje.comercial p::after { right: 22px; background: var(--azul); border-radius: 0 0 3px 0; }
+/* Asistente: bocadillo de contorno, piquito abajo a la izquierda con el mismo borde */
+.mensaje.asistente p { border-radius: 20px; background: var(--fondo); }
+.mensaje.asistente p::after {
+  left: 22px; background: var(--fondo); border-right: 1px solid var(--borde); border-bottom: 1px solid var(--borde);
+  border-radius: 0 0 3px 0;
+}
+.mensaje.error p::after { border-color: var(--error); }
+
+/* Respuestas del chat: mismo tecleo y cursor naranja que el título de la portada */
+.mensaje p.escritura .escritura-cursor { height: 1em; }
