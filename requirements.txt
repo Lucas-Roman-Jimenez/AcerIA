@@ -1,3 +1,4 @@
 anthropic
 openai
 pytest
+pydantic>=2

@@ -7,7 +7,7 @@ Todo se ejecuta desde la raíz del repo con `python -m pytest -q`.
 - Tests de integración del buscador con el motor de reglas (Alonso).
 - Conjunto de pruebas de 30–40 peticiones con su resultado esperado y script de evaluación (Lucas, RF-24). El conjunto se fija antes de ajustar los prompts y no se modifica para que salgan mejor.
 
-[`casos_evaluacion.json`](casos_evaluacion.json) reúne 32 peticiones:
+[`casos_evaluacion.json`](casos_evaluacion.json) reúne 37 peticiones:
 
 - 16 exactas, con un ID de referencia de la hoja `DATA` y los valores
   literales del Excel. El ID acredita una coincidencia en la muestra y las
@@ -20,6 +20,9 @@ Todo se ejecuta desde la raíz del repo con `python -m pytest -q`.
   derivadas de sus restricciones y del ejemplo de corte imposible del PDF.
   Cada una fija el bulto de origen en la propia petición. El resultado
   esperado se refiere a esa operación, sin asociarla a un ID de stock.
+- 5 orientaciones para obra. Incluyen fachada, cubierta, humedad y lluvia
+  frecuente. El caso de fachada exige la cita de las fichas sobre adornos
+  arquitectónicos y los demás exigen una aclaración sin asignar un grado.
 
 ## Evaluación de la API
 
@@ -44,6 +47,9 @@ El informe JSON incluye el porcentaje y los fallos de cada métrica:
 - **Interpretación** (`POST /chat`): comprueba los campos de la especificación
   o el campo que requiere aclaración en 26 peticiones, cada una con su propia
   conversación.
+- **Orientaciones de obra** (`POST /chat`): comprueba la aclaración, las
+  referencias EN documentadas y la fuente cuando corresponde. Los cinco casos
+  se puntúan en su propia métrica.
 - **Reglas locales**: ejecuta los 8 casos referidos a una operación y un
   bulto de origen del Word o del PDF. Estos casos carecen de un ID de stock
   asociado y se comprueban de forma local.

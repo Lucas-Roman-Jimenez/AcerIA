@@ -1,6 +1,7 @@
 // Lectura orientativa del texto contra el catálogo. La interpretación válida es siempre la del backend.
 import fichas from './fichas_aceria.json'
 import glosario from '../../datos/glosario.json'
+import { orientaciones_obra } from '../../datos/catalogo.json'
 
 const GLOSARIO = { mate: ['2B'], 'en caliente': ['1D'] }
 const ALIAS_ACABADO = Object.fromEntries(glosario.terminos
@@ -14,6 +15,8 @@ const FORMATOS = {
 const FAMILIAS = { austenitico: 'austenítico', duplex: 'dúplex', ferritico: 'ferrítico', martensitico: 'martensítico' }
 
 const normaliza = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/mat\s*/g, 'mat ')
+const PATRONES_OBRA = orientaciones_obra.map(({ patron }) => new RegExp(patron))
+export const detectarUsoDeObra = texto => PATRONES_OBRA.some(patron => patron.test(normaliza(texto)))
 const nombreGrado = f => f.aisi?.replace(' DDQ', '') ?? f.mat
 const escapa = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const unicos = xs => [...new Set(xs)]

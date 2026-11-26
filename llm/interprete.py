@@ -16,6 +16,7 @@ from . import prompts
 from .catalogo import Catalogo
 from .contrato import CAMPOS_NUMERO, CAMPOS_TEXTO, Cantidad, Especificacion, ResultadoInterpretacion
 from .control import conserva_datos, fmt_num, lista_o, lista_y, no_inventa
+from .modelos import Extraccion
 from .proveedores import ClienteLLM, ErrorLLM, crear_cliente
 
 # Datos mínimos para poder buscar. PENDIENTE DE CONFIRMAR CON EL MENTOR.
@@ -55,10 +56,17 @@ def _parsear_json(texto: str) -> dict[str, Any]:
     return json.loads(texto[ini:fin + 1])
 
 
-def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequence[str] = ()) -> dict[str, Any]:
+def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequence[str] = (),
+             consulta_obra: bool = False) -> dict[str, Any]:
     sistema = prompts.SISTEMA_EXTRACCION.format(catalogo=catalogo.resumen_para_prompt(),
                                                 minimos=", ".join(minimos) or "ninguno")
     usuario = prompts.USUARIO_EXTRACCION.format(conversacion=_conversacion(historial))
+    if consulta_obra:
+        sistema += (
+            "\nSi te piden consejo para una obra, conserva la aplicación y la exposición descritas. "
+            "Si el comercial pregunta qué grado usar, clasifica como consulta_tecnica. "
+            "No rellenes el grado ni sus opciones a menos que el comercial los haya indicado."
+        )
     ultimo_error = None
     for _ in range(2):  # un reintento si el JSON llega mal formado
         # max_tokens holgado: el modelo también piensa antes de responder y no conviene cortarle.
@@ -73,34 +81,22 @@ def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequen
 
 # ------------------------------------------------------------------ validación
 
-def _num(v) -> Optional[float]:
-    try:
-        x = float(str(v).replace(",", "."))
-        return x if x > 0 else None
-    except (TypeError, ValueError):
-        return None
-
-
 def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion, dict[str, Any]]:
     """Devuelve la especificación limpia y los problemas detectados (para decidir la pregunta)."""
     esp = Especificacion()
-    intencion = bruto.get("intencion") or ("fuera_de_tema" if bruto.get("fuera_de_tema") else "pedido")
+    # Forma y tipos con Pydantic (llm/modelos.py, RNF-14): lo mal formado se descarta, nunca rompe.
+    ext = Extraccion.desde_llm(bruto)
+    intencion = ext.intencion or ("fuera_de_tema" if ext.fuera_de_tema else "pedido")
     problemas: dict[str, Any] = {"invalidos": [], "contradiccion": None, "combinacion": None,
                                  "uso_desconocido": None, "opciones_dudosas": None,
                                  "intencion": intencion if intencion in INTENCIONES else "pedido",
-                                 "campo_aclaracion": bruto.get("campo_aclaracion")}
+                                 "campo_aclaracion": ext.campo_aclaracion}
+    opciones_brutas = ext.opciones
 
-    # Tipos robustos (RNF-14): lo que no tenga la forma esperada se descarta, nunca rompe.
-    opciones_brutas = bruto.get("opciones") if isinstance(bruto.get("opciones"), dict) else {}
-    opciones_brutas = {c: ([v] if isinstance(v, str) else v) for c, v in opciones_brutas.items()
-                       if isinstance(v, (list, str))}
-
+    # Valores contra el catálogo de AcerIA: lo decide el código (RNF-02).
     for campo in CAMPOS_TEXTO:
-        v = bruto.get(campo)
-        if isinstance(v, list):            # varios valores en el campo: se tratan como opciones
-            opciones_brutas.setdefault(campo, [str(x) for x in v if isinstance(x, (str, int, float))])
-            continue
-        if v in (None, "") or isinstance(v, bool) or not isinstance(v, (str, int, float)):
+        v = getattr(ext, campo)
+        if v is None:
             continue
         norm = catalogo.normalizar(campo, v)
         if norm:
@@ -110,13 +106,10 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.avisos.append(f"«{v}» no es un {NOMBRE_CAMPO[campo]} del catálogo.")
 
     for campo in CAMPOS_NUMERO:
-        x = _num(bruto.get(campo))
-        if x is not None:
-            setattr(esp, campo, x)
+        setattr(esp, campo, getattr(ext, campo))
 
-    cant = bruto.get("cantidad")
-    if isinstance(cant, dict) and _num(cant.get("valor")) and cant.get("unidad") in ("kg", "t", "bultos"):
-        esp.cantidad = Cantidad(_num(cant["valor"]), cant["unidad"])
+    if ext.cantidad:
+        esp.cantidad = Cantidad(ext.cantidad.valor, ext.cantidad.unidad)
 
     for campo, valores in opciones_brutas.items():
         if campo not in CAMPOS_TEXTO or getattr(esp, campo) is not None:
@@ -142,7 +135,7 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.opciones[campo] = validos
 
     # Uso (RF-26): solo se traduce a grados si el catálogo lo respalda.
-    uso_txt = bruto.get("uso") if isinstance(bruto.get("uso"), str) else None
+    uso_txt = ext.uso
     if uso_txt:
         uso = catalogo.uso(uso_txt)
         if uso:
@@ -161,14 +154,10 @@ def _validar(bruto: dict[str, Any], catalogo: Catalogo) -> tuple[Especificacion,
             esp.avisos.append(f"El catálogo no indica qué grado es adecuado para «{uso_txt}».")
 
     # Campos que al comercial le dan igual: no se preguntan ni cuentan como «faltan».
-    indif = bruto.get("indiferentes") if isinstance(bruto.get("indiferentes"), list) else []
-    esp.indiferentes = [c for c in indif if isinstance(c, str)
-                        and c in CAMPOS_TEXTO + CAMPOS_NUMERO and getattr(esp, c) is None]
+    esp.indiferentes = [c for c in ext.indiferentes if getattr(esp, c) is None]
     esp.opciones = {c: v for c, v in esp.opciones.items() if c not in esp.indiferentes}
 
-    contr_brutas = bruto.get("contradicciones") if isinstance(bruto.get("contradicciones"), list) else []
-    contr = [c for c in contr_brutas if isinstance(c, dict) and isinstance(c.get("campo"), str)
-             and isinstance(c.get("valores", []), list)]
+    contr = [c.model_dump() for c in ext.contradicciones]
     if contr:
         problemas["contradiccion"] = contr[0]
         if contr[0]["campo"] in CAMPOS_TEXTO + CAMPOS_NUMERO:
@@ -288,7 +277,9 @@ def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo
     hay_datos = _describir(esp) != "material"
     buscar = f"¿Quieres que busque {_describir(esp)}?" if hay_datos else "¿Qué material necesitas?"
     usos = [u["uso"] for u in catalogo.usos]
-    ejemplo_usos = f" (por ejemplo, {lista_o(usos)})" if usos else ""
+    # El catálogo real tiene unos 90 usos: se nombran como mucho MAX_USOS_EJEMPLO, primero los más habituales.
+    ejemplos = [u for u in USOS_PREFERIDOS if u in usos] + [u for u in usos if u not in USOS_PREFERIDOS]
+    ejemplo_usos = f" (por ejemplo, {lista_o(ejemplos[:MAX_USOS_EJEMPLO])})" if usos else ""
     return {
         "saludo": "¡Hola! ¿Qué material necesita tu cliente? Dime grado, acabado, espesor o para qué lo quiere.",
         "agradecimiento": "De nada. ¿Necesitas buscar algo más?",
@@ -300,6 +291,19 @@ def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo
                              f"Si me dices para qué es{ejemplo_usos}, te digo qué grados indica."),
         "fuera_de_tema": "Solo puedo ayudarte a buscar material en el inventario. ¿Qué necesita tu cliente?",
     }.get(intencion)
+
+
+def _responder_orientacion_obra(catalogo, orientacion, minimos):
+    aplicacion = catalogo.uso(orientacion.get("aplicacion_documentada"))
+    esp = Especificacion(uso=orientacion["uso"])
+    _calcular_faltan(esp, minimos)
+    pregunta = orientacion["aclaracion"]
+    if aplicacion and aplicacion.get("fuente") and aplicacion.get("grados"):
+        esp.fuente_uso = aplicacion["fuente"]
+        grados = lista_y([f"EN {g}" for g in aplicacion["grados"]])
+        pregunta = (f"Para {aplicacion['uso']}, AcerIA documenta {grados} ({esp.fuente_uso}). "
+                    f"{pregunta}")
+    return ResultadoInterpretacion("pregunta", esp, pregunta)
 
 
 def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: Catalogo,
@@ -368,12 +372,22 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     """
     # Los mensajes vacíos del comercial no aportan nada; si no queda ninguno, no se llama al LLM.
     historial = [m for m in historial if m.get("rol") != "comercial" or str(m.get("texto") or "").strip()]
-    if not any(m.get("rol") == "comercial" for m in historial):
+    ultimo = next((m["texto"] for m in reversed(historial) if m.get("rol") == "comercial"), None)
+    if ultimo is None:
         return ResultadoInterpretacion("pregunta", Especificacion(faltan=list(minimos)), "¿Qué material necesitas?")
     cliente = cliente or _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
-    bruto = _extraer(historial, cliente, catalogo, minimos)
+    orientacion = catalogo.orientacion_obra(ultimo)
+    bruto = _extraer(historial, cliente, catalogo, minimos, consulta_obra=orientacion is not None)
+    if isinstance(bruto.get("uso"), str):
+        # Conserva los condicionantes de exposición reconocidos al interpretar la conversación.
+        orientacion = catalogo.orientacion_obra(f"{ultimo} {bruto['uso']}")
     esp, problemas = _validar(bruto, catalogo)
+    intencion = problemas["intencion"]
+    opciones = bruto.get("opciones")
+    grado_pedido = bruto.get("grado") or (isinstance(opciones, dict) and opciones.get("grado"))
+    if orientacion and (intencion == "consulta_tecnica" or (intencion == "pedido" and not grado_pedido)):
+        return _responder_orientacion_obra(catalogo, orientacion, minimos)
     if problemas["intencion"] != "pedido":
         _calcular_faltan(esp, minimos)
         return ResultadoInterpretacion("pregunta", esp, _respuesta_intencion(esp, problemas["intencion"], catalogo))
@@ -383,6 +397,10 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     pregunta = _redactar(plantilla, cliente if redactar_con_llm else None, catalogo)
     return ResultadoInterpretacion("pregunta", esp, pregunta)
 
+
+MAX_USOS_EJEMPLO = 4
+USOS_PREFERIDOS = ("atmósfera marina", "industria alimentaria", "decoración y arquitectura",
+                   "aplicaciones a altas temperaturas")
 
 ORDEN_DISTINGUIR = ("acabado", "grado", "formato", "espesor_mm", "ancho_mm", "largo_mm")
 

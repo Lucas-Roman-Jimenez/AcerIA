@@ -24,6 +24,219 @@
       ]
     }
   ],
+  "nomenclatura_grados": {
+    "referencia": "EN",
+    "fuente_inventario": {"archivo": "backend/data/inventario.xlsx", "hoja": "DATA", "columnas": ["Euronorma", "AISI"]},
+    "grados": {
+      "1.4016": {
+        "fichas": [
+          {"mat": "MAT 490", "designacion_comercial": "430", "grado_comercial": "430", "uns": ["S43000"]},
+          {"mat": "MAT 500", "designacion_comercial": "430", "grado_comercial": "430", "uns": ["S43000"]}
+        ],
+        "designaciones_inventario": ["430"]
+      },
+      "1.4021": {
+        "fichas": [
+          {"mat": "MAT 430", "designacion_comercial": "420", "grado_comercial": "420", "uns": ["S42000"]}
+        ],
+        "designaciones_inventario": ["420"]
+      },
+      "1.4028": {
+        "fichas": [
+          {"mat": "MAT 360", "designacion_comercial": "420", "grado_comercial": "420", "uns": ["S42000"]}
+        ],
+        "designaciones_inventario": ["420"]
+      },
+      "1.4031": {
+        "fichas": [
+          {"mat": "MAT 390", "designacion_comercial": "420", "grado_comercial": "420", "uns": ["S42000"]}
+        ]
+      },
+      "1.4034": {
+        "fichas": [
+          {"mat": "MAT 370", "designacion_comercial": "420", "grado_comercial": "420", "uns": ["S42000"]}
+        ],
+        "designaciones_inventario": ["420"]
+      },
+      "1.4113": {
+        "fichas": [
+          {"mat": "MAT 535", "designacion_comercial": "434", "grado_comercial": "434", "uns": ["S43400"]}
+        ]
+      },
+      "1.4116": {
+        "fichas": [
+          {"mat": "MAT 380", "designacion_comercial": "420MoV", "grado_comercial": "420MOV", "uns": []}
+        ]
+      },
+      "1.4162": {
+        "fichas": [
+          {"mat": "MAT 930", "designacion_comercial": "2101", "grado_comercial": "2101", "uns": ["S32101"]}
+        ],
+        "designaciones_inventario": ["S32101"]
+      },
+      "1.4301": {
+        "fichas": [
+          {"mat": "MAT 120", "designacion_comercial": "304", "grado_comercial": "304", "uns": ["S30400"]},
+          {"mat": "MAT 140", "designacion_comercial": "304", "grado_comercial": "304", "uns": ["S30400"]},
+          {"mat": "MAT 180", "designacion_comercial": "304 DDQ", "grado_comercial": "304DDQ", "uns": ["S30400"]}
+        ],
+        "designaciones_inventario": ["304", "304DDQ"]
+      },
+      "1.4306": {
+        "otras_fuentes": [
+          {"designacion_comercial": "304L", "grado_comercial": "304L", "url": ""}
+        ],
+        "designaciones_inventario": ["304L"]
+      },
+      "1.4307": {
+        "fichas": [
+          {"mat": "MAT 150", "designacion_comercial": null, "grado_comercial": null, "uns": ["S30403"]},
+          {"mat": "MAT 160", "designacion_comercial": "304L", "grado_comercial": "304L", "uns": ["S30403"]},
+          {"mat": "MAT 200", "designacion_comercial": "304L", "grado_comercial": "304L", "uns": ["S30403"]}
+        ]
+      },
+      "1.4310": {
+        "fichas": [
+          {"mat": "MAT 100", "designacion_comercial": "301", "grado_comercial": "301", "uns": ["S30100"]},
+          {"mat": "MAT 110", "designacion_comercial": "301", "grado_comercial": "301", "uns": ["S30100"]}
+        ],
+        "designaciones_inventario": ["301"]
+      },
+      "1.4318": {
+        "fichas": [
+          {"mat": "MAT 090", "designacion_comercial": "301LN", "grado_comercial": "301LN", "uns": ["S30153"]}
+        ],
+        "designaciones_inventario": ["301LN"]
+      },
+      "1.4362": {
+        "fichas": [
+          {"mat": "MAT 940", "designacion_comercial": "2304", "grado_comercial": "2304", "uns": ["S32304"]}
+        ],
+        "designaciones_inventario": ["2304"]
+      },
+      "1.4372": {
+        "fichas": [
+          {"mat": "MAT 060", "designacion_comercial": "201", "grado_comercial": "201", "uns": ["S20100"]}
+        ],
+        "designaciones_inventario": ["201"]
+      },
+      "1.4401": {
+        "fichas": [
+          {"mat": "MAT 250", "designacion_comercial": "316", "grado_comercial": "316", "uns": ["S31600"]}
+        ]
+      },
+      "1.4404": {
+        "fichas": [
+          {"mat": "MAT 240", "designacion_comercial": "316L", "grado_comercial": "316L", "uns": ["S31603"]}
+        ],
+        "designaciones_inventario": ["316L"]
+      },
+      "1.4432": {
+        "fichas": [
+          {"mat": "MAT 260", "designacion_comercial": "316L", "grado_comercial": "316L", "uns": ["S31603"]}
+        ]
+      },
+      "1.4435": {
+        "fichas": [
+          {"mat": "MAT 300", "designacion_comercial": "316L", "grado_comercial": "316L", "uns": ["S31603"]}
+        ]
+      },
+      "1.4462": {
+        "fichas": [
+          {"mat": "MAT 900", "designacion_comercial": "2205", "grado_comercial": "2205", "uns": ["S31803", "S32205"]}
+        ],
+        "designaciones_inventario": ["2205"]
+      },
+      "1.4482": {
+        "fichas": [
+          {"mat": "MAT 920", "designacion_comercial": "2001", "grado_comercial": "2001", "uns": ["S32001"]}
+        ]
+      },
+      "1.4509": {
+        "fichas": [
+          {"mat": "MAT 845", "designacion_comercial": null, "grado_comercial": null, "uns": ["S43940"]}
+        ],
+        "designaciones_inventario": ["441"]
+      },
+      "1.4510": {
+        "fichas": [
+          {"mat": "MAT 515", "designacion_comercial": "430Ti", "grado_comercial": "430TI", "uns": ["S43035"]}
+        ],
+        "designaciones_inventario": ["430Ti"]
+      },
+      "1.4511": {
+        "fichas": [
+          {"mat": "MAT 525", "designacion_comercial": "430Nb", "grado_comercial": "430NB", "uns": []}
+        ]
+      },
+      "1.4512": {
+        "fichas": [
+          {"mat": "MAT 800", "designacion_comercial": "409L", "grado_comercial": "409L", "uns": ["S40910"]}
+        ],
+        "designaciones_inventario": ["409L"]
+      },
+      "1.4513": {
+        "fichas": [
+          {"mat": "MAT 540", "designacion_comercial": null, "grado_comercial": null, "uns": []}
+        ]
+      },
+      "1.4521": {
+        "fichas": [
+          {"mat": "MAT 555", "designacion_comercial": "444", "grado_comercial": "444", "uns": ["S44400"]},
+          {"mat": "MAT 570", "designacion_comercial": null, "grado_comercial": null, "uns": []}
+        ],
+        "designaciones_inventario": ["444"]
+      },
+      "1.4526": {
+        "fichas": [
+          {"mat": "MAT 560", "designacion_comercial": null, "grado_comercial": null, "uns": ["S43600"]}
+        ]
+      },
+      "1.4539": {
+        "fichas": [
+          {"mat": "MAT 305", "designacion_comercial": "904L", "grado_comercial": "904L", "uns": []}
+        ],
+        "designaciones_inventario": ["904L"]
+      },
+      "1.4541": {
+        "fichas": [
+          {"mat": "MAT 315", "designacion_comercial": "321", "grado_comercial": "321", "uns": ["S32100"]}
+        ],
+        "designaciones_inventario": ["321"]
+      },
+      "1.4571": {
+        "fichas": [
+          {"mat": "MAT 280", "designacion_comercial": "316Ti", "grado_comercial": "316TI", "uns": ["S31635"]}
+        ],
+        "designaciones_inventario": ["316TI"]
+      },
+      "1.4828": {
+        "fichas": [
+          {"mat": "MAT 290", "designacion_comercial": null, "grado_comercial": null, "uns": []}
+        ],
+        "designaciones_inventario": ["309"]
+      },
+      "1.4833": {
+        "fichas": [
+          {"mat": "MAT 340", "designacion_comercial": "309S", "grado_comercial": "309S", "uns": ["S30908"]}
+        ]
+      },
+      "1.4841": {
+        "fichas": [
+          {"mat": "MAT 325", "designacion_comercial": null, "grado_comercial": null, "uns": []}
+        ],
+        "designaciones_inventario": ["314"]
+      },
+      "1.4845": {
+        "fichas": [
+          {"mat": "MAT 350", "designacion_comercial": "310S", "grado_comercial": "310S", "uns": ["S31008"]}
+        ],
+        "designaciones_inventario": ["310S"]
+      }
+    },
+    "codigos_inventario_compuestos": {"1.4301/1.4307": ["304L", "304L/304"]},
+    "codigos_inventario_sin_validacion_en": {"1.4310Mo": ["301"]}
+  },
   "grados": [
     "1.4016",
     "1.4021",
@@ -3327,6 +3540,29 @@
     {"grado": "S32101", "acabado": "2D", "formato": "bobina", "espesor_mm": [1.0, 1.0], "ancho_mm": [1425.0, 1425.0]},
     {"grado": "S32101", "acabado": "N4-G-180", "formato": "bobina", "espesor_mm": [1.0, 1.0], "ancho_mm": [1498.0, 1498.0]},
     {"grado": "S32101", "acabado": "NR.1", "formato": "fleje", "espesor_mm": [4.0, 4.0], "ancho_mm": [120.0, 120.0]}
+  ],
+  "orientaciones_obra": [
+    {
+      "uso": "exterior con lluvia frecuente",
+      "patron": "\\b(lluvias?|llueve|llueva|llovia|llovizna|lluvios[oa]s?|precipitaciones)\\b",
+      "aclaracion": "Con solo la frecuencia de lluvia, el catálogo de AcerIA no permite elegir un grado. ¿Es una fachada, una cubierta u otro elemento? ¿Está expuesto a salitre o contaminación?"
+    },
+    {
+      "uso": "ambiente húmedo",
+      "patron": "\\b(humedad|humed[oa]s?|condensacion)\\b",
+      "aclaracion": "Con solo la humedad, el catálogo de AcerIA no permite elegir un grado. ¿Es para interior o exterior? ¿Habrá contacto continuo con agua o exposición a cloruros?"
+    },
+    {
+      "uso": "cubierta de edificio",
+      "patron": "\\b(cubiertas?|tejados?|azoteas?|techumbres?|techos?)\\b",
+      "aclaracion": "El catálogo de AcerIA no identifica un grado para esta cubierta. ¿Será un revestimiento o un elemento estructural? ¿A qué ambiente estará expuesto?"
+    },
+    {
+      "uso": "fachada",
+      "patron": "\\b(fachadas?)\\b",
+      "aplicacion_documentada": "adornos arquitectónicos",
+      "aclaracion": "¿Tu fachada es decorativa, de revestimiento o estructural? ¿A qué ambiente estará expuesta?"
+    }
   ],
   "usos": [
     {

@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 from . import prompts
 from .catalogo import Catalogo
-from .contrato import Especificacion
+from .contrato import CAMPOS_NUMERO, Especificacion
 from .control import fmt_num, lista_y, no_inventa
 from .proveedores import ClienteLLM, ErrorLLM
 
@@ -35,7 +35,7 @@ def _caracteristicas(b: dict[str, Any], con_formato: bool = False) -> list[str]:
     if b.get("peso_kg"):
         partes.append(f"{fmt_num(b['peso_kg'])} kg")
     if b.get("piezas"):
-        partes.append(f"{fmt_num(b['piezas'])} piezas")
+        partes.append(f"{fmt_num(b['piezas'])} pieza{'' if b['piezas'] == 1 else 's'}")
     if b.get("ubicacion"):
         partes.append(str(b["ubicacion"]))
     return partes
@@ -111,6 +111,59 @@ def _nota_cantidad(exactos: list[dict[str, Any]], especificacion: Especificacion
     return ""
 
 
+_NOMBRE = {"grado": "el grado", "acabado": "el acabado", "formato": "el formato",
+           "espesor_mm": "el espesor", "ancho_mm": "el ancho", "largo_mm": "el largo"}
+
+
+def _fmt_valor(campo: str, v: Any) -> str:
+    return f"{fmt_num(v)} mm" if campo in CAMPOS_NUMERO else str(v)
+
+
+def _stock(n: int, kg: float, por_kg: bool) -> str:
+    bultos = f"{n} bulto{'s' if n != 1 else ''}"
+    return f"{fmt_num(round(kg))} kg, {bultos}" if por_kg else (f"{bultos}, {fmt_num(round(kg))} kg" if kg else bultos)
+
+
+def _nota_recomendacion(resultado: dict[str, Any], esp: Optional[Especificacion]) -> str:
+    """Si al comercial le da igual un dato y el stock tiene varios valores, recomienda uno (calculado por el código).
+
+    Criterio: por kg si el pedido viene en kg o t; si no, por número de bultos. El otro desempata.
+    Se cuentan los exactos; si no hay, los transformables (el valor que queda tras transformar).
+    No cambia el orden de las tarjetas (RF-14).
+    """
+    if esp is None or not esp.indiferentes:
+        return ""
+    bultos = resultado.get("exactos") or []
+    if bultos:
+        filas = [(b, b.get("peso_kg") or 0) for b in bultos]
+    else:
+        filas = [(t.get("resultado") or t.get("bulto") or t, (t.get("bulto") or t).get("peso_kg") or 0)
+                 for t in resultado.get("transformables") or []]
+    por_kg = esp.cantidad is not None and esp.cantidad.unidad in ("kg", "t")
+    frases = []
+    for campo in esp.indiferentes:
+        if campo not in _NOMBRE:
+            continue
+        cuenta: dict[Any, list[float]] = {}
+        for b, kg in filas:
+            if b.get(campo) is not None:
+                n_kg = cuenta.setdefault(b[campo], [0, 0.0])
+                n_kg[0] += 1
+                n_kg[1] += float(kg)
+        if len(cuenta) < 2:
+            continue
+        orden = sorted(cuenta.items(), key=lambda it: ((-it[1][1], -it[1][0]) if por_kg else (-it[1][0], -it[1][1]),
+                                                       str(it[0])))
+        (mejor, (n, kg)), resto = orden[0], orden[1:]
+        motivo = "más peso" if por_kg else "más stock"
+        otros = [f"{_fmt_valor(campo, v)} ({_stock(o_n, o_kg, por_kg)})" for v, (o_n, o_kg) in resto[:3]]
+        if len(resto) > 3:
+            otros.append(f"{len(resto) - 3} más")
+        frases.append(f"Te da igual {_NOMBRE[campo]}: te recomiendo {_fmt_valor(campo, mejor)}, el que {motivo} "
+                      f"tiene ({_stock(n, kg, por_kg)}). También hay {lista_y(otros)}.")
+    return " ".join(frases)
+
+
 def _nota_uso(esp: Optional[Especificacion], catalogo: Optional[Catalogo]) -> str:
     """Cita el catálogo cuando la petición se tradujo por uso (RF-26). Nunca sale del LLM."""
     if esp is None or not esp.uso:
@@ -164,7 +217,7 @@ def responder(resultado: dict[str, Any], especificacion: Especificacion | dict |
     texto_plantilla = plantilla(resultado)
     esp_obj = (especificacion if isinstance(especificacion, Especificacion)
                else Especificacion.desde_dict(especificacion) if especificacion else None)
-    notas = (_nota_uso(esp_obj, catalogo), _nota_criterio(resultado),
+    notas = (_nota_recomendacion(resultado, esp_obj), _nota_uso(esp_obj, catalogo), _nota_criterio(resultado),
              _nota_cantidad(resultado.get("exactos") or [], especificacion))
     total = sum(len(resultado.get(k) or []) for k in ("exactos", "transformables", "alternativas"))
     if not usar_llm or total <= 1:

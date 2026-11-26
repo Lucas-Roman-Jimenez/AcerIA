@@ -69,11 +69,18 @@ def test_formato_distinto_no_cumple():
 # ---------- integración con el inventario real ----------
 
 @pytest.fixture(scope="module")
-def db():
+def db(tmp_path_factory):
+    """Inventario real cargado en una base temporal: no depende de las ventas de la demo ni toca
+    backend/data/aceria.db (aquí se marcan bultos como reservados)."""
     if not config.INVENTARIO.exists():
         pytest.skip("Falta backend/data/inventario.xlsx (el Excel de AcerIA)")
     from app.db import crear_db
-    crear_db()
+    carpeta = tmp_path_factory.mktemp("buscador")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(config, "DB_PATH", carpeta / "inventario.db")
+        mp.setattr(config, "ESTADOS_DEMO", carpeta / "sin_estados_demo.csv")
+        crear_db()
+        yield
 
 
 def test_busqueda_real_solo_disponibles_que_cumplen(db):
