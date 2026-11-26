@@ -1,7 +1,7 @@
 import { ReporteDiarioInventario } from './ReporteDiarioInventario.jsx'
 import { ReporteSemanal } from './ReporteSemanal.jsx'
 
-export function Reportes({ vista, onCambiarVista, onVolver }) {
+export function Reportes({ vista, onCambiarVista }) {
   const verCompras = vista === 'compras'
   return (
     <main className="reportes">
@@ -12,7 +12,6 @@ export function Reportes({ vista, onCambiarVista, onVolver }) {
         <button type="button" className="nueva" aria-pressed={verCompras} onClick={() => onCambiarVista('compras')}>
           Reporte semanal de compras
         </button>
-        <button type="button" className="nueva" onClick={onVolver}>Volver al chat</button>
       </nav>
       {verCompras ? <ReporteSemanal /> : <ReporteDiarioInventario />}
     </main>

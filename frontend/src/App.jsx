@@ -391,7 +391,7 @@ export default function App() {
 
 
       {verReporte ? (
-        <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} onVolver={() => setVistaReporte(null)} />
+        <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} />
       ) : (
         <main className="principal">
           {vacio ? (

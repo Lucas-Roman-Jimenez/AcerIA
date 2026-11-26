@@ -7,7 +7,7 @@ DATA = BASE / "data"
 
 INVENTARIO = DATA / "inventario.xlsx"
 ESTADOS_DEMO = DATA / "estados_demo.csv"   # opcional: id;estado para simular reservados/bloqueados
-DB_PATH = DATA / "aceria.db"
+DB_PATH = Path(os.environ.get("ACERIA_DB_PATH") or (DATA / "aceria.db"))
 
 
 # Orígenes que pueden llamar a la API desde el navegador (CORS). arrancar.py pasa el del frontend;
