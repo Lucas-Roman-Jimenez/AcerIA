@@ -310,3 +310,90 @@ def test_api_compras_usa_la_cabecera_x_carrito(base):
     assert sin_cabecera.json()["detail"] == "El carrito está vacío o no es válido."
     ok = cliente.post("/compras", json={"bultos": ["334"]}, headers={"X-Carrito": "a"})
     assert ok.status_code == 200 and ok.json()["vendidos"] == ["334"]
+
+
+# ---------- Paso 5: endpoints /reservas y CORS ----------
+
+@pytest.fixture
+def api(base):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+    from app.main import app
+    return TestClient(app)
+
+
+def _h(titular):
+    return {"X-Carrito": titular}
+
+
+def test_api_flujo_completo_del_carrito(api, base):
+    r = api.post("/reservas", json={"bultos": ["334", "23"]}, headers=_h("a"))
+    assert r.status_code == 200
+    assert [x["bulto_id"] for x in r.json()["reservas"]] == ["334", "23"]
+    assert r.json()["minutos"] == config.RESERVA_MINUTOS
+    assert [x["bulto_id"] for x in api.get("/reservas", headers=_h("a")).json()["reservas"]] == ["334", "23"]
+
+    assert api.delete("/reservas/23", headers=_h("a")).status_code == 204         # quitar del carrito
+    assert [x["bulto_id"] for x in api.get("/reservas", headers=_h("a")).json()["reservas"]] == ["334"]
+
+    venta = api.post("/compras", json={"bultos": ["334"]}, headers=_h("a"))
+    assert venta.status_code == 200 and venta.json()["vendidos"] == ["334"]
+    assert api.get("/reservas", headers=_h("a")).json()["reservas"] == []
+
+
+def test_api_reservar_lo_que_tiene_otro_da_409(api):
+    api.post("/reservas", json={"bultos": ["334"]}, headers=_h("a"))
+    r = api.post("/reservas", json={"bultos": ["23", "334"]}, headers=_h("b"))
+    assert r.status_code == 409
+    assert r.json()["detail"]["no_disponibles"] == ["334"]
+    assert api.get("/reservas", headers=_h("b")).json()["reservas"] == []           # todo o nada
+
+
+def test_api_no_se_puede_quitar_la_reserva_de_otro(api):
+    api.post("/reservas", json={"bultos": ["334"]}, headers=_h("a"))
+    assert api.delete("/reservas/334", headers=_h("b")).status_code == 404
+    assert len(api.get("/reservas", headers=_h("a")).json()["reservas"]) == 1
+
+
+def test_api_vaciar_el_carrito(api):
+    api.post("/reservas", json={"bultos": ["334", "23"]}, headers=_h("a"))
+    api.post("/reservas", json={"bultos": ["1"]}, headers=_h("b"))
+    r = api.delete("/reservas", headers=_h("a"))
+    assert r.status_code == 200 and r.json() == {"liberadas": 2}
+    assert len(api.get("/reservas", headers=_h("b")).json()["reservas"]) == 1
+
+
+@pytest.mark.parametrize("metodo,ruta,cuerpo", [
+    ("post", "/reservas", {"bultos": ["334"]}), ("get", "/reservas", None),
+    ("delete", "/reservas/334", None), ("delete", "/reservas", None),
+])
+def test_api_sin_cabecera_x_carrito_da_422(api, metodo, ruta, cuerpo):
+    kw = {"json": cuerpo} if cuerpo is not None else {}
+    r = getattr(api, metodo)(ruta, **kw)
+    assert r.status_code == 422
+    assert r.json()["detail"] == "Falta la cabecera X-Carrito."
+
+
+def test_api_reservar_sin_bultos_da_422_con_texto_fijo(api):
+    r = api.post("/reservas", json={"bultos": []}, headers=_h("a"))
+    assert r.status_code == 422 and r.json()["detail"] == "No hay bultos que reservar."
+
+
+def test_api_cabecera_x_carrito_demasiado_larga_da_422(api):
+    assert api.get("/reservas", headers=_h("x" * 101)).status_code == 422
+
+
+@pytest.mark.parametrize("metodo", ["DELETE", "POST"])
+def test_cors_deja_al_frontend_reservar_y_quitar_con_x_carrito(api, metodo):
+    r = api.options("/reservas", headers={
+        "Origin": "http://127.0.0.1:5173", "Access-Control-Request-Method": metodo,
+        "Access-Control-Request-Headers": "content-type,x-carrito"})
+    assert r.status_code == 200
+    assert r.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+
+
+def test_cors_no_deja_a_otra_web_quitar_reservas(api):
+    r = api.options("/reservas", headers={
+        "Origin": "https://web-maliciosa.example", "Access-Control-Request-Method": "DELETE",
+        "Access-Control-Request-Headers": "x-carrito"})
+    assert "access-control-allow-origin" not in r.headers

@@ -95,11 +95,11 @@ def liberar_todas(titular: str) -> int:
 
 
 def mis_reservas(titular: str, *, ahora: datetime | None = None) -> list[dict]:
-    """Reservas vigentes del titular, de la más antigua a la más reciente (para rehacer el carrito)."""
+    """Reservas vigentes del titular, en el orden en que se añadieron (para rehacer el carrito)."""
     titular = _comprobar_titular(titular)
     ahora_ms = _ms(ahora or datetime.now(ZONA_REPORTE))
     with closing(get_conn()) as conn:
         filas = conn.execute(
             "SELECT bulto_id, expira_en_ms FROM reservas WHERE titular = ? AND expira_en_ms > ? "
-            "ORDER BY creada_en_ms, bulto_id", (titular, ahora_ms)).fetchall()
+            "ORDER BY creada_en_ms, rowid", (titular, ahora_ms)).fetchall()
     return [{"bulto_id": f["bulto_id"], "expira_en": _iso(f["expira_en_ms"])} for f in filas]

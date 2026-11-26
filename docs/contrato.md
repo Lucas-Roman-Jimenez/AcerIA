@@ -187,6 +187,30 @@ Se propone que el motor de reglas de Lucas devuelva, y Alonso pase tal cual, un 
 
 `responder()` ya lo usa si viene: «B-1030 (Cortar ancho 1500 → 1250 mm; merma 150 kg; queda 304 2B, 3 × 1250 mm)». Mientras no se acepte, sigue funcionando sin él.
 
+
+---
+
+## 8. Reservas del carrito (tarea 4)
+
+**Nuevo.** Sirve para que dos comerciales no cojan el mismo bulto. Al añadir un bulto al carrito se reserva para quien lo añade durante `config.RESERVA_MINUTOS` (15). Mientras la reserva está vigente:
+
+- el bulto **no sale** en `/buscar`, `/chat`, `/stock/valores` ni `/stock/resumen`, ni siquiera para quien lo reservó, porque ya lo tiene en el carrito;
+- nadie más puede reservarlo ni venderlo.
+
+Al quitarlo del carrito, o cuando caduca la reserva, vuelve a estar disponible. Las reservas se vacían cada vez que arranca el backend.
+
+**Quién reserva:** se identifica con la cabecera `X-Carrito`, que lleva un ID aleatorio del carrito (128 bits, generado en el frontend, de 100 caracteres como mucho). La lleva **cada** llamada de esta sección y también `POST /compras`. Es provisional: cuando haya login (tarea 5), el titular saldrá del token.
+
+| Llamada | Cuándo | Respuesta |
+| --- | --- | --- |
+| `POST /reservas` con `{"bultos": ["334"]}` | Al añadir al carrito | 200 `{"reservas": [{"bulto_id": "334", "expira_en": "2026-11-26T10:15:00+01:00"}], "minutos": 15}`. Se reservan todos o ninguno. Si un bulto ya era tuyo, se renueva su caducidad. 409 `{"detail": {"mensaje": ..., "no_disponibles": ["334"]}}` si alguno lo tiene otro o no está disponible. |
+| `DELETE /reservas/{bulto_id}` | Al quitar un bulto del carrito | 204. Si no está en tu carrito, 404. |
+| `DELETE /reservas` | Al vaciar el carrito | 200 `{"liberadas": 2}`. Solo libera las tuyas. |
+| `GET /reservas` | Al recargar la página | 200 `{"reservas": [...], "minutos": 15}`: tus reservas vigentes, en el orden en que se añadieron. |
+| `POST /compras` con `{"bultos": [...]}` | Al confirmar la venta | **Cambia:** solo vende los bultos con reserva vigente **tuya**. Si no, 409 con `no_disponibles` y no se vende nada. Al vender se borran esas reservas. |
+
+Sin la cabecera `X-Carrito`, todas responden 422 con `"Falta la cabecera X-Carrito."`. En `/compras`, el texto es `"El carrito está vacío o no es válido."`.
+
 ---
 
 ## Pendiente de confirmar con el mentor

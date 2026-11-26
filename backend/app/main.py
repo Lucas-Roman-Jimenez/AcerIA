@@ -2,7 +2,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 from typing import Literal
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -12,6 +12,7 @@ from app.db import crear_db, disponibles
 from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_alternativas, buscar_bultos, construir_objetivo, valores_disponibles
 from app.conversacion import cargar_env, responder_chat
 from app.ventas import BultosNoDisponibles, vender
+from app.reservas import liberar, liberar_todas, mis_reservas, reservar
 from app.reportes import reporte_semanal
 from app.tendencias import tendencias_compras
 
@@ -29,7 +30,7 @@ log = logging.getLogger("aceria")
 
 app = FastAPI(title="Asistente de inventario AcerIA", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES,   # nunca "*": otra web podría vender bultos
-                   allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+                   allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type", "X-Carrito"])
 
 
 class MensajeChat(BaseModel):
@@ -91,6 +92,57 @@ def comprar(v: Venta, titular: str = Depends(titular_actual)):
     except ValueError as e:
         log.info("Venta rechazada: %s", e)                 # el detalle, al log; al cliente, un texto fijo
         raise HTTPException(422, "El carrito está vacío o no es válido.")
+
+
+# ---------- Reservas del carrito (tarea 4): que dos comerciales no cojan el mismo bulto ----------
+
+class Reserva(BaseModel):
+    bultos: list[str]               # IDs de los bultos que se añaden al carrito
+
+
+def _sin_titular() -> HTTPException:
+    return HTTPException(422, "Falta la cabecera X-Carrito.")
+
+
+@app.post("/reservas")
+def crear_reserva(r: Reserva, titular: str = Depends(titular_actual)):
+    """Al añadir al carrito: reserva los bultos (todos o ninguno) durante config.RESERVA_MINUTOS.
+    Si ya eran del titular, renueva la caducidad. 409 si alguno lo tiene otro o ya no está disponible."""
+    if not titular:
+        raise _sin_titular()
+    try:
+        return {"reservas": reservar(r.bultos, titular), "minutos": config.RESERVA_MINUTOS}
+    except BultosNoDisponibles as e:
+        raise HTTPException(409, {"mensaje": "Algún bulto ya está reservado o no está disponible; "
+                                             "no se ha reservado nada.", "no_disponibles": e.ids})
+    except ValueError as e:
+        log.info("Reserva rechazada: %s", e)
+        raise HTTPException(422, "No hay bultos que reservar.")
+
+
+@app.get("/reservas")
+def listar_reservas(titular: str = Depends(titular_actual)):
+    """Reservas vigentes del titular, para rehacer el carrito si se recarga la página."""
+    if not titular:
+        raise _sin_titular()
+    return {"reservas": mis_reservas(titular), "minutos": config.RESERVA_MINUTOS}
+
+
+@app.delete("/reservas/{bulto_id}", status_code=204)
+def quitar_reserva(bulto_id: str = Path(max_length=100), titular: str = Depends(titular_actual)):
+    """Al quitar un bulto del carrito: vuelve a estar disponible. 404 si no es una reserva del titular."""
+    if not titular:
+        raise _sin_titular()
+    if not liberar(bulto_id, titular):
+        raise HTTPException(404, "Ese bulto no está en tu carrito.")
+
+
+@app.delete("/reservas")
+def vaciar_reservas(titular: str = Depends(titular_actual)):
+    """Vaciar el carrito: libera todas las reservas del titular (las de otros no se tocan)."""
+    if not titular:
+        raise _sin_titular()
+    return {"liberadas": liberar_todas(titular)}
 
 
 @app.post("/chat")
