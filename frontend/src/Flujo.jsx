@@ -111,7 +111,21 @@ function ValoresStock({ campo, valores, onElegir, deshabilitado }) {
 
 export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCarrito, onAbrir, deshabilitado }) {
   const [abierto, setAbierto] = useState(null)
+  const [reservando, setReservando] = useState(null)       // id del bulto que se está reservando
+  const [ocupados, setOcupados] = useState({})            // id -> por qué no se ha podido añadir
   const enCarrito = id => carrito.some(c => c.item.id === id)
+
+  async function pulsarCarrito(tipo, item) {
+    setReservando(item.id)
+    setOcupados(o => ({ ...o, [item.id]: undefined }))
+    try {
+      await onCarrito(tipo, item)
+    } catch (e) {
+      setOcupados(o => ({ ...o, [item.id]: e.message }))
+    } finally {
+      setReservando(null)
+    }
+  }
   const visibles = a.estado === 'criba' ? [] : a.lista.slice(0, MAX_RESULTADOS)
   const filas = a.estado === 'fallos' ? a.fallan : a.cribar.map(c => ({ ...c, pedido: null }))
 
@@ -135,9 +149,13 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
             <div key={`${tipo}-${item.id}`} className="flujo-tarjeta">
               <Tarjeta tipo={tipo} item={item} onClick={() => onAbrir({ tipo, item })} />
               <button type="button" className={`carrito-boton ${enCarrito(item.id) ? 'dentro' : ''}`}
-                onClick={() => onCarrito(tipo, item)}>
-                {enCarrito(item.id) ? '✓ En el carrito' : '+ Añadir al carrito'}
+                disabled={reservando === item.id || Boolean(ocupados[item.id])}
+                onClick={() => pulsarCarrito(tipo, item)}>
+                {reservando === item.id ? 'Reservando…'
+                  : ocupados[item.id] ? 'No disponible'
+                  : enCarrito(item.id) ? '✓ En el carrito' : '+ Añadir al carrito'}
               </button>
+              {ocupados[item.id] && <p className="carrito-error" role="alert">{ocupados[item.id]}</p>}
             </div>
           ))}
         </div>
