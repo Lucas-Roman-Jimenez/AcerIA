@@ -22,12 +22,12 @@ export function construirUso(texto, recomendacion, valoresStock) {
     textoBot = `Para ambientes con cloruros, las fichas de AcerIA dan el límite más alto a ${lista} `
       + `(hasta ${grados[0].ficha.cloruros_max_ppm} ppm), frente a ${recomendacion.comparacion.join(', ')}.`
   } else {
-    textoBot = `Según el catálogo de AcerIA, para ese uso se indican: ${lista}.`
+    textoBot = `Según las fichas técnicas de AcerIA, para eso se indican: ${lista}.`
   }
   if (grados.length) {
     textoBot += conStock.length ? ` En stock hay ${conStock.join(', ')}.` : ' Ahora mismo no hay stock de ninguno.'
     if (conStock.length && sinStock.length) textoBot += ` De ${sinStock.join(', ')} no hay ahora.`
-    if (conStock.length) textoBot += ' Pulsa uno para añadirlo a tu petición.'
+    if (conStock.length) textoBot += ' Pulsa uno para ver sus bultos y añadirlos al carrito.'
   }
   return { textoBot, uso: { grados } }
 }

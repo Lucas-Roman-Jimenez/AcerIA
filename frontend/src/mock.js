@@ -88,3 +88,8 @@ export async function resumenFalso() {
   }
   return Object.values(g)
 }
+
+export async function buscarFalso(esp) {
+  await new Promise(r => setTimeout(r, 200))
+  return buscar({ opciones: {}, ...esp })
+}

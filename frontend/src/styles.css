@@ -186,7 +186,8 @@ button:disabled { cursor: default; opacity: .5; }
 
 /* Casillas de lo que se va reconociendo */
 .casillas { display: flex; gap: 8px; max-width: 900px; width: 100%; margin: 10px auto 0; }
-.casilla { flex: 1; border: 1px dashed var(--borde); border-radius: 14px; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; transition: all .2s; }
+.casilla-bloque { flex: 1; position: relative; min-width: 0; display: flex; }
+.casilla { flex: 1; min-width: 0; text-align: left; cursor: pointer; background: none; color: inherit; font: inherit; border: 1px dashed var(--borde); border-radius: 14px; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; transition: all .2s; }
 .casilla-etiqueta { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 600; color: var(--tenue); }
 .casilla-valor { font-size: 15px; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .casilla.llena { border-style: solid; border-color: #fff; background: #fff; }
@@ -299,3 +300,28 @@ button:disabled { cursor: default; opacity: .5; }
 .demo-nota { flex: 1; color: #fff; line-height: 1.4; }
 .demo-siguiente { background: #fff; color: #000; border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 700; white-space: nowrap; }
 .demo-salir { background: none; border: 1px solid var(--borde); border-radius: 999px; padding: 6px 10px; color: var(--plata); }
+
+/* Flujo de la petición: datos correctos/fallidos, selección y carrito */
+.flujo { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.flujo-datos { display: flex; flex-wrap: wrap; gap: 6px; }
+.flujo-dato { font-size: 13px; border-radius: 999px; padding: 4px 10px; border: 1px solid var(--borde); }
+.flujo-dato.ok { color: var(--plata); }
+.flujo-dato.mal { color: var(--oro); border-color: var(--oro); border-style: dashed; }
+.flujo-tarjeta { display: flex; flex-direction: column; gap: 6px; }
+.carrito-boton { background: #fff; color: #000; border: 1px solid #fff; border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 13px; }
+.carrito-boton.dentro { background: none; color: #fff; }
+.opcion.activa { background: #fff; color: #000; }
+.flujo-acciones { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.aviso-inicio { color: var(--oro); border: 1px dashed var(--oro); border-radius: 14px; padding: 8px 12px; }
+.carrito-lista { list-style: none; padding: 0; margin: 16px 0; }
+.carrito-lista li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 14px; }
+
+/* Casillas desplegables: valores en stock de cada dato */
+.casilla:hover:not(:disabled), .casilla.abierta { border-style: solid; border-color: #fff; }
+.casilla.llena.abierta { outline: 1px solid #fff; outline-offset: 3px; }
+.casilla-opciones { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 5; min-width: 240px; max-width: 360px;
+  background: var(--fondo-2); border: 1px solid #fff; border-radius: 14px; padding: 10px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.6); }
+.casilla-bloque:last-child .casilla-opciones { left: auto; right: 0; }
+.casilla-opciones-titulo { font-size: 12px; color: var(--oro); }
+.casilla-opciones .editor-lista { max-height: 220px; }
+.chip-stock.elegido { background: #fff; color: #000; }

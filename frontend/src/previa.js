@@ -25,18 +25,23 @@ const DESIGNACIONES = fichas.flatMap(f => [f.aisi, f.aisi?.replace(' DDQ', ''), 
   .sort((a, b) => b[0].length - a[0].length)
 
 const CONSULTAS = [
-  ['espesor_mm', /\b(grosor|espesor|galga)(es|s)?\b/],
-  ['ancho_mm', /\b(ancho|anchura|medida)s?\b/],
-  ['acabado', /\b(acabado|terminacion|superficie)(es|s)?\b/],
-  ['formato', /\b(formato|presentacion)(es|s)?\b/],
-  ['grado', /\b(tipo|grado|acero|calidad|metal|aleacion|material)(es|s)?\b/],
+  ['espesor_mm', /\b(grosor|espesor|galga|calibre)(es|s)?\b|\bgruesos?\b/],
+  ['ancho_mm', /\b(ancho|anchura|medida|tamano|dimension)(es|s)?\b/],
+  ['acabado', /\b(acabado|terminacion|superficie|brillo)(es|s)?\b/],
+  ['formato', /\b(formato|presentacion|forma)(es|s)?\b/],
+  ['grado', /\b(tipo|grado|acero|calidad|metal|aleacion|material|inoxidable|referencia)(es|s)?\b/],
 ]
+const PREGUNTA = /\b(que|cuales?|cuantos|cuantas|dime|dame|ensename|ensenadme|muestrame|mostrar|lista|listado|ver|saber|opciones|catalogo|informacion|info|disponibles?)\b/
+const HAY = /\b(hay|habra|tienes|tiene|teneis|tenemos|tienen|existen|existe|disponibles?|quedan|queda|ofreceis|ofreces|vendeis|vendes|manejais|trabajais|stock|almacen|sirves)\b/
+const PLURAL = /\b(grosores|espesores|galgas|calibres|anchos|anchuras|medidas|tamanos|dimensiones|acabados|terminaciones|superficies|formatos|presentaciones|tipos|grados|aceros|calidades|metales|aleaciones|materiales|referencias)\b/
 
-// «¿Qué grosores hay de 304?» → { campo: 'espesor_mm' }. Solo si es una pregunta por lo que hay, no un pedido.
+// «¿Qué grosores hay de 304?», «tipos de metales», «espesores de bobina?», «dime los acabados que tenéis»…
+// Solo si es una pregunta por lo que hay, no un pedido.
 export function detectarConsulta(texto) {
   const t = normaliza(texto)
-  const pregunta = /\b(que|cuales|cuantos|cuantas|dime|ensename|muestrame|lista)\b/.test(t)
-    && /\b(hay|tienes|teneis|tenemos|existen|disponibles?|quedan|ofreceis|vendeis)\b/.test(t)
+  const interrogativa = texto.includes('?') || texto.includes('¿') || PREGUNTA.test(t)
+  const pregunta = (interrogativa && HAY.test(t))
+    || (PLURAL.test(t) && (interrogativa || t.split(/\s+/).length <= 6))
   if (!pregunta) return null
   const campo = CONSULTAS.find(([, re]) => re.test(t))
   return campo ? { campo: campo[0] } : null
@@ -48,23 +53,61 @@ const VACIAS = new Set(['para', 'que', 'una', 'uno', 'unos', 'unas', 'con', 'del
   'tipo', 'grado', 'material', 'hacer', 'valdria', 'vale', 'puedo', 'pongo', 'seria', 'donde', 'tiene', 'tener', 'algo'])
 const raiz = w => w.slice(0, 5)
 const palabrasSignificativas = s => normaliza(s).split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !VACIAS.has(w))
-const SALINO = /\b(mar|marino|marina|costa|costero|salino|salina|sal|salitre|cloruro|cloruros)s?\b/
+const SALINO = /\b(mar|marino|marina|costa|costero|salino|salina|salada|salado|sal|salitre|playa|cloruro|cloruros)s?\b/
 
-const APLICACIONES = fichas.flatMap(f => f.aplicaciones.map(a => ({ ficha: f, texto: a.replace(/\.$/, ''), raices: new Set(palabrasSignificativas(a).map(raiz)) })))
+// Lo que dicen las fichas de cada grado: sus aplicaciones y cada frase de su descripción (propiedades).
+const frasesDe = d => d.split(/(?<=\.)\s+/).map(x => x.trim().replace(/\.$/, '')).filter(x => x.length > 10)
+const APLICACIONES = fichas.flatMap(f => [
+  ...f.aplicaciones.map(a => ({ ficha: f, tipo: 'aplicacion', texto: a.replace(/\.$/, '') })),
+  ...frasesDe(f.descripcion).map(d => ({ ficha: f, tipo: 'propiedad', texto: d })),
+]).map(a => ({ ...a, raices: new Set(palabrasSignificativas(a.texto).map(raiz)) }))
 const FRECUENCIA = {}
 for (const a of APLICACIONES) for (const r of a.raices) FRECUENCIA[r] = (FRECUENCIA[r] ?? 0) + 1
 
-// «¿Qué acero para una cocina industrial?» → pregunta por uso, sin grado concreto.
+// Palabras coloquiales → cómo lo dicen las fichas. Solo amplía la búsqueda: lo que se responde sale de las fichas.
+const SINONIMOS = [
+  [/\b(calor|caliente|calientes|temperatura|temperaturas|fuego|quemar|quema|llama)\b/, 'altas temperaturas hornos oxidacion'],
+  [/\b(hornos?|horno)\b/, 'hornos'],
+  [/\b(oxid\w*|herrumbre|corro\w*|picad\w*)\b/, 'corrosion'],
+  [/\b(sold\w*)\b/, 'soldabilidad soldadura soldadas'],
+  [/\b(doblar|dobla\w*|curvar|moldear|conformar|estampar|embuti\w*|deformar|dar forma)\b/, 'conformabilidad embuticion conformado formabilidad'],
+  [/\b(cort\w*|cuchill\w*|navaja\w*|filo|tijeras?)\b/, 'herramientas corte cuchilleria'],
+  [/\b(duro|dura|dureza|rayar|desgaste)\b/, 'dureza'],
+  [/\b(fuerte|fuertes|robusto|estructura\w*|carga|cargas|aguant\w*|soport\w*)\b/, 'resistencia mecanica estructurales'],
+  [/\b(cocina\w*|ollas?|sartene?s?|cazuelas?)\b/, 'menaje cocina'],
+  [/\b(comida|alimento\w*|alimenticia|bebidas?)\b/, 'alimentaria agroalimentaria'],
+  [/\b(quimic\w*|acido\w*)\b/, 'quimica'],
+  [/\b(coches?|automovil\w*|vehiculos?|tubos de escape|escapes?)\b/, 'automovilisticos automocion escape'],
+  [/\b(tuberias?|tubos?)\b/, 'tubos tuberias'],
+  [/\b(decor\w*|bonito|estetic\w*|brillo)\b/, 'decorativos decoracion'],
+  [/\b(frio extremo|criogeni\w*|congela\w*)\b/, 'criogenicas'],
+  [/\b(electrodomesticos?|lavadoras?|neveras?)\b/, 'electrodomesticos lavadoras'],
+  [/\b(depositos?|tanques?|cisternas?)\b/, 'tanques almacenamiento cisternas'],
+  [/\b(cubiertos|tenedor\w*|cucharas?)\b/, 'cuberteria'],
+]
+const ampliar = t => [t, ...SINONIMOS.filter(([re]) => re.test(t)).map(([, extra]) => extra)].join(' ')
+
+// «¿Qué acero para una cocina industrial?», «¿cuál me viene mejor para soldar?», «qué aguanta más el calor»…
+// Pregunta por uso o por una característica, sin grado concreto.
+const CONSEJO = /\b(recomienda\w*|aconseja\w*|sugier\w*|mejor|adecuado|indicado|apropiado|conviene|convendria|sirve|servir|serviria|valdria|vale|uso|utilizo|usaria|pongo|elijo|escojo)\b/
 export function detectarUso(texto) {
   const t = normaliza(texto)
-  const pregunta = /\b(que|cual|cuales|recomienda\w*|aconseja\w*|sirve|valdria|mejor|adecuado|indicado)\b/.test(t)
-  const deUso = /\b(para|uso|aplicacion|va a (estar|ir|usarse)|en un|en una|expuest\w*)\b/.test(t)
+  const pregunta = texto.includes('?') || texto.includes('¿')
+    || /\b(que|cual|cuales|dime|necesito|busco|quiero saber)\b/.test(t) || CONSEJO.test(t)
+  const deUso = /\b(para|uso|aplicacion|va a (estar|ir|usarse)|en un|en una|en el|en la|expuest\w*|contra|frente)\b/.test(t)
+    || /\b(resist\w*|aguant\w*|soport\w*|sold\w*|oxid\w*|corro\w*|dobl\w*|dur\w*|fuerte|duradero|barat\w*|car\w*|ligero|pesado|magnetic\w*|iman|conduc\w*)\b/.test(t)
   if (!pregunta || !deUso || interpretarTexto(texto).grado) return null
+  // «¿Qué espesores hay para bobina?» es una pregunta por lo que hay, no por el uso.
+  if (detectarConsulta(texto) && !CONSEJO.test(t)) return null
   return { texto }
 }
 
+// Propiedades de las que las fichas no dicen nada: se responde que lo consulte con un comercial.
+const SIN_DATO_EN_FICHAS = /\b(precio|precios|barat\w*|car[oa]s?|cuesta|coste|economic\w*|conduc\w*|electricidad|magnetic\w*|iman\w*|pes[oa]s?|pesad\w*|ligero\w*|liviano\w*|pintar|pintura|color\w*|plazo\w*|entrega|garantia)\b/
+
 // Grados que el catálogo indica para un uso, con la aplicación o el dato de la ficha que lo respalda.
 export function recomendarPorUso(texto) {
+  if (SIN_DATO_EN_FICHAS.test(normaliza(texto))) return { criterio: 'sin_dato', grados: [] }
   if (SALINO.test(normaliza(texto))) {
     const conLimite = fichas.filter(f => f.cloruros_max_ppm && f.aisi)
     const max = Math.max(...conLimite.map(f => f.cloruros_max_ppm))
@@ -78,17 +121,20 @@ export function recomendarPorUso(texto) {
       comparacion: unicos(conLimite.filter(f => f.cloruros_max_ppm < max).map(f => `${nombreGrado(f)} (${f.cloruros_max_ppm} ppm)`)),
     }
   }
-  const raices = unicos(palabrasSignificativas(texto).map(raiz))
+  const raices = unicos(palabrasSignificativas(ampliar(normaliza(texto))).map(raiz))
   const puntuadas = APLICACIONES.map(a => ({
     ...a, puntos: raices.filter(r => a.raices.has(r)).reduce((s, r) => s + 1 / FRECUENCIA[r], 0),
   })).filter(a => a.puntos > 0)
   if (!puntuadas.length) return { criterio: 'aplicacion', grados: [] }
   const max = Math.max(...puntuadas.map(a => a.puntos))
-  const elegidas = puntuadas.filter(a => a.puntos >= max * 0.6).sort((a, b) => b.puntos - a.puntos)
+  const elegidas = puntuadas.filter(a => a.puntos >= max * 0.6).sort((a, b) => b.puntos - a.puntos).slice(0, 12)
   const porGrado = new Map()
   for (const a of elegidas) {
     const g = nombreGrado(a.ficha)
-    if (!porGrado.has(g)) porGrado.set(g, { grado: g, ficha: a.ficha, motivo: `aplicación «${a.texto}» en su ficha` })
+    if (!porGrado.has(g)) {
+      porGrado.set(g, { grado: g, ficha: a.ficha,
+        motivo: a.tipo === 'aplicacion' ? `aplicación «${a.texto}» en su ficha` : `su ficha dice: «${a.texto}»` })
+    }
   }
   return { criterio: 'aplicacion', grados: [...porGrado.values()] }
 }

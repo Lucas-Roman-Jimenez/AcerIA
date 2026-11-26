@@ -26,7 +26,7 @@ export function textoConsulta({ campo, filtros, valores }, avisos = []) {
   }
   const primeros = valores.slice(0, 6).map(v => formatearValor(campo, v.valor)).join(', ')
   const resto = valores.length > 6 ? ` y ${valores.length - 6} más` : ''
-  return `${aviso}En stock${desc} hay ${valores.length} ${NOMBRES[campo]}: ${primeros}${resto}. Pulsa uno para añadirlo a tu petición.`
+  return `${aviso}En stock${desc} hay ${valores.length} ${NOMBRES[campo]}: ${primeros}${resto}. Pulsa uno para ver los bultos y añadirlos al carrito.`
 }
 
 // Lo que se añade a la caja de texto al pulsar un valor: lo ya filtrado más el valor elegido.

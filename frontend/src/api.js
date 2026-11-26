@@ -1,4 +1,4 @@
-import { chatFalso, resumenFalso, valoresFalsos } from './mock.js'
+import { chatFalso, resumenFalso, valoresFalsos, buscarFalso } from './mock.js'
 
 // Sin VITE_API_URL se usa la API falsa (src/mock.js).
 const API = import.meta.env.VITE_API_URL
@@ -25,6 +25,18 @@ export async function consultarValores(campo, filtros) {
 export async function resumenStock() {
   if (!API) return resumenFalso()
   const r = await fetch(`${API}/stock/resumen`)
+  if (!r.ok) throw new Error(`El servidor respondió ${r.status}`)
+  return r.json()
+}
+
+// Bultos que cumplen una especificación parcial (solo los campos que no son null).
+export async function buscarStock(esp) {
+  if (!API) return buscarFalso(esp)
+  const r = await fetch(`${API}/buscar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(esp),
+  })
   if (!r.ok) throw new Error(`El servidor respondió ${r.status}`)
   return r.json()
 }

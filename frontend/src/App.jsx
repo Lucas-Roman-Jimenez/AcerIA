@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { enviarMensaje, resumenStock, consultarValores } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
-import { Panel } from './Panel.jsx'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
 import { Acero, Dibujo } from './Acero.jsx'
 import { Casillas } from './Casillas.jsx'
@@ -9,6 +8,8 @@ import { interpretarTexto, detectarConsulta, detectarUso, recomendarPorUso } fro
 import { Consulta, textoConsulta } from './Consulta.jsx'
 import { Uso, construirUso } from './Uso.jsx'
 import { Cercanos } from './Cercanos.jsx'
+import { sugerirCorreccion } from './sugerir.js'
+import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
 const DEMO = [
@@ -54,6 +55,9 @@ export default function App() {
   const [comparar, setComparar] = useState([])
   const [verComparacion, setVerComparacion] = useState(false)
   const [demo, setDemo] = useState(null)
+  const [carrito, setCarrito] = useState([])
+  const [verCarrito, setVerCarrito] = useState(false)
+  const [avisoInicio, setAvisoInicio] = useState(null)
   const actualRef = useRef(actual)
   actualRef.current = actual
   const finRef = useRef(null)
@@ -95,7 +99,7 @@ export default function App() {
       const transcripcion = await dictado.texto
       if (dictadoRef.current !== dictado) return
       if (transcripcion) {
-        setTexto(anterior => [anterior.trimEnd(), transcripcion].filter(Boolean).join(' '))
+        setTexto(transcripcion)
         entradaRef.current?.focus()
       } else {
         setMensajeDictado('No se reconoció voz. Prueba otra vez o escribe la petición.')
@@ -117,16 +121,38 @@ export default function App() {
     setConversaciones(cs => [conv, ...cs.filter(c => c.id !== conv.id)])
   }
 
-  async function enviar(msg, conv = actual) {
+  async function enviar(msg, conv = actual, { sinCorregir = false, mostrado } = {}) {
     const limpio = msg.trim()
     if (!limpio || pensando) return
     cancelarDictado()
     setTexto('')
-    const base = { ...conv, creada: conv.creada ?? new Date(), mensajes: [...conv.mensajes, { rol: 'comercial', texto: limpio }] }
+    setAvisoInicio(null)
+    const base = { ...conv, creada: conv.creada ?? new Date(), mensajes: [...conv.mensajes, { rol: 'comercial', texto: mostrado ?? limpio }] }
+    // Erratas («bbbobina»): se pregunta antes de buscar, sin llamar al backend.
+    const sugerencia = !sinCorregir && sugerirCorreccion(limpio)
+    // Si con las erratas corregidas es una pregunta (por lo que hay o por el uso), se responde directamente.
+    const pregunta = sugerencia && (detectarUso(sugerencia.corregido) || detectarConsulta(sugerencia.corregido))
+    if (pregunta) return enviar(sugerencia.corregido, conv, { sinCorregir: true, mostrado: limpio })
+    if (sugerencia) {
+      const lista = sugerencia.cambios.map(([mal, bien]) => `«${bien}» en vez de «${mal}»`).join(', ')
+      const textoBot = `No estoy seguro de haberte entendido. ¿Querías decir ${lista}?`
+      guardar({ ...base, mensajes: [...base.mensajes, { rol: 'asistente', texto: textoBot, correccion: { ...sugerencia, original: limpio } }] })
+      if (vozActiva) leerEnAlto(textoBot)
+      return
+    }
     guardar(base)
     setPensando(true)
     try {
       const recomendacion = detectarUso(limpio) && recomendarPorUso(limpio)
+      // Lo que pregunta no aparece en las fichas técnicas: no se inventa (RNF-01), se manda a un comercial y se empieza de cero.
+      if (recomendacion && !recomendacion.grados.length) {
+        const textoBot = `Lo que preguntas («${limpio}») no aparece en las fichas técnicas de AcerIA, así que no puedo recomendarte nada fiable. Pregúntalo a un comercial. Mientras, puedes escribir una petición nueva.`
+        nuevaConsulta()
+        setConversaciones(cs => cs.filter(c => c.id !== base.id))
+        setAvisoInicio(textoBot)
+        if (vozActiva) leerEnAlto(textoBot)
+        return
+      }
       if (recomendacion) {
         const { valores } = await consultarValores('grado', filtrosConsulta('grado', limpio, conv.ultima?.especificacion))
         const { textoBot, uso } = construirUso(limpio, recomendacion, valores)
@@ -136,15 +162,20 @@ export default function App() {
       }
       const pregunta = detectarConsulta(limpio)
       if (pregunta) {
-        const c = await consultarValores(pregunta.campo, filtrosConsulta(pregunta.campo, limpio, conv.ultima?.especificacion))
-        const textoBot = textoConsulta(c, interpretarTexto(limpio).avisos)
-        guardar({ ...base, mensajes: [...base.mensajes, { rol: 'asistente', texto: textoBot, consulta: c, reintento: limpio }] })
-        if (vozActiva) leerEnAlto(textoBot)
+        await responderConsulta(limpio, pregunta, base, conv, false)
         return
       }
       const r = await enviarMensaje(conv.id, limpio)
-      const textoBot = r.tipo === 'error' ? r.error : (r.pregunta ?? r.texto)
-      const msgBot = { rol: 'asistente', texto: textoBot, respuesta: r, error: r.tipo === 'error', reintento: limpio }
+      const analisis = r.tipo !== 'error' && r.especificacion ? await analizar(r).catch(() => null) : null
+      if (analisis?.estado === 'todo_mal') {
+        nuevaConsulta()
+        setConversaciones(cs => cs.filter(c => c.id !== base.id))
+        setAvisoInicio(`Ningún dato de «${limpio}» existe o está en stock${analisis.avisos.length ? ` (${analisis.avisos.join(' ')})` : ''}. Escribe una nueva petición.`)
+        return
+      }
+      const textoBot = r.tipo === 'error' ? r.error
+        : analisis && !r.opciones?.length ? textoAnalisis(analisis) : (r.pregunta ?? r.texto)
+      const msgBot = { rol: 'asistente', texto: textoBot, respuesta: r, analisis, error: r.tipo === 'error', reintento: limpio }
       guardar({ ...base, mensajes: [...base.mensajes, msgBot], ultima: r })
       if (vozActiva && r.tipo !== 'error') leerEnAlto(textoBot)
     } catch (e) {
@@ -152,6 +183,22 @@ export default function App() {
       guardar({ ...base, mensajes: [...base.mensajes, msgErr] })
     } finally {
       setPensando(false)
+    }
+  }
+
+  // «¿Qué espesores hay de bobina?»: valores reales del stock, cada uno pulsable.
+  async function responderConsulta(texto, pregunta, base, conv, propia = true) {
+    if (propia) { guardar(base); setPensando(true) }
+    try {
+      const c = await consultarValores(pregunta.campo, filtrosConsulta(pregunta.campo, texto, conv.ultima?.especificacion))
+      const textoBot = textoConsulta(c, interpretarTexto(texto).avisos)
+      guardar({ ...base, mensajes: [...base.mensajes, { rol: 'asistente', texto: textoBot, consulta: c, reintento: texto }] })
+      if (vozActiva) leerEnAlto(textoBot)
+    } catch (e) {
+      if (!propia) throw e
+      guardar({ ...base, mensajes: [...base.mensajes, { rol: 'asistente', texto: `No he podido responder (${e.message}). Puedes reintentar.`, error: true, reintento: texto }] })
+    } finally {
+      if (propia) setPensando(false)
     }
   }
 
@@ -168,13 +215,19 @@ export default function App() {
     setComparar([])
   }
 
+  function alternarCarrito(tipo, item) {
+    setCarrito(cs => cs.some(c => c.item.id === item.id)
+      ? cs.filter(c => c.item.id !== item.id)
+      : [...cs, { tipo, item }])
+  }
+
   function alternarComparar(tipo, item) {
     setComparar(cs => cs.some(c => c.item.id === item.id)
       ? cs.filter(c => c.item.id !== item.id)
       : [...cs, { tipo, item }].slice(-4))
   }
 
-  const anadirATexto = f => { setTexto(t => `${[t.trimEnd(), f].filter(Boolean).join(' ')} `); entradaRef.current?.focus() }
+  const anadirATexto = f => enviar(f)
 
   async function pasoDemo(i) {
     const paso = DEMO[i]
@@ -233,6 +286,7 @@ export default function App() {
           <div className="acciones">
             <button className="demo-boton" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
               title="Reproduce la conversación de la demo paso a paso">▶ Demo guiada</button>
+            <button className="nueva carrito-cabecera" onClick={() => setVerCarrito(true)}>🛒 Carrito ({carrito.length})</button>
             <button className="nueva" onClick={nuevaConsulta}>+ Nueva consulta</button>
           </div>
         </div>
@@ -275,6 +329,7 @@ export default function App() {
                 <div className="inicio-nombre">
                   {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
                 </div>
+                {avisoInicio && <p className="aviso-inicio" role="alert">{avisoInicio}</p>}
                 <p className="ayuda-inicio">Escribe o dicta lo que pide el cliente. Si no sabes qué pedir, pregunta qué hay: «¿qué grosores hay de 304?» o «¿qué acero recomiendas para hornos?»</p>
               </div>
             </section>
@@ -297,14 +352,31 @@ export default function App() {
                         ))}
                       </div>
                     )}
+                    {m.correccion && i === actual.mensajes.length - 1 && (
+                      <div className="opciones">
+                        <button type="button" className="opcion activa" disabled={pensando}
+                          onClick={() => enviar(m.correccion.corregido, actual, { sinCorregir: true })}>
+                          Sí: «{m.correccion.corregido}»
+                        </button>
+                        <button type="button" className="opcion" disabled={pensando}
+                          onClick={() => enviar(m.correccion.original, actual, { sinCorregir: true })}>
+                          No, buscar tal cual
+                        </button>
+                      </div>
+                    )}
                     {m.consulta && <Consulta consulta={m.consulta} deshabilitado={pensando} onElegir={anadirATexto} />}
                     {m.uso && <Uso uso={m.uso} deshabilitado={pensando} onElegir={anadirATexto} />}
                     {m.respuesta?.especificacion && <Acero esp={m.respuesta.especificacion} id={i} />}
-                    {m.respuesta && (
+                    {m.analisis && (
+                      <Flujo analisis={m.analisis} activo={i === actual.mensajes.length - 1} onEnviar={enviar}
+                        onCancelar={nuevaConsulta} carrito={carrito} onCarrito={alternarCarrito}
+                        onAbrir={setDetalle} deshabilitado={pensando} />
+                    )}
+                    {m.respuesta && !m.analisis && (
                       <Resultados r={m.respuesta} onAbrir={setDetalle}
                         comparar={comparar} onComparar={alternarComparar} />
                     )}
-                    {i === actual.mensajes.length - 1 && m.respuesta?.tipo === 'respuesta' && m.respuesta.especificacion
+                    {i === actual.mensajes.length - 1 && !m.analisis && m.respuesta?.tipo === 'respuesta' && m.respuesta.especificacion
                       && !m.respuesta.exactos?.length && !m.respuesta.transformables?.length && (
                       <Cercanos esp={m.respuesta.especificacion} onElegir={enviar} deshabilitado={pensando} />
                     )}
@@ -317,7 +389,6 @@ export default function App() {
                 )}
                 <div ref={finRef} />
               </div>
-              <Panel esp={esp} onCorregir={enviar} deshabilitado={pensando} />
             </section>
           )}
 
@@ -355,11 +426,15 @@ export default function App() {
             <button type="submit" className="icono" title="Enviar" disabled={pensando || !texto.trim()}>→</button>
           </form>
           <div className="estado-dictado" role="status">{estadoDictado ? '' : mensajeDictado}</div>
-          <Casillas texto={texto} base={esp} />
+          <Casillas texto={texto} base={esp} onElegir={enviar} deshabilitado={pensando} />
         </main>
       </div>
 
       {detalle && <Detalle item={detalle} esp={esp} onCerrar={() => setDetalle(null)} />}
+      {verCarrito && (
+        <Carrito carrito={carrito} onQuitar={id => setCarrito(cs => cs.filter(c => c.item.id !== id))}
+          onVaciar={() => setCarrito([])} onCerrar={() => setVerCarrito(false)} />
+      )}
       {verComparacion && comparar.length > 1 && (
         <Comparador seleccion={comparar} onQuitar={t => alternarComparar(t.tipo, t.item)} onCerrar={() => setVerComparacion(false)} />
       )}
