@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.db import crear_db, disponibles
 from app.buscador import CAMPOS_VALORES, buscar_bultos, construir_objetivo, valores_disponibles
 from app.conversacion import cargar_env, responder_chat
+from app.reportes import reporte_semanal
 
 
 @asynccontextmanager
@@ -67,6 +68,11 @@ def respuesta_base(conv_id: str | None) -> dict:
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/reportes/compras/semanal")
+def obtener_reporte_semanal():
+    return reporte_semanal()
 
 
 @app.post("/chat")

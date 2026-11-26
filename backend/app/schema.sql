@@ -25,3 +25,13 @@ CREATE TABLE bultos (
 );
 
 CREATE INDEX idx_busqueda ON bultos (estado, formato, espesor_mm);
+
+CREATE TABLE IF NOT EXISTS compras (
+    id              TEXT PRIMARY KEY NOT NULL,
+    comprada_en_ms  INTEGER NOT NULL,
+    material_json   TEXT NOT NULL CHECK (json_valid(material_json)),
+    cantidad        REAL NOT NULL CHECK (cantidad > 0),
+    unidad          TEXT NOT NULL CHECK (unidad IN ('kg', 't', 'bultos', 'piezas'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_compras_semana ON compras (comprada_en_ms, id);
