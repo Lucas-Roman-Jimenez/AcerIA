@@ -358,3 +358,8 @@ button:disabled { cursor: default; opacity: .5; }
 .salir-flujo { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; background: none; color: #fff; border: 1px solid #fff;
   border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background var(--suave), color var(--suave); }
 .salir-flujo:hover { background: #fff; color: #000; }
+
+/* Venta simulada del carrito */
+.carrito-pie { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.carrito-ok { color: #7fd18b; margin: 12px 0; }
+.carrito-error { color: #ff8a80; margin: 12px 0; }

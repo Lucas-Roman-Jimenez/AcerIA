@@ -48,12 +48,13 @@ def test_reporte_filtra_la_semana_madrid_y_conserva_la_ficha(base):
     assert reporte["semana"] == {
         "inicio": "2026-11-23", "fin": "2026-11-29", "zona_horaria": "Europe/Madrid",
     }
-    assert [c["id"] for c in reporte["compras"]] == ["ultima", "primera"]
-    compra = reporte["compras"][0]
+    [compra] = reporte["compras"]
     assert compra["nombre_material"] == "Bobina de acero inoxidable"
-    assert all(compra["caracteristicas"][campo] == valor for campo, valor in BULTO.items())
-    assert compra["caracteristicas"]["largo_mm"] is None
-    assert compra["cantidad_sustraida"] == {"valor": 300.5, "unidad": "kg"}
+    assert compra["caracteristicas"] == {
+        "id": "334", "grado": "304L/304", "acabado": "2B",
+        "espesor_mm": 2, "ancho_mm": 1500, "peso_kg": 745,
+    }
+    assert compra["cantidades_sustraidas"] == [{"valor": 601, "unidad": "kg"}]
 
 
 def test_el_rollback_de_la_baja_tambien_revierte_el_registro(base):
@@ -63,3 +64,29 @@ def test_el_rollback_de_la_baja_tambien_revierte_el_registro(base):
     reporte = obtener_reporte_semanal()
     assert reporte["titulo"] == "Reporte semanal de compras"
     assert reporte["compras"] == []
+
+
+def test_reporte_muestra_el_largo_y_usa_euronorma_si_falta_aisi(base):
+    chapa = dict(BULTO, formato="chapa", aisi=None, euronorma="1.4404", largo_mm=2500)
+    with sqlite3.connect(base) as conexion:
+        registrar_compra(conexion, compra_id="chapa", bulto=chapa,
+                         cantidad=1, unidad="bultos", comprada_en=datetime.now(timezone.utc))
+    [compra] = obtener_reporte_semanal()["compras"]
+    assert compra["nombre_material"] == "Chapa de acero inoxidable"
+    assert compra["caracteristicas"]["grado"] == "1.4404"
+    assert compra["caracteristicas"]["largo_mm"] == 2500
+
+
+def test_reporte_consolida_cada_bulto_sin_mezclar_unidades(base):
+    hoy = datetime.now(timezone.utc)
+    with sqlite3.connect(base) as conexion:
+        guardar(conexion, "peso", hoy)
+        registrar_compra(conexion, compra_id="piezas", bulto=BULTO,
+                         cantidad=2, unidad="piezas", comprada_en=hoy)
+        registrar_compra(conexion, compra_id="otro", bulto=dict(BULTO, id="335"),
+                         cantidad=1, unidad="bultos", comprada_en=hoy)
+    filas = {c["caracteristicas"]["id"]: c for c in obtener_reporte_semanal()["compras"]}
+    assert set(filas) == {"334", "335"}
+    assert filas["334"]["cantidades_sustraidas"] == [
+        {"valor": 300.5, "unidad": "kg"}, {"valor": 2, "unidad": "piezas"},
+    ]

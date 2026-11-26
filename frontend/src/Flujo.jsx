@@ -172,7 +172,23 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
   )
 }
 
-export function Carrito({ carrito, onQuitar, onVaciar, onCerrar }) {
+export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
+  const [vendiendo, setVendiendo] = useState(false)
+  const [mensaje, setMensaje] = useState(null)   // {tipo: 'ok' | 'error', texto}
+
+  async function confirmarVenta() {
+    setVendiendo(true)
+    setMensaje(null)
+    try {
+      const r = await onVender(carrito.map(c => c.item.id))
+      setMensaje({ tipo: 'ok', texto: `Vendidos ${r.vendidos.length} bultos. Ya no salen en el stock y aparecen en el reporte semanal.` })
+    } catch (e) {
+      setMensaje({ tipo: 'error', texto: e.message })
+    } finally {
+      setVendiendo(false)
+    }
+  }
+
   return (
     <div className="modal-fondo" onClick={onCerrar}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -180,7 +196,8 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar }) {
           <h2>Carrito</h2>
           <button className="demo-salir" onClick={onCerrar}>Cerrar</button>
         </div>
-        {carrito.length === 0 ? <p className="tenue">Aún no has añadido nada.</p> : (
+        {mensaje && <p className={mensaje.tipo === 'error' ? 'carrito-error' : 'carrito-ok'}>{mensaje.texto}</p>}
+        {carrito.length === 0 ? (!mensaje && <p className="tenue">Aún no has añadido nada.</p>) : (
           <>
             <ul className="carrito-lista">
               {carrito.map(({ tipo, item }) => {
@@ -194,7 +211,15 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar }) {
                 )
               })}
             </ul>
-            <button className="demo-salir" onClick={onVaciar}>Vaciar carrito</button>
+            <div className="carrito-pie">
+              <button className="demo-salir" onClick={onVaciar} disabled={vendiendo}>Vaciar carrito</button>
+              {onVender && (
+                <button className="carrito-boton" onClick={confirmarVenta} disabled={vendiendo}>
+                  {vendiendo ? 'Vendiendo…' : `Confirmar venta (${carrito.length})`}
+                </button>
+              )}
+            </div>
+            <p className="tenue">Simulación para la demo: no se envía nada a los sistemas de AcerIA.</p>
           </>
         )}
       </div>
