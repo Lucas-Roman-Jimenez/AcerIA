@@ -64,7 +64,8 @@ export default function App() {
   const [carrito, setCarrito] = useState([])
   const [verCarrito, setVerCarrito] = useState(false)
   const [avisoInicio, setAvisoInicio] = useState(null)
-  const [verReporte, setVerReporte] = useState(false)
+  const [vistaReporte, setVistaReporte] = useState(null)
+  const verReporte = vistaReporte !== null
   // Respuesta que acaba de llegar: es la única que se escribe letra a letra
   const [fresco, setFresco] = useState(null)
   const actualRef = useRef(actual)
@@ -74,7 +75,7 @@ export default function App() {
   const dictadoRef = useRef(null)
 
   useEffect(() => { resumenStock().then(setStock).catch(() => setStock([])) }, [])
-  useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando])
+  useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando, verReporte])
   useEffect(() => () => descartarDictado(dictadoRef), [])
   const [lento, setLento] = useState(false)
   useEffect(() => {
@@ -253,7 +254,7 @@ export default function App() {
     setDemo(null)
     setVerCarrito(false)
     setVerComparacion(false)
-    setVerReporte(false)
+    setVistaReporte(null)
     setAvisoInicio(null)
     nuevaConsulta()
   }
@@ -317,12 +318,8 @@ export default function App() {
   const previa = vacio && texto.trim() ? interpretarTexto(texto) : null
 
 
-  if (verReporte) {
-    return <div className="app"><Reportes onVolver={() => setVerReporte(false)} /></div>
-  }
-
   return (
-    <div className={`app ${vacio ? 'portada' : ''}`}>
+    <div className={`app ${verReporte ? 'en-reportes' : vacio ? 'portada' : ''}`}>
       <aside className="lateral">
         <button type="button" className="marca" onClick={salir} title="Volver al inicio">
           <span className="logo-luna" aria-hidden />
@@ -330,10 +327,11 @@ export default function App() {
         </button>
 
         <nav className="lateral-menu" aria-label="Principal">
-          <button type="button" className="lateral-item destacado" onClick={salir}>
+          <button type="button" className={`lateral-item ${verReporte ? '' : 'destacado'}`} onClick={salir}>
             <Icono nombre="nueva" /> Nueva consulta
           </button>
-          <button type="button" className="lateral-item" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
+          <button type="button" className="lateral-item" onClick={() => { setVistaReporte(null); pasoDemo(0) }}
+            disabled={pensando || demo !== null}
             title="Reproduce la conversación de la demo paso a paso">
             <Icono nombre="demo" /> Demo guiada
           </button>
@@ -341,7 +339,9 @@ export default function App() {
             <Icono nombre="carrito" /> Carrito
             {carrito.length > 0 && <span className="contador">{carrito.length}</span>}
           </button>
-          <button type="button" className="lateral-item" onClick={() => { cancelarDictado(); setVerReporte(true) }}>
+          <button type="button" className={`lateral-item ${verReporte ? 'destacado' : ''}`}
+            aria-current={verReporte ? 'page' : undefined}
+            onClick={() => { cancelarDictado(); setVistaReporte('inventario') }}>
             <Icono nombre="reporte" /> Reportes
           </button>
         </nav>
@@ -351,7 +351,7 @@ export default function App() {
           {conversaciones.length === 0 && <p className="lateral-vacio">Aquí aparecerán tus consultas.</p>}
           {conversaciones.map(c => (
             <button key={c.id} className={`reciente ${c.id === actual.id ? 'activa' : ''}`}
-              onClick={() => { cancelarDictado(); setFresco(null); setActual(c); setDetalle(null) }}>
+              onClick={() => { cancelarDictado(); setVistaReporte(null); setFresco(null); setActual(c); setDetalle(null) }}>
               <span className="reciente-texto">{c.mensajes[0]?.texto}</span>
               {c.creada && <span className="reciente-hora">{cuando(c.creada)}</span>}
             </button>
@@ -390,6 +390,9 @@ export default function App() {
       </div>
 
 
+      {verReporte ? (
+        <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} onVolver={() => setVistaReporte(null)} />
+      ) : (
         <main className="principal">
           {vacio ? (
             <section className="inicio">
@@ -513,6 +516,7 @@ export default function App() {
           <Casillas texto={texto} base={esp} onElegir={enviar} deshabilitado={pensando}
             onQuitar={k => { const f = frasesQuitar([k]); enviar(f.backend, actual, { sinCorregir: true, mostrado: f.visible }) }} />
         </main>
+      )}
       </div>
 
       {detalle && <Detalle item={detalle} esp={esp} onCerrar={() => setDetalle(null)} />}
