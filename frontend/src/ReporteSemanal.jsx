@@ -5,14 +5,9 @@ const numero = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 6 })
 const fecha = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'UTC' })
 const medidas = n => `${numero.format(n)} mm`
 const CARACTERISTICAS = [
-  ['id', 'Bulto'], ['formato', 'Formato'], ['aisi', 'AISI'], ['euronorma', 'EN'],
-  ['acabado', 'Acabado superior'], ['acabado_inf', 'Acabado inferior'],
-  ['codigo_acabado_inf', 'Código de acabado inferior'],
-  ['espesor_mm', 'Espesor nominal', medidas], ['espesor_min_mm', 'Espesor mínimo', medidas],
-  ['espesor_max_mm', 'Espesor máximo', medidas], ['ancho_mm', 'Ancho', medidas],
+  ['id', 'ID del bulto'], ['grado', 'Grado'], ['acabado', 'Acabado'],
+  ['espesor_mm', 'Espesor', medidas], ['ancho_mm', 'Ancho', medidas],
   ['largo_mm', 'Largo', medidas], ['peso_kg', 'Peso del bulto', n => `${numero.format(n)} kg`],
-  ['papel', 'Papel', n => n ? 'Sí' : 'No'], ['cantidad', 'Cantidad en origen', n => numero.format(n)],
-  ['estado', 'Estado en origen'],
 ]
 
 function descargarJson(reporte) {
@@ -62,21 +57,27 @@ export function ReporteSemanal({ onVolver }) {
       {Boolean(reporte?.compras.length) && (
         <ul className="reporte-compras" aria-label="Compras de la semana">
           {reporte.compras.map(compra => (
-            <li key={compra.id} className="reporte-compra">
+            <li key={compra.caracteristicas.id} className="reporte-compra">
               <div>
                 <h2>{compra.nombre_material}</h2>
                 <dl className="reporte-caracteristicas">
-                  {CARACTERISTICAS.filter(([campo]) => compra.caracteristicas[campo] != null).map(([campo, nombre, formato]) => (
-                    <div key={campo}>
-                      <dt>{nombre}</dt>
-                      <dd>{formato ? formato(compra.caracteristicas[campo]) : compra.caracteristicas[campo]}</dd>
-                    </div>
-                  ))}
+                  {CARACTERISTICAS.filter(([campo]) => campo !== 'largo_mm' || compra.caracteristicas[campo] != null)
+                    .map(([campo, nombre, formato]) => {
+                      const valor = compra.caracteristicas[campo]
+                      return (
+                        <div key={campo}>
+                          <dt>{nombre}</dt>
+                          <dd>{valor == null ? 'Sin dato' : formato ? formato(valor) : valor}</dd>
+                        </div>
+                      )
+                    })}
                 </dl>
               </div>
               <div className="reporte-cantidad">
                 <span>Cantidad sustraída</span>
-                <strong>{numero.format(compra.cantidad_sustraida.valor)} {compra.cantidad_sustraida.unidad}</strong>
+                {compra.cantidades_sustraidas.map(({ valor, unidad }) => (
+                  <strong key={unidad}>{numero.format(valor)} {unidad}</strong>
+                ))}
               </div>
             </li>
           ))}
