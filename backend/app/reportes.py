@@ -41,11 +41,25 @@ def _texto_medida(limites) -> str:
     return extremos[0] if extremos[0] == extremos[1] else f"{extremos[0]}–{extremos[1]}"
 
 
-def _material_agotado(producto: dict, catalogo: Catalogo, fecha_agotado: str | None) -> dict:
-    formato, grado, acabado = (producto[campo] for campo in ("formato", "grado", "acabado"))
+def _es_en(grado: str) -> bool:
+    return grado.startswith("1.") and grado[2:].isdigit()
+
+
+def _grado_principal(grado: str, catalogo: Catalogo) -> str:
+    """Nombre con el que se agrupa un grado: el AISI si el catálogo documenta la equivalencia (1.4512 -> 409L)."""
+    return catalogo.aisi_por_en.get(grado, grado) if _es_en(grado) else grado
+
+
+def _material_agotado(productos: list[dict], catalogo: Catalogo, fecha_agotado: str | None) -> dict:
+    """Un material del reporte. `productos` son las entradas del catálogo que describen el mismo material
+    con distintos nombres de grado (304, 1.4301…): se muestra una sola vez (ver reporte_diario_inventario)."""
+    producto = productos[0]
+    formato, acabado = producto["formato"], producto["acabado"]
     espesor = _texto_medida(producto.get("espesor_mm"))
     ancho = _texto_medida(producto.get("ancho_mm"))
-    nombre_grado = catalogo.etiqueta_en(grado) if grado.startswith("1.") and grado[2:].isdigit() else grado
+    principales = sorted({_grado_principal(p["grado"], catalogo) for p in productos})
+    grado = "/".join(principales)
+    nombre_grado = " / ".join(catalogo.etiqueta_en(g) if _es_en(g) else g for g in principales)
     medidas = [f"{v.replace('.', ',')} mm {etiqueta}"
                for v, etiqueta in ((espesor, "de espesor"), (ancho, "de ancho")) if v != "-"]
     return {
@@ -77,10 +91,13 @@ def reporte_diario_inventario(*, ahora: datetime | None = None, catalogo: Catalo
 
     con_stock = set()
     vendidos_por_producto = defaultdict(set)
+    bultos_por_producto = defaultdict(set)
     ids_actuales = set()
     for bulto in bultos:
         ids_actuales.add(bulto["id"])
-        indices = _productos_del_bulto(bulto, por_clave)
+        indices = list(_productos_del_bulto(bulto, por_clave))
+        for indice in indices:
+            bultos_por_producto[indice].add(bulto["id"])
         if bulto["estado"] == "vendido":
             for indice in indices:
                 vendidos_por_producto[indice].add(bulto["id"])
@@ -97,17 +114,28 @@ def reporte_diario_inventario(*, ahora: datetime | None = None, catalogo: Catalo
                                                 ("formato", "acabado", "espesor_mm", "ancho_mm")):
             for indice in _productos_del_bulto(bulto, por_clave):
                 vendidos_por_producto[indice].add(id_bulto)
+                bultos_por_producto[indice].add(id_bulto)
+
+    # El catálogo repite cada combinación con cada nombre de grado (430 y 1.4016; 304, 304L, 1.4301 y
+    # 1.4307 en un doble certificado). Es el mismo material si coinciden formato, acabado y medidas y lo
+    # cubren los mismos bultos; sin bultos, si el grado principal coincide. Se lista una vez.
+    grupos: dict[tuple, list[int]] = {}
+    for indice, producto in enumerate(productos):
+        combinacion = (producto["formato"].casefold(), producto["acabado"].casefold(),
+                       tuple(producto.get("espesor_mm") or ()), tuple(producto.get("ancho_mm") or ()))
+        cubierto = frozenset(bultos_por_producto[indice]) or _grado_principal(producto["grado"], catalogo)
+        grupos.setdefault((combinacion, cubierto), []).append(indice)
 
     materiales = []
-    for indice, producto in enumerate(productos):
-        if indice in con_stock:
+    for indices in grupos.values():
+        if con_stock.intersection(indices):
             continue
-        ids_vendidos = vendidos_por_producto[indice]
+        ids_vendidos = set().union(*(vendidos_por_producto[i] for i in indices))
         fecha_agotado = None
         if ids_vendidos and ids_vendidos <= bajas.keys():
             ultimo_ms = max(bajas[id_bulto] for id_bulto in ids_vendidos)
             fecha_agotado = datetime.fromtimestamp(ultimo_ms / 1000, ZONA_REPORTE).date().isoformat()
-        materiales.append(_material_agotado(producto, catalogo, fecha_agotado))
+        materiales.append(_material_agotado([productos[i] for i in indices], catalogo, fecha_agotado))
     return {
         "titulo": "Reporte diario",
         "fecha": momento.date().isoformat(),

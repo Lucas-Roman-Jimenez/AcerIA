@@ -40,3 +40,14 @@ MAX_ALTERNATIVAS = 3
 
 # Tarea 4. Minutos que dura la reserva de un bulto en el carrito; al caducar vuelve a estar disponible.
 RESERVA_MINUTOS = 15
+
+# Tarea 6. Límites de lo que entra en la API (validación con Pydantic en app/modelos.py). POR CONFIRMAR.
+# Las medidas dejan margen sobre el inventario real (espesor 0,3-45 mm, ancho 101-1566, largo 648-4727).
+MAX_ESPESOR_MM = 100
+MAX_ANCHO_MM = 5000
+MAX_LARGO_MM = 20000
+MAX_BULTOS_CARRITO = 200      # IDs por reserva o venta (también evita pasar el límite de variables de SQLite)
+MAX_LONGITUD_ID = 50          # ID de bulto (los del inventario tienen hasta 4 caracteres)
+MAX_LONGITUD_VALOR = 50       # grado, acabado y cada opción (el acabado más largo tiene 17)
+MAX_OPCIONES = 10             # valores por campo en «opciones» (p. ej. brillante -> BA o 2R)
+MAX_LIMITE_RESUMEN = 50       # grupos en /stock/resumen

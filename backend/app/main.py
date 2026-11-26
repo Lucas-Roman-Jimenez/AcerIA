@@ -2,10 +2,11 @@ import os
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from typing import Literal
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 
 from app import config
 from app.db import crear_db, disponibles
@@ -14,6 +15,8 @@ from app.conversacion import cargar_env, responder_chat
 from app.ventas import BultosNoDisponibles, vender
 from app.reservas import liberar, liberar_todas, mis_reservas, reservar
 from app.reportes import reporte_diario_inventario, reporte_semanal
+from app.modelos import (MENSAJE_GENERAL, PATRON_CARRITO, CampoStock, Especificacion, Formato, ListaBultos,
+                         MensajeChat, errores_legibles)
 from app.tendencias import tendencias_compras
 
 
@@ -33,10 +36,12 @@ app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES,   # nunca
                    allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type", "X-Carrito"])
 
 
-class MensajeChat(BaseModel):
-    conversacion_id: str | None = Field(None, max_length=100)
-    mensaje: str | None = Field(None, max_length=config.MAX_LONGITUD_MENSAJE)   # formato de Alonso y de la evaluación de Lucas
-    texto: str | None = Field(None, max_length=config.MAX_LONGITUD_MENSAJE)     # formato del frontend de Stanis (docs/contrato.md §6)
+@app.exception_handler(RequestValidationError)
+async def datos_no_validos(request: Request, exc: RequestValidationError):
+    """Tarea 6: todo 422 de validación con el mismo formato, en español y sin repetir lo enviado.
+    {"detail": "Datos no válidos.", "errores": [{"campo": "espesor_mm", "mensaje": "debe ser mayor que 0"}]}"""
+    return JSONResponse(status_code=422,
+                        content={"detail": MENSAJE_GENERAL, "errores": errores_legibles(exc.errors())})
 
 
 def compatibilizar(r: dict) -> dict:
@@ -74,18 +79,14 @@ def obtener_tendencias_compras(
     return tendencias_compras(semanas, unidad)
 
 
-def titular_actual(x_carrito: str = Header("", max_length=100)) -> str:
-    """Quién reserva y vende. Provisional hasta el login (tarea 5): un ID aleatorio de carrito que el
-    frontend manda en la cabecera X-Carrito. Con login, saldrá del token y el resto no cambia."""
+def titular_actual(x_carrito: str = Header("", max_length=100, pattern=PATRON_CARRITO)) -> str:
+    """Quién reserva y vende: el ID aleatorio de carrito que el frontend manda en la cabecera X-Carrito.
+    No hay login (la tarea 5 no se hace); si algún día lo hay, solo cambia esta función."""
     return x_carrito.strip()
 
 
-class Venta(BaseModel):
-    bultos: list[str]               # IDs de los bultos del carrito
-
-
 @app.post("/compras")
-def comprar(v: Venta, titular: str = Depends(titular_actual)):
+def comprar(v: ListaBultos, titular: str = Depends(titular_actual)):
     """Vende (simulado) los bultos del carrito: pasan a «vendido» y aparecen en el reporte semanal.
     Solo se venden los bultos reservados por el titular (tarea 4)."""
     try:
@@ -101,16 +102,12 @@ def comprar(v: Venta, titular: str = Depends(titular_actual)):
 
 # ---------- Reservas del carrito (tarea 4): que dos comerciales no cojan el mismo bulto ----------
 
-class Reserva(BaseModel):
-    bultos: list[str]               # IDs de los bultos que se añaden al carrito
-
-
 def _sin_titular() -> HTTPException:
     return HTTPException(422, "Falta la cabecera X-Carrito.")
 
 
 @app.post("/reservas")
-def crear_reserva(r: Reserva, titular: str = Depends(titular_actual)):
+def crear_reserva(r: ListaBultos, titular: str = Depends(titular_actual)):
     """Al añadir al carrito: reserva los bultos (todos o ninguno) durante config.RESERVA_MINUTOS.
     Si ya eran del titular, renueva la caducidad. 409 si alguno lo tiene otro o ya no está disponible."""
     if not titular:
@@ -134,7 +131,7 @@ def listar_reservas(titular: str = Depends(titular_actual)):
 
 
 @app.delete("/reservas/{bulto_id}", status_code=204)
-def quitar_reserva(bulto_id: str = Path(max_length=100), titular: str = Depends(titular_actual)):
+def quitar_reserva(bulto_id: str = Path(min_length=1, max_length=config.MAX_LONGITUD_ID), titular: str = Depends(titular_actual)):
     """Al quitar un bulto del carrito: vuelve a estar disponible. 404 si no es una reserva del titular."""
     if not titular:
         raise _sin_titular()
@@ -153,12 +150,16 @@ def vaciar_reservas(titular: str = Depends(titular_actual)):
 @app.post("/chat")
 def chat(m: MensajeChat):
     """Conversación real: módulo LLM + buscar_bultos() (exactos y transformables), en app/conversacion.py."""
-    return compatibilizar(responder_chat(m.conversacion_id, m.mensaje or m.texto or ""))
+    return compatibilizar(responder_chat(m.conversacion_id, m.contenido))
 
 
 @app.post("/buscar")
-def buscar(espec: dict):
-    objetivo = construir_objetivo(espec)
+def buscar(espec: Especificacion):
+    """Exactos, transformables y, si no hay ninguno, alternativas (RF-29). La entrada se valida con
+    Pydantic (app/modelos.py): medidas positivas y con límite, formato permitido, textos acotados."""
+    if isinstance(espec, dict):                       # llamada directa (tests y evaluación): misma validación
+        espec = Especificacion.model_validate(espec)
+    objetivo = construir_objetivo(espec.model_dump())
     exactos, transformables = buscar_bultos(objetivo)
     alternativas = [] if exactos or transformables else buscar_alternativas(objetivo)   # RF-29
     return {
@@ -170,12 +171,15 @@ def buscar(espec: dict):
 
 
 @app.get("/stock/valores")
-def stock_valores(campo: str, grado: str | None = None, acabado: str | None = None,
-                  formato: str | None = None, espesor_mm: float | None = None, ancho_mm: float | None = None):
+def stock_valores(campo: CampoStock,
+                  grado: str | None = Query(None, min_length=1, max_length=config.MAX_LONGITUD_VALOR),
+                  acabado: str | None = Query(None, min_length=1, max_length=config.MAX_LONGITUD_VALOR),
+                  formato: Formato | None = None,
+                  espesor_mm: float | None = Query(None, gt=0, le=config.MAX_ESPESOR_MM),
+                  ancho_mm: float | None = Query(None, gt=0, le=config.MAX_ANCHO_MM)):
     """Valores reales de un campo en el stock disponible, filtrado por lo que ya se sabe.
-    Ejemplo: /stock/valores?campo=espesor_mm&grado=304 -> grosores de 304 que hay ahora."""
-    if campo not in CAMPOS_VALORES:
-        raise HTTPException(422, f"campo debe ser uno de: {', '.join(CAMPOS_VALORES)}")
+    Ejemplo: /stock/valores?campo=espesor_mm&grado=304 -> grosores de 304 que hay ahora.
+    Un grado o acabado que no existe no es un error: da 0 bultos (el frontend lo marca «sin stock»)."""
     filtros = {k: v for k, v in {"grado": grado, "acabado": acabado, "formato": formato,
                                  "espesor_mm": espesor_mm, "ancho_mm": ancho_mm}.items() if v is not None}
     valores = valores_disponibles(campo, filtros)
@@ -184,7 +188,7 @@ def stock_valores(campo: str, grado: str | None = None, acabado: str | None = No
 
 
 @app.get("/stock/resumen")
-def stock_resumen(limite: int = 12):
+def stock_resumen(limite: int = Query(12, ge=1, le=config.MAX_LIMITE_RESUMEN)):
     """Cinta de stock de la cabecera del frontend: grupos de bultos disponibles por grado, acabado y formato."""
     grupos: dict[str, dict] = {}
     for b in disponibles():
