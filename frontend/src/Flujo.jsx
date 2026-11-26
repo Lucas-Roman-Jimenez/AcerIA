@@ -213,7 +213,7 @@ export function Carrito({ carrito, onQuitar, onVaciar, onCerrar, onVender }) {
                 </button>
               )}
             </div>
-            <p className="tenue">Simulación para la demo: no se envía nada a los sistemas de AcerIA y al reiniciar la aplicación el inventario vuelve a estar completo.</p>
+            <p className="tenue">Simulación para la demo: no se envía nada a los sistemas de AcerIA.</p>
           </>
         )}
       </div>

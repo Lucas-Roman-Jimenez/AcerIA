@@ -57,11 +57,28 @@ def test_si_un_bulto_no_esta_disponible_no_se_vende_ninguno(base):
     assert len(reporte_semanal()["compras"]) == 1
 
 
-def test_modo_demo_al_arrancar_se_limpia_todo(base):
+def test_al_reiniciar_se_conservan_las_ventas_y_el_reporte(base):
     vender(["334"])
-    crear_db()                                                           # se recarga el Excel, como al arrancar
-    assert estado(base, "334") == "disponible"                           # el inventario vuelve a estar completo
-    assert reporte_semanal()["compras"] == []                            # y el reporte, vacío
+    crear_db()                                                           # arranque normal: se recarga el Excel
+    assert estado(base, "334") == "vendido"
+    assert estado(base, "23") == "disponible"
+    assert [c["caracteristicas"]["id"] for c in reporte_semanal()["compras"]] == ["334"]
+
+
+def test_reiniciar_la_demo_deja_todo_como_al_principio(base):
+    vender(["334"])
+    crear_db(reiniciar_ventas=True)                                      # python arrancar.py --reiniciar-demo
+    assert estado(base, "334") == "disponible"
+    assert reporte_semanal()["compras"] == []
+
+
+@pytest.mark.parametrize("valor,vendido", [("0", True), ("1", False)])
+def test_el_arranque_del_backend_respeta_la_opcion_de_reinicio(base, monkeypatch, valor, vendido):
+    vender(["334"])
+    monkeypatch.setenv("ACERIA_REINICIAR_DEMO", valor)
+    with TestClient(app):                                                # ejecuta el arranque (lifespan)
+        pass
+    assert (estado(base, "334") == "vendido") is vendido
 
 
 def test_endpoint_compras(base):

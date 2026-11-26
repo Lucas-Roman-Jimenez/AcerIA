@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -13,7 +14,9 @@ from app.reportes import reporte_semanal
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    crear_db()          # crea la base de datos al arrancar (RNF-12)
+    # Crea la base de datos al arrancar (RNF-12). Conserva ventas y reporte salvo que se pida
+    # reiniciar la demo (python arrancar.py --reiniciar-demo pone ACERIA_REINICIAR_DEMO=1).
+    crear_db(reiniciar_ventas=os.getenv("ACERIA_REINICIAR_DEMO") == "1")
     cargar_env()        # clave y modelo del LLM desde el .env de la raíz (RNF-13)
     yield
 

@@ -127,7 +127,17 @@ def aplicar_estados_demo(conn: sqlite3.Connection) -> None:
     print(f"✔ Estados de demo aplicados: {len(estados)}")
 
 
-def crear_db(ruta_inventario: Path = config.INVENTARIO) -> int:
+def marcar_vendidos(conn: sqlite3.Connection) -> None:
+    """El Excel se recarga en cada arranque: los bultos ya vendidos (tabla compras) no deben volver."""
+    conn.execute(
+        "UPDATE bultos SET estado = 'vendido' "
+        "WHERE id IN (SELECT json_extract(material_json, '$.id') FROM compras)"
+    )
+
+
+def crear_db(ruta_inventario: Path = config.INVENTARIO, reiniciar_ventas: bool = False) -> int:
+    """Carga el Excel. Por defecto conserva las ventas y el reporte semanal; con reiniciar_ventas=True
+    (python arrancar.py --reiniciar-demo) los vacía y el inventario vuelve a estar completo."""
     df = normalizar(leer_inventario(ruta_inventario))
     df = df.astype(object).where(df.notna(), None)                  # NaN/NA -> NULL
     with sqlite3.connect(config.DB_PATH) as conn:
@@ -137,7 +147,9 @@ def crear_db(ruta_inventario: Path = config.INVENTARIO) -> int:
             df.itertuples(index=False, name=None),
         )
         aplicar_estados_demo(conn)
-        conn.execute("DELETE FROM compras")     # modo demo: cada arranque empieza sin ventas (POST /compras)
+        if reiniciar_ventas:
+            conn.execute("DELETE FROM compras")
+        marcar_vendidos(conn)
     print(f"✔ {len(df)} bultos cargados en {config.DB_PATH.name}")
     return len(df)
 
