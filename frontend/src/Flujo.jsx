@@ -120,10 +120,10 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
       {Object.keys(a.correctos).length > 0 && (
         <div className="flujo-datos">
           {Object.entries(a.correctos).map(([k, v]) => (
-            <span key={k} className="flujo-dato ok">{etiqueta(k)}: {conUnidad(k, v)} ✓</span>
+            <span key={k} className="flujo-dato ok"><span className="flujo-dato-etq">{etiqueta(k)}</span> <b>{conUnidad(k, v)}</b></span>
           ))}
           {a.fallan.map(f => (
-            <span key={f.campo} className="flujo-dato mal">{etiqueta(f.campo)}: {conUnidad(f.campo, f.pedido)} ✗ sin stock</span>
+            <span key={f.campo} className="flujo-dato mal"><span className="flujo-dato-etq">{etiqueta(f.campo)}</span> <b>{conUnidad(f.campo, f.pedido)}</b> <span className="flujo-dato-marca">✗ sin stock</span></span>
           ))}
         </div>
       )}

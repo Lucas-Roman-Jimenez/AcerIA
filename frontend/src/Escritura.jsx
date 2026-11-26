@@ -4,17 +4,18 @@ import { useEffect, useState } from 'react'
 // y la puntuación, y un cursor que parpadea al terminar. Con «reducir movimiento» se muestra entero.
 //  - rapido: para las respuestas del chat; los textos largos avanzan de varias letras en varias
 //    para que ninguna respuesta tarde más de unos 3 segundos.
+//  - velocidad: multiplica el ritmo normal (2 = el doble de rápido), con el mismo tecleo irregular.
 //  - cursorFinal: si el cursor se queda parpadeando al terminar (en el chat desaparece).
 const reducido = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-function retardo(letra, rapido) {
-  const f = rapido ? 0.15 : 1
-  if (/[.,;:!?¿¡]/.test(letra)) return (260 + Math.random() * 120) * (rapido ? 0.3 : 1)
+function retardo(letra, rapido, velocidad) {
+  const f = (rapido ? 0.15 : 1) / velocidad
+  if (/[.,;:!?¿¡]/.test(letra)) return (260 + Math.random() * 120) * (rapido ? 0.3 : 1) / velocidad
   if (letra === ' ') return (120 + Math.random() * 80) * f
   return (55 + Math.random() * 75) * f
 }
 
-export function Escritura({ texto, inicio = 350, as: Etiqueta = 'span', className = '', rapido = false, cursorFinal = true, onFin }) {
+export function Escritura({ texto, inicio = 350, as: Etiqueta = 'span', className = '', rapido = false, velocidad = 1, cursorFinal = true, onFin }) {
   const [n, setN] = useState(() => (reducido() ? texto.length : 0))
 
   useEffect(() => {
@@ -25,11 +26,11 @@ export function Escritura({ texto, inicio = 350, as: Etiqueta = 'span', classNam
     let t = setTimeout(function siguiente() {
       i = Math.min(texto.length, i + paso)
       setN(i)
-      if (i < texto.length) t = setTimeout(siguiente, retardo(texto[i - 1], rapido))
+      if (i < texto.length) t = setTimeout(siguiente, retardo(texto[i - 1], rapido, velocidad))
       else onFin?.()
     }, inicio)
     return () => clearTimeout(t)
-  }, [texto, inicio, rapido])
+  }, [texto, inicio, rapido, velocidad])
 
   const terminado = n >= texto.length
   return (

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { enviarMensaje, resumenStock, consultarValores, venderCarrito } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
-import { Acero, Dibujo } from './Acero.jsx'
+import { Acero } from './Acero.jsx'
 import { Casillas } from './Casillas.jsx'
 import { interpretarTexto, detectarConsulta, detectarUso, detectarUsoDeObra, recomendarPorUso } from './previa.js'
 import { Consulta, textoConsulta } from './Consulta.jsx'
@@ -13,6 +13,7 @@ import { pideBorrarConsulta, pideQuitar, frasesQuitar, textoNoSeleccionado } fro
 import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
 import { ReporteSemanal } from './ReporteSemanal.jsx'
 import { Escritura } from './Escritura.jsx'
+import { CabeceraVideos } from './CabeceraVideos.jsx'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
 const DEMO = [
@@ -331,9 +332,15 @@ export default function App() {
           <button type="button" className="lateral-item" onClick={() => { cancelarDictado(); setVerReporte(true) }}>
             <Icono nombre="reporte" /> Reporte semanal
           </button>
+          {!vacio && (
+            <button type="button" className="lateral-item salir-flujo" onClick={salir}
+              title="Salir de esta consulta y volver al inicio. El carrito se conserva.">
+              <Icono nombre="salir" /> Salir de la consulta
+            </button>
+          )}
         </nav>
 
-        <div className="lateral-titulo">Recientes</div>
+
         <div className="lateral-lista">
           {conversaciones.length === 0 && <p className="lateral-vacio">Aquí aparecerán tus consultas.</p>}
           {conversaciones.map(c => (
@@ -344,71 +351,49 @@ export default function App() {
             </button>
           ))}
         </div>
-      </aside>
-
-      <div className="contenido">
-      <header className="cabecera">
-        <div className="fondo-video" aria-hidden>
-          <video src="/video/cabecera.mp4" autoPlay muted loop playsInline
-            onError={e => { e.currentTarget.style.display = 'none' }} />
-        </div>
-        <div className="utilidades">
+        <div className="lateral-pie">
           <label className="interruptor" title="Leer en voz alta cada respuesta del asistente">
             <input type="checkbox" checked={vozActiva}
               onChange={e => { setVozActiva(e.target.checked); window.speechSynthesis?.cancel() }} />
             <span className="interruptor-pista" aria-hidden />
             Leer respuestas en voz alta
           </label>
-          <div className="utilidades-derecha">
-            <span>{hoy}</span>
-            {totalBultos > 0 && <span className="resalte">{totalBultos.toLocaleString('es-ES')} bultos disponibles</span>}
-          </div>
         </div>
-      </header>
+      </aside>
 
-      <div className="ticker" aria-label="Resumen de stock">
-        <div className="ticker-pista">
-          {[...stock, ...stock, ...stock].map((s, i) => (
-            <span key={i} className="ticker-item">
-              {s.etiqueta} <em>{plural(s.bultos, 'bulto')} · {s.toneladas.toFixed(1).replace('.', ',')} t</em>
-            </span>
-          ))}
+      <div className="contenido">
+      <div className="barra-superior">
+        <div className="ticker" aria-label="Resumen de stock">
+          <div className="ticker-pista">
+            {[...stock, ...stock, ...stock].map((s, i) => (
+              <span key={i} className="ticker-item">
+                {s.etiqueta} <em>{plural(s.bultos, 'bulto')} · {s.toneladas.toFixed(1).replace('.', ',')} t</em>
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
+        <CabeceraVideos />
 
         <main className="principal">
           {vacio ? (
             <section className="inicio">
-              <div className="inicio-acero" aria-hidden>
-                <Dibujo formato={previa?.formato} acabado={previa?.acabado ?? previa?.opciones.acabado?.[0]} id="inicio" />
-              </div>
               <div className="inicio-texto">
                 <Escritura as="h1" texto="¿Qué quieres buscar?" />
                 <div className="inicio-nombre">
                   {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
                 </div>
                 {avisoInicio && <p className="aviso-inicio" role="alert">{avisoInicio}</p>}
-                <p className="ayuda-inicio">Escribe o dicta lo que pide el cliente. Si no sabes qué pedir, pregunta qué hay: «¿qué grosores hay de 304?» o «¿qué acero recomiendas para hornos?»</p>
               </div>
             </section>
           ) : (
             <section className="conversacion">
               <div className="mensajes">
-                <div className="barra-consulta">
-                  <div className="barra-consulta-texto">
-                    <span className="barra-consulta-etiqueta">Consulta en curso</span>
-                    <span className="barra-consulta-titulo">{actual.mensajes[0]?.texto}</span>
-                  </div>
-                  <button type="button" className="salir-flujo" onClick={salir}
-                    title="Salir de esta consulta y volver al inicio. El carrito se conserva.">
-                    <span aria-hidden>✕</span> Salir de la consulta
-                  </button>
-                </div>
                 {actual.mensajes.map((m, i) => (
                   <div key={i} className={`mensaje ${m.rol} ${m.error ? 'error' : ''}`}>
                     {m === fresco && !m.error
-                      ? <Escritura as="p" texto={m.texto} inicio={200} />
+                      ? <Escritura as="p" texto={m.texto} inicio={200} velocidad={3.5} />
                       : <p>{m.texto}</p>}
                     {m.error && i === actual.mensajes.length - 1 && (
                       <button className="reintentar" onClick={() => reintentar(m.reintento)}>Reintentar</button>
@@ -491,10 +476,19 @@ export default function App() {
               title={estadoDictado ? 'Detener dictado' : 'Dictar la petición'}
               aria-pressed={Boolean(estadoDictado)} disabled={pensando || estadoDictado === 'procesando'}
               onClick={alternarDictado}>
-              <span className="microfono-icono" aria-hidden>{estadoDictado ? '■' : '🎙'}</span>
-              {estadoDictado === 'escuchando' ? 'Escuchando…' : estadoDictado === 'procesando' ? 'Transcribiendo…' : 'Hablar'}
+              <svg className="microfono-icono" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0" /><path d="M12 17.5V21" />
+              </svg>
+              {/* Solo icono en reposo; mientras dicta se dice qué está pasando */}
+              {estadoDictado === 'escuchando' ? <span className="microfono-estado">Escuchando…</span>
+                : estadoDictado === 'procesando' ? <span className="microfono-estado">Transcribiendo…</span>
+                : <span className="solo-lectores">Hablar</span>}
             </button>
-            <button type="submit" className="icono" title="Enviar" disabled={pensando || !texto.trim()}>→</button>
+            <button type="submit" className="icono enviar" title="Enviar (Intro)" aria-label="Enviar" disabled={pensando || !texto.trim()}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M19 5v7a3 3 0 0 1-3 3H6" /><path d="m10 11-4 4 4 4" /></svg>
+            </button>
           </form>
           <div className="estado-dictado" role="status">{estadoDictado ? '' : mensajeDictado}</div>
           <Casillas texto={texto} base={esp} onElegir={enviar} deshabilitado={pensando}
@@ -521,15 +515,17 @@ export default function App() {
 }
 
 const ICONOS = {
-  nueva: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>,
-  demo: <><circle cx="12" cy="12" r="9" /><path d="m10 8.5 5.5 3.5-5.5 3.5Z" /></>,
-  carrito: <><circle cx="9" cy="20" r="1.3" /><circle cx="18" cy="20" r="1.3" /><path d="M2.5 3.5h2.8l2.4 11.2a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.6-1.2l1.6-7.3H6.1" /></>,
-  reporte: <><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M21 20H3" /></>,
+  // Cuadrado con lápiz, como «Nuevo chat»
+  nueva: <><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" /><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.5.7.7-3.5Z" /></>,
+  demo: <><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M10 8.8v6.4l5.2-3.2Z" /></>,
+  carrito: <><circle cx="9.5" cy="19.5" r="1.2" /><circle cx="17.5" cy="19.5" r="1.2" /><path d="M3 4h2.2l2.3 10.6a1.6 1.6 0 0 0 1.6 1.3h7.8a1.6 1.6 0 0 0 1.6-1.2L20 8H6" /></>,
+  reporte: <><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M8.5 16v-4" /><path d="M12 16V8" /><path d="M15.5 16v-2.5" /></>,
+  salir: <><path d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14" /><path d="M10 16l-4-4 4-4" /><path d="M6 12h9" /></>,
 }
 function Icono({ nombre }) {
   return (
-    <svg className="icono-lateral" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{ICONOS[nombre]}</svg>
+    <svg className="icono-lateral" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{ICONOS[nombre]}</svg>
   )
 }
 
