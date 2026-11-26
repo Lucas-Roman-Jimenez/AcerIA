@@ -200,18 +200,18 @@ export default function App() {
     && !c.ultima.exactos.length && !c.ultima.transformables.length).length
   const esp = actual.ultima?.especificacion
   const vacio = actual.mensajes.length === 0
+  const totalBultos = stock.reduce((n, s) => n + s.bultos, 0)
+  const hoy = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
   const previa = vacio && texto.trim() ? interpretarTexto(texto) : null
 
   return (
-    <div className="app">
+    <div className={`app ${vacio ? 'portada' : ''}`}>
       <header className="cabecera">
-        <div className="marca">
-          <span className="logo-bobina" aria-hidden />
-          <span className="logo-texto">INOX<span className="punto">·</span>STOCK</span>
-          <span className="sublogo">Asistente de inventario<br />comercial · Acero inoxidable</span>
+        <div className="fondo-video" aria-hidden>
+          <video src="/video/cabecera.mp4" autoPlay muted loop playsInline
+            onError={e => { e.currentTarget.style.display = 'none' }} />
         </div>
-        <div className="franjas" aria-hidden />
-        <div className="acciones">
+        <div className="utilidades">
           <span className="estado" title="Consultas de esta sesión para las que no había stock ni transformación posible">
             Demanda no servida: <b>{noServidas}</b>
           </span>
@@ -221,9 +221,24 @@ export default function App() {
             <span className="interruptor-pista" aria-hidden />
             Leer respuestas en voz alta
           </label>
-          <button className="demo-boton" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
-            title="Reproduce la conversación de la demo paso a paso">▶ Demo guiada</button>
-          <button className="nueva" onClick={nuevaConsulta}>+ Nueva consulta</button>
+          <div className="utilidades-derecha">
+            <span><b>INOX·STOCK</b> | {hoy}{totalBultos > 0 && <> | <span className="resalte">{totalBultos.toLocaleString('es-ES')} bultos disponibles</span></>}</span>
+          </div>
+        </div>
+        <div className="principal-cabecera">
+          <div className="marca">
+            <span className="logo-luna" aria-hidden />
+            <span className="logo-texto">INOX<span className="punto">·</span>STOCK</span>
+          </div>
+          <div className="acciones">
+            <button className="demo-boton" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
+              title="Reproduce la conversación de la demo paso a paso">▶ Demo guiada</button>
+            <button className="nueva" onClick={nuevaConsulta}>+ Nueva consulta</button>
+          </div>
+        </div>
+        <div className="lema">
+          <p>Asistente de inventario comercial</p>
+          <span>Acero inoxidable · stock real · transformaciones según las reglas de AcerIA</span>
         </div>
       </header>
 
@@ -255,11 +270,13 @@ export default function App() {
               <div className="inicio-acero" aria-hidden>
                 <Dibujo formato={previa?.formato} acabado={previa?.acabado ?? previa?.opciones.acabado?.[0]} id="inicio" />
               </div>
-              <div className="inicio-nombre">
-                {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
+              <div className="inicio-texto">
+                <h1>¿Qué quieres buscar?</h1>
+                <div className="inicio-nombre">
+                  {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
+                </div>
+                <p className="ayuda-inicio">Escribe o dicta lo que pide el cliente. Si no sabes qué pedir, pregunta qué hay: «¿qué grosores hay de 304?» o «¿qué acero recomiendas para hornos?»</p>
               </div>
-              <h1>¿Qué quieres buscar?</h1>
-              <p className="ayuda-inicio">Si no sabes qué pedir, pregunta qué hay: «¿qué grosores hay de 304?», «¿qué acabados tenéis en bobina?» o «¿qué tipos de acero hay?»</p>
             </section>
           ) : (
             <section className="conversacion">
