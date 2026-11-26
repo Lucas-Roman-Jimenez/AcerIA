@@ -34,7 +34,7 @@ de la baja, un ID único por movimiento, la cantidad realmente descontada,
 la unidad y una fecha con zona horaria. Si una compra agrupa varios bultos,
 cada movimiento debe tener un ID distinto. La función usa la conexión
 recibida y el llamador controla el commit o rollback. El registro de compras
-se conserva cuando se vuelve a cargar la muestra de inventario.
+se vacía en cada arranque (modo demo, ver «Venta simulada del carrito»).
 
 ## Venta simulada del carrito
 
@@ -45,5 +45,6 @@ reporte semanal, con su peso en kg) y pasa a estado `vendido`, así deja de
 salir en `/buscar`, `/chat` y `/stock`. Si alguno no existe o ya no está
 disponible responde `409` con `no_disponibles` y no vende ninguno.
 
-Al arrancar se recarga el Excel, pero los bultos que ya están en `compras`
-se vuelven a marcar como `vendido`, así que no reaparecen.
+**Modo demo:** al arrancar se recarga el Excel y se vacía `compras`, así que
+cada demo empieza con el inventario completo y el reporte vacío. Lo vendido
+solo dura hasta que se reinicia el backend.

@@ -57,12 +57,11 @@ def test_si_un_bulto_no_esta_disponible_no_se_vende_ninguno(base):
     assert len(reporte_semanal()["compras"]) == 1
 
 
-def test_lo_vendido_no_vuelve_al_recargar_el_inventario(base):
+def test_modo_demo_al_arrancar_se_limpia_todo(base):
     vender(["334"])
     crear_db()                                                           # se recarga el Excel, como al arrancar
-    assert estado(base, "334") == "vendido"
-    assert estado(base, "23") == "disponible"
-    assert len(reporte_semanal()["compras"]) == 1                        # las compras se conservan
+    assert estado(base, "334") == "disponible"                           # el inventario vuelve a estar completo
+    assert reporte_semanal()["compras"] == []                            # y el reporte, vacío
 
 
 def test_endpoint_compras(base):

@@ -1,5 +1,7 @@
 """Venta de los bultos del carrito (simulación para la demo: no toca los sistemas de AcerIA).
 
+Modo demo: crear_db() vacía las compras en cada arranque, así que lo vendido solo dura hasta reiniciar.
+
 Cada bulto vendido se registra en `compras` con registrar_compra() de Lucas (lo lee el reporte semanal)
 y pasa a estado «vendido», así deja de salir en /buscar, /chat y /stock. Todo en una sola transacción:
 o se venden todos los bultos del carrito o ninguno.
