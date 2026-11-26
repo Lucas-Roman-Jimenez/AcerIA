@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -22,6 +23,8 @@ async def lifespan(app: FastAPI):
     yield
 
 
+log = logging.getLogger("aceria")
+
 app = FastAPI(title="Asistente de inventario AcerIA", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES,   # nunca "*": otra web podría vender bultos
                    allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
@@ -43,32 +46,6 @@ def compatibilizar(r: dict) -> dict:
         t.setdefault("bulto_id", t["bulto"]["id"])     # el motor de Lucas usa bulto_id
         t.setdefault("origen", t["bulto"])             # Stanis pinta el «antes» desde origen
     return r
-
-
-# ---------- respuestas FALSAS para que Stanis monte el frontend ----------
-EXACTO = {"id": "1312", "grado": "304L/304", "acabado": "2B", "formato": "chapa",
-          "espesor_mm": 2.0, "ancho_mm": 1250, "largo_mm": 2500, "peso_kg": 1118}
-
-TRANSFORMABLE = {
-    "bulto": {"id": "334", "grado": "304L/304", "acabado": "2B", "formato": "bobina",
-              "espesor_mm": 2.0, "ancho_mm": 1500, "largo_mm": None, "peso_kg": 745},
-    "acciones": ["Cortar bobina 2 × 1500 mm a chapa 2 × 1250 × 2500 mm"],
-    "resultado": {"formato": "chapa", "acabado": "2B", "espesor_mm": 2.0,
-                  "ancho_mm": 1250, "largo_mm": 2500, "piezas": 12},
-    "merma_kg": 152.5, "merma_pct": 20.5, "num_operaciones": 1, "merma_estimada": True, "avisos": [],
-}
-
-
-def respuesta_base(conv_id: str | None) -> dict:
-    return {
-        "conversacion_id": conv_id or "demo-1",
-        "estado": "resultados",
-        "especificacion": {"grado": "304", "acabado": None, "formato": "chapa",
-                           "espesor_mm": 2.0, "ancho_mm": 1250, "largo_mm": 2500, "faltan": []},
-        "exactos": [], "transformables": [], "alternativas": [],
-        "pregunta": None, "opciones": [],
-        "texto": "", "criterio_orden": CRITERIO_ORDEN,
-    }
 
 
 @app.get("/health")
@@ -94,7 +71,8 @@ def comprar(v: Venta):
         raise HTTPException(409, {"mensaje": "Algún bulto ya no está disponible; no se ha vendido nada.",
                                   "no_disponibles": e.ids})
     except ValueError as e:
-        raise HTTPException(422, str(e))
+        log.info("Venta rechazada: %s", e)                 # el detalle, al log; al cliente, un texto fijo
+        raise HTTPException(422, "El carrito está vacío o no es válido.")
 
 
 @app.post("/chat")
@@ -102,35 +80,6 @@ def chat(m: MensajeChat):
     """Conversación real: módulo LLM + buscar_bultos() (exactos y transformables), en app/conversacion.py."""
     return compatibilizar(responder_chat(m.conversacion_id, m.mensaje or m.texto or ""))
 
-
-@app.post("/chat/prueba")
-def chat_prueba(m: MensajeChat):
-    """Respuestas FALSAS de antes, por si el frontend las necesita para probar sin LLM."""
-    r = respuesta_base(m.conversacion_id)
-    texto = (m.mensaje or m.texto or "").lower()
-
-    if "error" in texto:
-        r["estado"] = "error"
-        r["texto"] = "No he podido procesar la petición. Inténtalo de nuevo o escríbela."
-    elif "sin stock" in texto:
-        r["estado"] = "sin_stock"
-        r["texto"] = "No hay bultos disponibles ni transformables para esa petición."
-    elif "2b" in texto:
-        r["especificacion"]["acabado"] = "2B"
-        r["exactos"] = [EXACTO]
-        r["transformables"] = [TRANSFORMABLE]
-        r["texto"] = "Tengo 1 bulto que cumple y 1 bobina que se puede cortar a medida."
-    elif texto.strip() == "ba":
-        r["estado"] = "sin_stock"
-        r["especificacion"]["acabado"] = "BA"
-        r["texto"] = "No hay 304 BA de 2 × 1250 × 2500 disponible ni transformable."
-    else:
-        r["estado"] = "pregunta"
-        r["especificacion"]["faltan"] = ["acabado"]
-        r["pregunta"] = "Tengo 304 de 2 mm en 2B y en BA, ¿cuál necesitas?"
-        r["opciones"] = ["2B", "BA"]
-        r["texto"] = r["pregunta"]
-    return compatibilizar(r)
 
 @app.post("/buscar")
 def buscar(espec: dict):

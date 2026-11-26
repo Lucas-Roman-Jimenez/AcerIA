@@ -98,3 +98,26 @@ def test_el_frontend_genera_ids_aleatorios_no_basados_en_la_hora():
     app_jsx = (Path(__file__).resolve().parents[1] / "frontend" / "src" / "App.jsx").read_text(encoding="utf-8")
     linea = next(l for l in app_jsx.splitlines() if l.startswith("const nuevoId"))
     assert "getRandomValues" in linea and "Date.now" not in linea
+
+
+# ---------- 4. Sin endpoint de pruebas ----------
+
+def test_chat_prueba_ya_no_existe(cliente):
+    """Las respuestas falsas están en frontend/src/mock.js; la API real no las publica."""
+    assert cliente.post("/chat/prueba", json={"mensaje": "2b"}).status_code in (404, 405)
+
+
+# ---------- 5. Vite solo sirve lo que importa el frontend ----------
+
+def test_vite_no_sirve_todo_el_repositorio():
+    config_vite = (Path(__file__).resolve().parents[1] / "frontend" / "vite.config.js").read_text(encoding="utf-8")
+    assert "allow: ['..']" not in config_vite
+    assert "'../datos'" in config_vite and "'../voz'" in config_vite
+
+
+# ---------- 6. Errores de /compras con texto fijo ----------
+
+def test_compras_vacia_devuelve_un_mensaje_fijo(cliente):
+    r = cliente.post("/compras", json={"bultos": []})
+    assert r.status_code == 422
+    assert r.json()["detail"] == "El carrito está vacío o no es válido."
