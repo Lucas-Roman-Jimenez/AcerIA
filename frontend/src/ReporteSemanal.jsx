@@ -46,7 +46,7 @@ export function ReporteSemanal({ onVolver }) {
           )}
         </div>
         <div className="reporte-botones">
-          <button type="button" className="nueva" onClick={onVolver}>Volver al chat</button>
+          <button type="button" className="nueva" onClick={onVolver}>Volver a reportes</button>
           <button type="button" className="nueva" disabled={!reporte} onClick={() => descargarJson(reporte)}>
             Descargar JSON
           </button>

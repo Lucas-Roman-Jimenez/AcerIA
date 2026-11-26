@@ -13,7 +13,7 @@ from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_alternativas, bu
 from app.conversacion import cargar_env, responder_chat
 from app.ventas import BultosNoDisponibles, vender
 from app.reservas import liberar, liberar_todas, mis_reservas, reservar
-from app.reportes import reporte_semanal
+from app.reportes import reporte_diario_inventario, reporte_semanal
 from app.tendencias import tendencias_compras
 
 
@@ -59,6 +59,11 @@ def health():
 @app.get("/reportes/compras/semanal")
 def obtener_reporte_semanal():
     return reporte_semanal()
+
+
+@app.get("/reportes/inventario/diario")
+def obtener_reporte_diario_inventario():
+    return reporte_diario_inventario()
 
 
 @app.get("/reportes/compras/tendencias")

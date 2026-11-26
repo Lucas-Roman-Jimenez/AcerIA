@@ -1,4 +1,4 @@
-"""Registro de compras confirmadas y lectura del reporte semanal."""
+"""Reportes de compras confirmadas e inventario."""
 
 from contextlib import closing
 from datetime import date, datetime, time, timedelta
@@ -13,6 +13,33 @@ from app.db import COLUMNAS, get_conn
 
 ZONA_REPORTE = ZoneInfo("Europe/Madrid")
 UNIDADES_COMPRA = {"kg", "t", "bultos", "piezas"}
+
+
+def reporte_diario_inventario(*, ahora: datetime | None = None) -> dict:
+    """Fotografía del stock actual, con las mismas reservas vigentes que el buscador."""
+    momento = (ahora or datetime.now(ZONA_REPORTE)).astimezone(ZONA_REPORTE)
+    with closing(get_conn()) as conexion:
+        formatos = [dict(fila) for fila in conexion.execute(
+            """SELECT b.formato, COUNT(*) AS total_bultos,
+                      SUM(b.estado = 'disponible' AND r.bulto_id IS NULL) AS disponibles,
+                      SUM(b.estado = 'reservado' OR r.bulto_id IS NOT NULL) AS reservados,
+                      SUM(b.estado = 'bloqueado') AS bloqueados,
+                      ROUND(SUM(b.peso_kg), 2) AS peso_kg
+               FROM bultos b
+               LEFT JOIN reservas r ON r.bulto_id = b.id
+                   AND b.estado = 'disponible' AND r.expira_en_ms > ?
+               WHERE b.estado <> 'vendido'
+               GROUP BY b.formato
+               ORDER BY b.formato""",
+            (int(momento.timestamp() * 1000),),
+        )]
+    return {
+        "titulo": "Reporte diario de inventario",
+        "fecha": momento.date().isoformat(),
+        "consultado_en": momento.isoformat(timespec="seconds"),
+        "zona_horaria": ZONA_REPORTE.key,
+        "formatos": formatos,
+    }
 
 
 def registrar_compra(

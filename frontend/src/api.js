@@ -117,12 +117,15 @@ export async function venderCarrito(ids) {
   return datos
 }
 
-export async function cargarReporteSemanal(signal) {
+async function cargarReporte(ruta, signal) {
   if (!API) throw new Error('El reporte necesita conexión con el backend.')
-  const r = await fetch(`${API}/reportes/compras/semanal`, { signal })
+  const r = await fetch(`${API}/reportes/${ruta}`, { signal })
   if (!r.ok) throw new Error(`El servidor respondió ${r.status}.`)
   return r.json()
 }
+
+export const cargarReporteSemanal = signal => cargarReporte('compras/semanal', signal)
+export const cargarReporteDiarioInventario = signal => cargarReporte('inventario/diario', signal)
 
 // Tendencias de compras por semana y formato (Lucas): unidad 'kg', 'bultos' o 'piezas'.
 export async function cargarTendencias(semanas, unidad, signal) {

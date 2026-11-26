@@ -11,7 +11,7 @@ import { Cercanos } from './Cercanos.jsx'
 import { sugerirCorreccion } from './sugerir.js'
 import { pideBorrarConsulta, pideQuitar, frasesQuitar, textoNoSeleccionado } from './quitar.js'
 import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
-import { ReporteSemanal } from './ReporteSemanal.jsx'
+import { Reportes } from './Reportes.jsx'
 import { gradoVisible } from './grados.js'
 import { Escritura } from './Escritura.jsx'
 
@@ -318,7 +318,7 @@ export default function App() {
 
 
   if (verReporte) {
-    return <div className="app"><ReporteSemanal onVolver={() => setVerReporte(false)} /></div>
+    return <div className="app"><Reportes onVolver={() => setVerReporte(false)} /></div>
   }
 
   return (
@@ -342,7 +342,7 @@ export default function App() {
             {carrito.length > 0 && <span className="contador">{carrito.length}</span>}
           </button>
           <button type="button" className="lateral-item" onClick={() => { cancelarDictado(); setVerReporte(true) }}>
-            <Icono nombre="reporte" /> Reporte semanal
+            <Icono nombre="reporte" /> Reportes
           </button>
         </nav>
 

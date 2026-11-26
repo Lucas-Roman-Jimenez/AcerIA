@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from app import config
 from app.db import SCHEMA
 from app.main import obtener_reporte_semanal, obtener_tendencias_compras
-from app.reportes import registrar_compra, reporte_semanal
+from app.reportes import registrar_compra, reporte_diario_inventario, reporte_semanal
 from app.tendencias import tendencias_compras
 
 
@@ -33,6 +33,30 @@ def base(tmp_path, monkeypatch):
 def guardar(conexion, identificador, fecha):
     registrar_compra(conexion, compra_id=identificador, bulto=BULTO,
                      cantidad=300.5, unidad="kg", comprada_en=fecha)
+
+
+def test_reporte_diario_distingue_reservas_vigentes_y_excluye_bultos_vendidos(base):
+    ahora = datetime(2026, 11, 26, 23, 15, tzinfo=timezone.utc)
+    ahora_ms = int(ahora.timestamp() * 1000)
+    with sqlite3.connect(base) as conexion:
+        conexion.executemany(
+            """INSERT INTO bultos (id, formato, peso_kg, estado, acabado, espesor_mm, ancho_mm)
+               VALUES (?, ?, ?, ?, '2B', 2, 1250)""",
+            [("libre", "chapa", 100, "disponible"), ("vigente", "chapa", 200, "disponible"),
+             ("caducada", "chapa", 300, "disponible"), ("vendido", "chapa", 400, "vendido"),
+             ("bloqueado", "chapa", 500, "bloqueado"), ("estatico", "bobina", 600, "reservado")],
+        )
+        conexion.executemany(
+            "INSERT INTO reservas VALUES (?, 'carrito', ?, ?)",
+            [("vigente", ahora_ms - 100, ahora_ms + 1), ("caducada", ahora_ms - 100, ahora_ms)],
+        )
+    reporte = reporte_diario_inventario(ahora=ahora)
+    assert reporte["fecha"] == "2026-11-27"
+    assert reporte["consultado_en"] == "2026-11-27T00:15:00+01:00"
+    assert reporte["formatos"] == [
+        {"formato": "bobina", "total_bultos": 1, "disponibles": 0, "reservados": 1, "bloqueados": 0, "peso_kg": 600},
+        {"formato": "chapa", "total_bultos": 4, "disponibles": 2, "reservados": 1, "bloqueados": 1, "peso_kg": 1100},
+    ]
 
 
 def test_reporte_filtra_la_semana_madrid_y_conserva_la_ficha(base):
