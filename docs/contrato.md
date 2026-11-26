@@ -2,9 +2,9 @@
 
 Responsable: Nacho (P2). Afecta a Alonso (P1), que llama a estas funciones, y a Stanis (P3), que pinta la especificación y los bultos.
 
-**Norma de equipo:** el contrato no se cambia sin avisar a los cuatro. Las partes marcadas como **PROPUESTA** no están acordadas todavía: no se programan hasta que las aceptéis.
+**Norma de equipo:** el contrato no se cambia sin avisar a los cuatro. **Estado (26/11/2026):** todo lo que describe este documento está implementado en `main`; las antiguas propuestas (`resultado`, `criterio_orden`, respuesta de `/chat`) ya están acordadas.
 
-Todos los ejemplos usan los datos inventados de `datos_ejemplo/`.
+Los ejemplos usan los datos inventados de `datos_ejemplo/` (IDs como `B-1023`). En el inventario real los IDs son números (`"1343"`).
 
 ---
 
@@ -66,7 +66,7 @@ Lo guarda Alonso por conversación (RF-08) y se envía completo en cada mensaje,
 | `tipo` | Qué significa | Qué hace el backend |
 | --- | --- | --- |
 | `"especificacion"` | Hay datos suficientes y válidos para buscar | Buscar con `especificacion` |
-| `"pregunta"` | Faltan datos, hay un valor inválido, una combinación imposible o una contradicción. También cuando el mensaje no es un pedido: saludo, agradecimiento, precio, plazo, reserva, consulta técnica o fuera de tema (RF-09) | Devolver `pregunta` al comercial sin buscar |
+| `"pregunta"` | Faltan datos, hay un valor inválido, una combinación imposible o una contradicción. También cuando el mensaje no es un pedido: saludo, agradecimiento, precio, plazo, reserva, consulta técnica o fuera de tema (RF-09), y cuando se pide consejo para una obra sin grado («un edificio donde llueve mucho»): se cita lo que documenta AcerIA y se pregunta lo que falta (`orientaciones_obra` del catálogo, de Lucas) | Devolver `pregunta` al comercial sin buscar |
 
 En los dos casos se devuelve la especificación, para que el panel «Lo que he entendido» (RF-18) la muestre siempre.
 
@@ -87,7 +87,7 @@ En los dos casos se devuelve la especificación, para que el panel «Lo que he e
 | `opciones` | objeto | **Nuevo** | Valores posibles de un término ambiguo, p. ej. `{"acabado": ["BA", "2R"]}` (RF-05) |
 | `uso` | texto o `null` | **Nuevo** | Uso reconocido por el catálogo, p. ej. `"ambiente marino"` (RF-26) |
 | `fuente_uso` | texto o `null` | **Nuevo** | Fuente del catálogo que respalda el uso, para citarla (RF-26) |
-| `avisos` | lista de textos | **Nuevo** | Mensajes para el usuario: valores descartados o combinaciones que no existen (RF-06) |
+| `avisos` | lista de textos | **Nuevo** | Mensajes para el usuario: valores descartados, combinaciones que no existen o usos que el catálogo no respalda (RF-06). Los avisos sobre el uso se dicen también en el texto de la pregunta o la respuesta |
 | `indiferentes` | lista de textos | **Nuevo** | Campos que al comercial le dan igual («me da igual el acabado»). No se preguntan ni cuentan en `faltan`; el buscador no filtra por ellos |
 
 **Garantías del módulo:**
@@ -143,23 +143,25 @@ Lo construye Alonso. El acordado era `exactos` y `transformables`; se añaden ca
 | --- | --- | --- |
 | `exactos[]` | Original | Bultos que cumplen sin transformar. `id` obligatorio |
 | `exactos[].peso_kg`, `.ubicacion` | **Nuevo**, opcional | Se mencionan solo si vienen (RF-17) |
-| `transformables[].acciones` | Original | Lista de acciones del motor de reglas |
-| `transformables[].merma_kg` | **Nuevo**, opcional | Merma estimada (RF-13) |
-| `transformables[].resultado` | **PROPUESTA** | Cómo queda el bulto tras transformar (RF-13, RF-20). Ver sección 7 |
-| `criterio` / `criterio_orden` | **PROPUESTA**, opcional | Texto con el criterio de ordenación del ranking (RF-14). El backend lo manda como `criterio_orden`: `"exactos > nº de operaciones > % de merma > ID"` (sale de `config.ORDEN_TRANSFORMABLES`). `responder()` acepta las dos claves y lo añade como «Orden: …» (RNF-09). Si no viene, no se dice nada |
+| `transformables[].acciones` | Original | Lista de acciones del motor de reglas. El motor de Lucas las devuelve como objetos `{"regla", "descripcion", "parametros", …}`; `responder()` usa `descripcion` |
+| `transformables[].bulto` | Acordado | El backend manda el bulto de origen en `bulto` (con su `id`) y además copia el `id` arriba para el frontend |
+| `transformables[].merma_kg`, `.merma_pct` | **Nuevo**, opcional | Merma estimada en kg y en % (RF-13) |
+| `transformables[].resultado` | Acordado | Cómo queda el bulto tras transformar (RF-13, RF-20). Ver sección 7 |
+| `criterio` / `criterio_orden` | Acordado, opcional | Texto con el criterio de ordenación del ranking (RF-14). El backend lo manda como `criterio_orden`: `"exactos > nº de operaciones > % de merma > ID"` (sale de `config.ORDEN_TRANSFORMABLES`). `responder()` acepta las dos claves y lo añade como «Orden: …» (RNF-09). Si no viene, no se dice nada |
 | `alternativas[]` | **Nuevo**, opcional | Bultos reales cercanos que **no** cumplen (RF-29). Solo se rellena cuando no hay `exactos` ni `transformables`. Cada elemento es un bulto con el mismo formato que `exactos[]` más `diferencias: list[str]` (p. ej. `"ancho 1000 mm (pedido 1250 mm)"`). Con la regla de sustitución de AcerIA: chapa del mismo grado, acabado y espesor con otra medida (ancho × largo), como mucho `config.MAX_ALTERNATIVAS` (3), las más cercanas primero. Siempre se presentan como alternativa, y `estado` sigue siendo `"sin_stock"` |
 
 `responder()` solo menciona datos de este JSON. Si no hay `exactos` ni `transformables`, dice claramente que no hay stock (RF-15).
 
 ---
 
-## 6. PROPUESTA: respuesta de `POST /chat` para el frontend
+## 6. Respuesta de `POST /chat` para el frontend
 
-Es decisión de Alonso. Se propone para que Stanis tenga en una sola respuesta todo lo que pinta.
+Implementada por Alonso en `backend/app/conversacion.py` y `main.py`. Stanis tiene en una sola respuesta todo lo que pinta.
 
 ```json
 {
   "conversacion_id": "c-001",
+  "estado": "resultados",
   "tipo": "respuesta",
   "texto": "Hay 1 bulto que cumple la petición: B-1023 (304 BA, 2 × 1250 mm, 520 kg, Nave 3).",
   "pregunta": null,
@@ -167,6 +169,8 @@ Es decisión de Alonso. Se propone para que Stanis tenga en una sola respuesta t
   "exactos": [ ... ],
   "transformables": [ ... ],
   "alternativas": [],
+  "opciones": [],
+  "criterio_orden": "exactos > nº de operaciones > % de merma > ID",
   "error": null,
   "aviso_ia": {
     "generado_por_ia": true,
@@ -177,7 +181,8 @@ Es decisión de Alonso. Se propone para que Stanis tenga en una sola respuesta t
 }
 ```
 
-- `tipo`: `"pregunta"`, `"respuesta"` o `"error"`.
+- `estado`: `"pregunta"`, `"resultados"`, `"sin_stock"` o `"error"`. `tipo` es la versión corta para el frontend: `"pregunta"`, `"respuesta"` o `"error"`.
+- `criterio_orden`: criterio con el que vienen ordenadas las tarjetas (RF-14, RNF-09). `opciones` queda vacío (botones sin acordar).
 - `texto` o `pregunta`: lo que se muestra en el chat y se lee en voz alta (RF-21).
 - `especificacion`: siempre presente, para el panel «Lo que he entendido» (RF-18) y para marcar `faltan`.
 - `exactos`, `transformables` y `alternativas`: para las tarjetas (RF-17), con distinto color para cada tipo.
@@ -186,13 +191,13 @@ Es decisión de Alonso. Se propone para que Stanis tenga en una sola respuesta t
 
 ---
 
-## 7. PROPUESTA: campo `resultado` en cada transformable
+## 7. Campo `resultado` en cada transformable (acordado)
 
-RF-13 pide indicar «las acciones necesarias, el resultado final y la merma», y RF-20 el «antes y después». El contrato acordado solo trae `id` y `acciones`.
+RF-13 pide indicar «las acciones necesarias, el resultado final y la merma», y RF-20 el «antes y después». El contrato original solo traía `id` y `acciones`.
 
-Se propone que el motor de reglas de Lucas devuelva, y Alonso pase tal cual, un objeto `resultado` con los mismos campos que un bulto (`grado`, `acabado`, `formato`, `espesor_mm`, `ancho_mm`, `largo_mm`, `peso_kg`) tal como quedaría tras transformarlo.
+El motor de reglas de Lucas devuelve, y Alonso pasa tal cual, un objeto `resultado` con los mismos campos que un bulto (`grado`, `acabado`, `formato`, `espesor_mm`, `ancho_mm`, `largo_mm`, `peso_kg`) tal como quedaría tras transformarlo.
 
-`responder()` ya lo usa si viene: «B-1030 (Cortar ancho 1500 → 1250 mm; merma 150 kg; queda 304 2B, 3 × 1250 mm)». Mientras no se acepte, sigue funcionando sin él.
+`responder()` lo usa si viene: «B-1030 (Cortar ancho 1500 → 1250 mm; merma 150 kg; queda 304 2B, 3 × 1250 mm)». Si no viene, sigue funcionando sin él.
 
 
 ---
@@ -224,4 +229,4 @@ Sin la cabecera `X-Carrito`, todas responden 422 con `"Falta la cabecera X-Carri
 
 - Campos mínimos para buscar (`CAMPOS_MINIMOS` en `llm/interprete.py`; ahora `grado` y `espesor_mm`).
 - Tolerancias de espesor y ancho (las aplica el buscador de Alonso, no este módulo).
-- Unidades del catálogo y del inventario (mm o pulgadas, kg o toneladas).
+- Criterio RF-14: si la merma se ordena en % o en kg (ahora en %).
