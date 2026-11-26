@@ -1,6 +1,7 @@
 """Venta simulada del carrito (POST /compras): marca los bultos como vendidos y los registra en compras."""
 from datetime import datetime, timezone
 from pathlib import Path
+import json
 import sqlite3
 import sys
 
@@ -44,8 +45,12 @@ def test_vender_marca_vendido_y_aparece_en_el_reporte(base):
     compras = reporte_semanal(ahora=ahora)["compras"]
     assert {c["caracteristicas"]["id"] for c in compras} == {"334", "23"}
     c334 = next(c for c in compras if c["caracteristicas"]["id"] == "334")
-    assert c334["cantidad_sustraida"] == {"valor": 745.0, "unidad": "kg"}
-    assert c334["caracteristicas"]["estado"] == "disponible"             # se guarda el bulto antes de la baja
+    assert c334["cantidades_sustraidas"] == [{"valor": 745.0, "unidad": "kg"}]
+    with sqlite3.connect(base) as conn:
+        [material] = conn.execute(
+            "SELECT material_json FROM compras WHERE id = ?", (r["compras"][0]["compra_id"],),
+        ).fetchone()
+    assert json.loads(material)["estado"] == "disponible"  # ficha guardada antes de la baja
 
 
 def test_si_un_bulto_no_esta_disponible_no_se_vende_ninguno(base):
