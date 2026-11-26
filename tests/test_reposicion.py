@@ -132,3 +132,15 @@ def test_orden_y_filtro_sin_cambiar_la_seccion(base):
     assert [f["ancho_mm"] for f in reponer] == [1001, 1000, 1002, 1003]
     assert [f["cumple_filtro"] for f in reponer] == [True, False, True, False]
     assert all(f["seccion"] == "reponer" for f in reponer)
+
+
+def test_endpoint_reposicion(base):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    respuesta = TestClient(app).get("/reportes/reposicion")
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert set(cuerpo) == {"periodo", "stock_a", "umbrales", "filtro", "secciones"}
+    assert set(cuerpo["secciones"]) == {"reponer", "vigilar", "puntual"}

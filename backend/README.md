@@ -51,6 +51,25 @@ porcentaje compara semanas cerradas consecutivas y queda en `null` cuando
 falta una base comparable o el valor anterior es cero. El periodo anterior
 al primer movimiento se devuelve como `sin_historial`, con barras nulas.
 
+## Reposición
+
+`GET /reportes/reposicion` usa las ventas de las últimas 4 semanas completas
+(lunes a domingo en `Europe/Madrid`, sin la semana en curso) y el stock
+disponible en el momento de la consulta. Agrupa por la misma referencia que
+Tendencias. Las ventas en t se pasan a kg y un bulto entero cuenta con su peso
+si no hay kg ni t registrados; las piezas no cuentan. La cobertura es
+`stock ÷ (kg vendidos ÷ 28)` y los umbrales se evalúan antes de redondear:
+
+- `reponer`: ventas en 2 semanas o más y cobertura < 7 días.
+- `vigilar`: ventas en 2 semanas o más y cobertura de 7 a 14 días.
+- `puntual`: ventas en una sola semana y menos de 2 t disponibles.
+
+Devuelve `periodo`, `stock_a` (fecha y hora del stock), `umbrales`, `filtro` y
+`secciones` con las tres listas ordenadas por menor cobertura y mayor venta.
+Cada fila trae la referencia, `vendido_t`, `disponible_t`, `semanas_con_ventas`,
+`cobertura_dias` y `cumple_filtro` (más de 2 t vendidas y menos de 2 t
+disponibles). Las referencias que no entran en ninguna sección no se devuelven.
+
 El flujo de baja debe llamar a `app.reportes.registrar_compra` dentro de la
 misma transacción que actualiza el stock, pasando el bulto original antes
 de la baja, un ID único por movimiento, la cantidad realmente descontada,

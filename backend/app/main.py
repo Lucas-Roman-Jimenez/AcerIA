@@ -17,7 +17,7 @@ from app.reservas import liberar, liberar_todas, mis_reservas, reservar
 from app.reportes import reporte_diario_inventario, reporte_semanal
 from app.modelos import (MENSAJE_GENERAL, PATRON_CARRITO, CampoStock, Especificacion, Formato, ListaBultos,
                          MensajeChat, errores_legibles)
-from app.tendencias import tendencias_compras
+from app.tendencias import recomendaciones_reposicion, tendencias_compras
 
 
 @asynccontextmanager
@@ -77,6 +77,11 @@ def obtener_tendencias_compras(
     unidad: Literal["kg", "bultos", "piezas"] = "kg",
 ):
     return tendencias_compras(semanas, unidad)
+
+
+@app.get("/reportes/reposicion")
+def obtener_reposicion():
+    return recomendaciones_reposicion()
 
 
 def titular_actual(x_carrito: str = Header("", max_length=100, pattern=PATRON_CARRITO)) -> str:
