@@ -4,6 +4,8 @@ Uso manual (desde backend/):  python -m app.db
 """
 import re
 import sqlite3
+import time
+from contextlib import closing
 from pathlib import Path
 
 import pandas as pd
@@ -162,9 +164,17 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 
-def disponibles() -> list[dict]:
-    with get_conn() as conn:
-        return [dict(f) for f in conn.execute("SELECT * FROM bultos WHERE estado = 'disponible'")]
+def disponibles(ahora_ms: int | None = None) -> list[dict]:
+    """Bultos que se pueden ofrecer: estado «disponible» y sin reserva vigente de ningún carrito (tarea 4).
+
+    Es la única lectura del stock para /buscar, /chat, /stock y las alternativas: un bulto reservado
+    desaparece de todas a la vez y vuelve al liberarse o al caducar la reserva (expira_en_ms <= ahora).
+    """
+    ahora_ms = int(time.time() * 1000) if ahora_ms is None else ahora_ms
+    with closing(get_conn()) as conn:
+        return [dict(f) for f in conn.execute(
+            "SELECT * FROM bultos WHERE estado = 'disponible' AND id NOT IN "
+            "(SELECT bulto_id FROM reservas WHERE expira_en_ms > ?)", (ahora_ms,))]
 
 
 def obtener_bulto(bulto_id: str) -> dict | None:

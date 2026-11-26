@@ -177,3 +177,64 @@ def test_dos_carritos_a_la_vez_sobre_el_mismo_bulto_solo_gana_uno(base):
     assert errores == []
     assert len(ganadores) == 1 and len(perdedores) == n - 1
     assert _num_reservas(base) == 1
+
+
+# ---------- Paso 3: un bulto reservado no sale en /buscar, /chat ni /stock ----------
+
+from app.buscador import buscar_bultos, construir_objetivo, valores_disponibles  # noqa: E402
+
+# Bulto 334 del inventario real: bobina 304L/304 2B de 2 × 1500 mm.
+ESPEC_334 = {"grado": "304", "acabado": "2B", "formato": "bobina", "espesor_mm": 2.0, "ancho_mm": 1500.0}
+
+
+def _ids_ofrecidos(espec=ESPEC_334):
+    exactos, transformables = buscar_bultos(construir_objetivo(espec))
+    return {b["id"] for b in exactos} | {t["bulto_id"] for t in transformables}
+
+
+def _ms(momento):
+    return int(momento.timestamp() * 1000)
+
+
+def test_un_bulto_reservado_desaparece_de_disponibles(base):
+    assert "334" in {b["id"] for b in db.disponibles()}
+    reservar(["334"], "a")
+    assert "334" not in {b["id"] for b in db.disponibles()}
+
+
+def test_un_bulto_reservado_no_sale_en_la_busqueda_ni_siquiera_para_su_titular(base):
+    assert "334" in _ids_ofrecidos()
+    reservar(["334"], "a")
+    assert "334" not in _ids_ofrecidos()                     # ni como exacto ni como transformable
+
+
+def test_un_bulto_reservado_no_cuenta_en_los_valores_del_stock(base):
+    def bultos_de_2mm():
+        return next(v["bultos"] for v in valores_disponibles("espesor_mm", ESPEC_334) if v["valor"] == 2.0)
+    antes = bultos_de_2mm()
+    reservar(["334"], "a")
+    assert bultos_de_2mm() == antes - 1
+
+
+def test_al_liberarlo_vuelve_a_salir(base):
+    reservar(["334"], "a")
+    liberar("334", "a")
+    assert "334" in _ids_ofrecidos()
+
+
+def test_al_caducar_vuelve_a_salir(base):
+    reservar(["334"], "a", ahora=T0)
+    assert "334" not in {b["id"] for b in db.disponibles(_ms(_min(config.RESERVA_MINUTOS - 1)))}
+    assert "334" in {b["id"] for b in db.disponibles(_ms(_min(config.RESERVA_MINUTOS)))}
+
+
+def test_la_api_de_busqueda_no_ofrece_bultos_reservados(base):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    cliente = TestClient(app)
+    ids = lambda r: {b["id"] for b in r.json()["exactos"]}  # noqa: E731
+    assert "334" in ids(cliente.post("/buscar", json=ESPEC_334))
+    reservar(["334"], "a")
+    assert "334" not in ids(cliente.post("/buscar", json=ESPEC_334))
