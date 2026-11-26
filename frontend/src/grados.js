@@ -36,6 +36,10 @@ function gradoDocumentado(valor) {
   return porUNS.size === 1 ? [...porUNS][0] : undefined
 }
 
+// Las 41 fichas del catálogo tienen PDF (GET /fichas/{mat}); alguna referencia de otras fuentes no.
+const MAT_CON_PDF = new Set(fichas.map(f => f.mat))
+export const tienePdf = mat => MAT_CON_PDF.has(mat)
+
 export function gradoVisible(valor, euronorma) {
   return componentes(valor || euronorma).map(codigo => {
     if (normalizar(codigo) === '304DDQ') return '304 DDQ'

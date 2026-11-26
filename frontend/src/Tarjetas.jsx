@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { fichasDelGrado, gradoVisible } from './grados.js'
+import { useEffect, useState } from 'react'
+import { fichasDelGrado, gradoVisible, tienePdf } from './grados.js'
+import { urlFicha } from './api.js'
 
 const ETIQUETAS = { exacto: 'Cumple', transformable: 'Transformable', alternativa: 'Alternativa' }
 
@@ -168,7 +169,11 @@ function Fuentes({ tipo, item, bulto }) {
             {item.merma_estimada && ' La merma es una estimación.'}</li>
         )}
         {fichas.length > 0 && (
-          <li><b>Referencias AcerIA del grado {gradoBulto(bulto)}</b> · {fichas.map(f => `${f.mat} (EN ${f.en})`).join(', ')}</li>
+          <li><b>Referencias AcerIA del grado {gradoBulto(bulto)}</b> · {fichas.map((f, i) => (
+            <span key={f.mat}>{i > 0 && ', '}{urlFicha(f.mat) && tienePdf(f.mat)
+              ? <a href={urlFicha(f.mat)} target="_blank" rel="noopener noreferrer">{f.mat}</a>
+              : f.mat} (EN {f.en})</span>
+          ))}</li>
         )}
         <li><b>Texto de la respuesta</b>: lo redacta el asistente solo con estos datos; si añadiera algo que no está aquí, se sustituye por una plantilla.</li>
       </ul>
@@ -176,12 +181,47 @@ function Fuentes({ tipo, item, bulto }) {
   )
 }
 
+// Ficha técnica en PDF del grado del bulto, a la derecha del detalle: estrecha y plegable.
+// Un bulto con doble certificado (304L/304) puede tener varias fichas: se eligen con pestañas.
+function PanelFicha({ fichas }) {
+  const [abierto, setAbierto] = useState(true)
+  const [activa, setActiva] = useState(0)
+  if (!fichas.length) return null
+  const ficha = fichas[Math.min(activa, fichas.length - 1)]
+  const url = urlFicha(ficha.mat)
+  const parar = e => e.stopPropagation()             // un clic en el panel no cierra el detalle
+  if (!abierto) {
+    return (
+      <button type="button" className="ficha-plegada" onClick={e => { parar(e); setAbierto(true) }}
+        title="Ver la ficha técnica">‹ Ficha {ficha.mat}</button>
+    )
+  }
+  return (
+    <aside className="ficha-panel" onClick={parar} aria-label={`Ficha técnica ${ficha.mat}`}>
+      <div className="ficha-cabeza">
+        <div className="ficha-pestanas" role="tablist">
+          {fichas.map((f, i) => (
+            <button key={f.mat} type="button" role="tab" aria-selected={f.mat === ficha.mat}
+              onClick={() => setActiva(i)} title={`EN ${f.en}`}>{f.mat}</button>
+          ))}
+        </div>
+        {url && <a href={url} target="_blank" rel="noopener noreferrer" title="Abrir en otra pestaña">↗</a>}
+        <button type="button" className="cerrar" onClick={() => setAbierto(false)} aria-label="Plegar la ficha">›</button>
+      </div>
+      {url
+        ? <iframe key={ficha.mat} title={`Ficha técnica ${ficha.mat}`} src={`${url}#view=FitH&navpanes=0`} />
+        : <p className="tenue">Las fichas técnicas necesitan conexión con el backend.</p>}
+    </aside>
+  )
+}
+
 export function Detalle({ item: { tipo, item }, esp, onCerrar }) {
   useEscape(onCerrar)
   const antes = datosBulto(tipo, item)
   const despues = tipo === 'transformable' ? item.resultado : null
+  const fichas = fichasDelGrado(antes.grado ?? antes.aisi, antes.euronorma).filter(f => tienePdf(f.mat))
   return (
-    <div className="modal-fondo" onClick={onCerrar}>
+    <div className="modal-fondo con-ficha" onClick={onCerrar}>
       <div className={`modal ${tipo}`} onClick={e => e.stopPropagation()} role="dialog" aria-label={`Detalle del bulto ${item.id}`}>
         <div className="modal-cabeza">
           <h2>{item.id} <span className="tarjeta-tipo">{ETIQUETAS[tipo]}</span></h2>
@@ -212,6 +252,7 @@ export function Detalle({ item: { tipo, item }, esp, onCerrar }) {
         <Coincidencias esp={esp} bulto={despues ? { ...antes, ...despues } : antes} />
         <Fuentes tipo={tipo} item={item} bulto={antes} />
       </div>
+      <PanelFicha fichas={fichas} />
     </div>
   )
 }
