@@ -19,6 +19,24 @@ function medidas(b) {
 // En un transformable, los datos del bulto vienen en `origen` (o en el propio objeto si el backend los aplana).
 const datosBulto = (tipo, item) => (tipo === 'transformable' ? item.origen ?? item : item)
 
+// Transformable: qué bulto hay hoy, qué se obtiene y qué hay que hacer. Lo usan la tarjeta y el carrito.
+// Todo sale del motor de reglas (resultado, acciones, merma); si no viene `resultado`, devuelve null.
+export function transformacion(item) {
+  const r = item.resultado
+  if (!r) return null
+  const antes = item.origen ?? item.bulto ?? item
+  const peso = r.peso_util_kg ?? r.peso_kg
+  const piezas = r.piezas > 1 ? ` (${r.piezas} piezas)` : ''
+  return {
+    antes: `${antes.formato} ${medidas(antes)}${antes.peso_kg != null ? `, ${num(antes.peso_kg)} kg` : ''}`,
+    despues: `${r.formato} ${medidas(r)}${piezas}${peso != null ? `, ${num(peso)} kg útiles` : ''}`,
+    acciones: acciones(item).join(' y '),
+    merma: item.merma_kg != null
+      ? `merma ${item.merma_estimada ? 'estimada ' : ''}${num(item.merma_kg)} kg${item.merma_pct != null ? ` (${num(item.merma_pct)} %)` : ''}`
+      : null,
+  }
+}
+
 const ORIGEN = {
   exacto: 'Inventario',
   transformable: 'Inventario + reglas de transformación',
@@ -27,6 +45,8 @@ const ORIGEN = {
 
 export function Tarjeta({ tipo, item, onClick, comparando, onComparar }) {
   const b = datosBulto(tipo, item)
+  const t = tipo === 'transformable' ? transformacion(item) : null
+  if (t) return <TarjetaTransformable item={item} b={b} t={t} onClick={onClick} comparando={comparando} onComparar={onComparar} />
   return (
     <div className={`tarjeta ${tipo} ${comparando ? 'comparando' : ''}`}>
       <button type="button" className="tarjeta-cuerpo" onClick={onClick}>
@@ -104,6 +124,33 @@ function Coincidencias({ esp, bulto }) {
         </tbody>
       </table>
     </>
+  )
+}
+
+// Un transformable no cumple tal cual: se dice arriba, se enseña en grande lo que se obtiene y
+// debajo de qué bulto sale y qué hay que hacer.
+function TarjetaTransformable({ item, b, t, onClick, comparando, onComparar }) {
+  const r = item.resultado
+  return (
+    <div className={`tarjeta transformable ${comparando ? 'comparando' : ''}`}>
+      <button type="button" className="tarjeta-cuerpo" onClick={onClick}>
+        <div className="tarjeta-cabeza">
+          <span className="tarjeta-id">{item.id}</span>
+          <span className="tarjeta-tipo">{ETIQUETAS.transformable}</span>
+        </div>
+        <div className="tarjeta-requiere">Requiere transformación</div>
+        <div className="tarjeta-paso tarjeta-obtienes"><span>Obtienes</span>{b.grado} {r.acabado ?? b.acabado} · {t.despues}</div>
+        <div className="tarjeta-paso"><span>Sale de</span>{t.antes}{b.ubicacion ? ` · ${b.ubicacion}` : ''}</div>
+        <div className="tarjeta-paso"><span>Hay que</span>{t.acciones}{t.merma ? ` · ${t.merma}` : ''}
+          {item.num_operaciones > 1 && ` · ${item.num_operaciones} operaciones`}</div>
+        <div className="tarjeta-origen">Fuente: {ORIGEN.transformable} · ver de dónde sale</div>
+      </button>
+      {onComparar && (
+        <label className="tarjeta-comparar">
+          <input type="checkbox" checked={comparando} onChange={onComparar} /> Comparar
+        </label>
+      )}
+    </div>
   )
 }
 

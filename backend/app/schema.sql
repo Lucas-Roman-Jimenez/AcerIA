@@ -35,3 +35,17 @@ CREATE TABLE IF NOT EXISTS compras (
 );
 
 CREATE INDEX IF NOT EXISTS idx_compras_semana ON compras (comprada_en_ms, id);
+
+-- Reservas del carrito (tarea 4): un bulto reservado no sale en /buscar ni en /chat y solo lo vende su titular.
+-- Se vacía en cada arranque, como bultos: el carrito vive en el navegador y se pierde al reiniciar.
+-- Una reserva vale mientras expira_en_ms > ahora; las caducadas se ignoran y se borran al escribir.
+DROP TABLE IF EXISTS reservas;
+
+CREATE TABLE reservas (
+    bulto_id      TEXT PRIMARY KEY NOT NULL,   -- un bulto, como mucho una reserva
+    titular       TEXT NOT NULL,               -- quién reserva: cabecera X-Carrito (provisional hasta el login)
+    creada_en_ms  INTEGER NOT NULL,
+    expira_en_ms  INTEGER NOT NULL CHECK (expira_en_ms > creada_en_ms)
+);
+
+CREATE INDEX idx_reservas_titular ON reservas (titular, expira_en_ms);
