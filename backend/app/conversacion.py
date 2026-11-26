@@ -17,7 +17,7 @@ RAIZ = Path(__file__).resolve().parents[2]          # raíz del repo: llm/ y reg
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from llm import ErrorLLM, interpretar, pregunta_tras_busqueda, responder  # noqa: E402
+from llm import ErrorLLM, aviso_ia, interpretar, pregunta_tras_busqueda, responder  # noqa: E402
 
 from app.buscador import CRITERIO_ORDEN, buscar_alternativas, buscar_bultos, construir_objetivo  # noqa: E402
 
@@ -49,6 +49,8 @@ def _respuesta(conv_id: str, estado: str, texto: str, especificacion: dict, **ex
         "opciones": [],                           # botones: formato pendiente de acordar
         "texto": texto,
         "criterio_orden": CRITERIO_ORDEN,
+        # AI Act art. 50: marca y textos del aviso (docs/legal_ia.md). En un error no hay texto generado.
+        "aviso_ia": None if estado == "error" else aviso_ia(),
     }
 
 
