@@ -1144,3 +1144,256 @@ button:disabled { cursor: default; opacity: .5; }
 .app.portada .principal { padding-bottom: 96px; }
 /* Algo más de aire entre el buscador y las casillas */
 .casillas { margin-top: 28px; }
+/* Un poco más de aire entre el campo de texto y las casillas */
+.casillas { margin-top: 40px; }
+
+/* Planchas a toda la altura de la parte derecha de la portada; buscador y casillas por delante */
+.principal { position: relative; isolation: isolate; }
+.principal > .planchas { top: 0; bottom: 0; right: 0; width: 50%; }
+.principal > .planchas .planchas-abanico { right: -14%; top: 50%; }
+.principal > .planchas .plancha { width: 640px; height: 340px; left: -440px; top: -170px; }
+.principal > :not(.planchas) { position: relative; z-index: 1; }
+/* Abanico que llena de arriba abajo la parte derecha, sin rozar el título */
+.principal > .planchas { width: 46%; }
+.principal > .planchas .planchas-abanico { right: -22%; top: 44%; }
+.principal > .planchas .plancha { width: 680px; height: 360px; left: -470px; top: -180px;
+  transform: rotate(calc(-80deg + var(--i) * 12deg)) translateX(calc(var(--i) * -6px)); }
+/* El abanico empieza a la altura de la segunda «e» de «quieres» (≈ 49 % del ancho de la zona central) */
+.principal > .planchas { left: 49%; right: 0; width: auto;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .55) 6%, #000 22%);
+          mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .55) 6%, #000 22%); }
+.principal > .planchas .planchas-abanico { right: -6%; top: 44%; }
+.principal > .planchas .plancha { width: 760px; height: 380px; left: -560px; top: -190px; }
+
+/* ===== Fondo del chat (portada y conversación) en el azul de AcerIA ===== */
+.principal {
+  background: #4A73B4;
+  /* Sobre este azul, los acentos claros pasan a casi blanco y los grises se aclaran para que se lean */
+  --azul-claro: #E3E7FF; --tenue: rgba(255, 255, 255, .78); --plata: #F1F4FA; --metal: rgba(255, 255, 255, .7);
+  --borde: rgba(255, 255, 255, .28); --oro: rgba(255, 255, 255, .78);
+  color: #fff;
+}
+.principal .casilla-etiqueta, .principal .casilla.llena .casilla-etiqueta { color: #E3E7FF; }
+.principal .casilla:hover:not(:disabled) .casilla-etiqueta, .principal .casilla.abierta .casilla-etiqueta { color: #fff; }
+.principal .regla > span:not(.regla-indicador) { background: rgba(255, 255, 255, .7); }
+.principal .regla-indicador { background: #fff; box-shadow: 0 0 8px rgba(255, 255, 255, .9), 0 0 18px rgba(227, 231, 255, .6); }
+.principal .entrada { background: linear-gradient(135deg, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, .08) 100%); border-color: rgba(255, 255, 255, .35); }
+.principal .entrada input::placeholder { color: rgba(255, 255, 255, .75); }
+/* Las planchas se funden con el azul en su borde izquierdo */
+.principal > .planchas { opacity: .95; }
+
+/* ===== Bocadillos en el azul clarito, con texto marino oscuro: se leen siempre sobre el fondo azul ===== */
+.mensaje.comercial > p, .mensaje.asistente > p, .mensaje.pensando > p {
+  background: #E3E7FF; border: 1px solid rgba(255, 255, 255, .9); color: #1B2550;
+  box-shadow: 0 6px 18px rgba(16, 30, 70, .28);
+}
+.mensaje.comercial > p::after, .mensaje.asistente > p::after { background: #E3E7FF; border: 0; }
+.mensaje.asistente .altavoz { color: #2A3A78; opacity: .75; }
+.mensaje.asistente .altavoz:hover { opacity: 1; }
+.mensaje > p.escritura .escritura-cursor { background: var(--naranja); }
+
+/* ===== Bocadillos en el índigo #2A2C74 con texto blanco; borde claro y sombra para que destaquen sobre el fondo azul ===== */
+.mensaje.comercial > p, .mensaje.asistente > p, .mensaje.pensando > p {
+  background: #2A2C74; color: #fff; border: 1px solid rgba(227, 231, 255, .45);
+  box-shadow: 0 6px 20px rgba(10, 16, 50, .35);
+}
+.mensaje.comercial > p::after, .mensaje.asistente > p::after {
+  background: #2A2C74; border: 0; border-right: 1px solid rgba(227, 231, 255, .45); border-bottom: 1px solid rgba(227, 231, 255, .45);
+}
+.mensaje.asistente .altavoz { color: #fff; opacity: .8; }
+
+/* ===== Fondo del chat en el índigo #2A2C74 y bocadillos en el azul de AcerIA #4A73B4 con texto blanco ===== */
+.principal { background: #2A2C74; }
+.mensaje.comercial > p, .mensaje.asistente > p, .mensaje.pensando > p {
+  background: #4A73B4; color: #fff; border: 1px solid rgba(255, 255, 255, .28); box-shadow: 0 6px 20px rgba(5, 8, 30, .4);
+}
+.mensaje.comercial > p::after, .mensaje.asistente > p::after {
+  background: #4A73B4; border: 0; border-right: 1px solid rgba(255, 255, 255, .28); border-bottom: 1px solid rgba(255, 255, 255, .28);
+}
+.principal .entrada { background: linear-gradient(135deg, rgba(255, 255, 255, .12) 0%, rgba(255, 255, 255, .05) 100%); border-color: rgba(255, 255, 255, .3); }
+
+/* ===== Barra lateral y cinta en índigo: se funden con el fondo del chat, sin cortes ===== */
+.app { background: #2A2C74; }
+.lateral {
+  background: linear-gradient(90deg, #202265 0%, #2A2C74 100%); border-right: 0;
+  --borde: rgba(255, 255, 255, .12); --tenue: rgba(255, 255, 255, .7);
+}
+.lateral-menu, .lateral-pie { border-color: rgba(255, 255, 255, .1); }
+.lateral-item, .lateral-item.salir-flujo { color: rgba(255, 255, 255, .88); }
+.lateral-item:hover:not(:disabled), .lateral-item.salir-flujo:hover { background: rgba(255, 255, 255, .09); color: #fff; }
+.lateral-item.destacado { background: rgba(255, 255, 255, .1); }
+.lateral-item.destacado:hover { background: rgba(255, 255, 255, .15); }
+.lateral .reciente { color: rgba(255, 255, 255, .82); }
+.lateral .reciente:hover { background: rgba(255, 255, 255, .07); }
+.lateral .reciente.activa { background: rgba(255, 255, 255, .12); color: #fff; }
+.lateral .reciente-hora, .lateral-vacio { color: rgba(255, 255, 255, .6); }
+.lateral-pie .interruptor { color: rgba(255, 255, 255, .85); }
+.interruptor .interruptor-pista { background: rgba(0, 0, 0, .25); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
+.barra-superior { background: #26286D; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.ticker-item { border-right-color: rgba(255, 255, 255, .1); }
+.ticker-item em { color: rgba(255, 255, 255, .6); }
+
+/* ===== Barra lateral blanca con un fundido suave hacia el índigo del chat ===== */
+.lateral {
+  position: relative; z-index: 2; background: #fff; border-right: 0; color: #2A2C74;
+  --borde: rgba(42, 44, 116, .12); --tenue: rgba(42, 44, 116, .6);
+}
+.lateral::after {
+  content: ''; position: absolute; top: 0; bottom: 0; right: -56px; width: 56px; pointer-events: none;
+  background: linear-gradient(90deg, #fff 0%, rgba(255, 255, 255, .55) 35%, rgba(255, 255, 255, 0) 100%);
+}
+.lateral .marca, .lateral .logo-texto { color: #2A2C74; }
+.lateral-menu, .lateral-pie { border-color: rgba(42, 44, 116, .1); }
+.lateral-item, .lateral-item.salir-flujo { color: #2A2C74; }
+.lateral .icono-lateral { color: #4A73B4; }
+.lateral-item:hover:not(:disabled), .lateral-item.salir-flujo:hover { background: rgba(42, 44, 116, .07); color: #2A2C74; }
+.lateral-item:hover:not(:disabled) .icono-lateral, .lateral-item.destacado .icono-lateral { color: #2A2C74; }
+.lateral-item.destacado { background: rgba(42, 44, 116, .09); color: #2A2C74; }
+.lateral-item.destacado:hover { background: rgba(42, 44, 116, .14); }
+.lateral .reciente { color: #2A2C74; }
+.lateral .reciente:hover { background: rgba(42, 44, 116, .06); }
+.lateral .reciente.activa { background: rgba(74, 115, 180, .16); color: #2A2C74; }
+.lateral .reciente-hora, .lateral-vacio { color: rgba(42, 44, 116, .55); }
+.lateral-pie .interruptor { color: #2A2C74; }
+.interruptor .interruptor-pista { background: rgba(42, 44, 116, .15); box-shadow: inset 0 0 0 1px rgba(42, 44, 116, .2); }
+
+/* ===== Barra lateral mate (gris azulado apagado) con un fundido largo hacia el índigo ===== */
+.lateral { background: linear-gradient(90deg, #C3C6DA 0%, #B4B8D2 100%); }
+.lateral::after {
+  right: -140px; width: 140px;
+  background: linear-gradient(90deg, #B4B8D2 0%, rgba(140, 145, 190, .55) 30%, rgba(80, 84, 150, .25) 65%, rgba(42, 44, 116, 0) 100%);
+}
+.lateral .icono-lateral { color: #3A3D96; }
+.lateral-item.destacado { background: rgba(42, 44, 116, .1); }
+.lateral .reciente-hora, .lateral-vacio { color: rgba(42, 44, 116, .65); }
+
+/* ===== Barra lateral en el mismo índigo del fondo, apenas un velo más clara: sin corte visible ===== */
+.lateral {
+  background: linear-gradient(90deg, #2F3179 0%, #2C2E76 70%, #2A2C74 100%); color: #fff;
+  --borde: rgba(255, 255, 255, .1); --tenue: rgba(255, 255, 255, .62);
+}
+.lateral::after { display: none; }
+.lateral .marca, .lateral .logo-texto { color: #fff; }
+.lateral-menu, .lateral-pie { border-color: rgba(255, 255, 255, .08); }
+.lateral-item, .lateral-item.salir-flujo, .lateral .reciente, .lateral-pie .interruptor { color: rgba(255, 255, 255, .85); }
+.lateral .icono-lateral { color: rgba(255, 255, 255, .65); }
+.lateral-item:hover:not(:disabled), .lateral-item.salir-flujo:hover { background: rgba(255, 255, 255, .06); color: #fff; }
+.lateral-item:hover:not(:disabled) .icono-lateral, .lateral-item.destacado .icono-lateral { color: #fff; }
+.lateral-item.destacado { background: rgba(255, 255, 255, .07); color: #fff; }
+.lateral-item.destacado:hover { background: rgba(255, 255, 255, .11); }
+.lateral .reciente:hover { background: rgba(255, 255, 255, .05); }
+.lateral .reciente.activa { background: rgba(255, 255, 255, .09); color: #fff; }
+.lateral .reciente-hora, .lateral-vacio { color: rgba(255, 255, 255, .55); }
+.interruptor .interruptor-pista { background: rgba(0, 0, 0, .22); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); }
+.barra-superior { background: #2A2C74; border-bottom: 0; }
+
+/* ===== Barra lateral de vidrio esmerilado blanco: velo lechoso con grano, luz desde arriba
+   y el borde derecho que se disuelve con una máscara (sin línea ni fundido de color) ===== */
+.lateral { background: transparent; isolation: isolate; }
+.lateral::before {
+  content: ''; position: absolute; inset: 0 -90px 0 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(90% 50% at 0% 100%, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 70%),
+    linear-gradient(rgba(255, 255, 255, .13), rgba(255, 255, 255, .09)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.35'/%3E%3C/svg%3E");
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - 150px), transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - 150px), transparent 100%);
+}
+.lateral .marca { text-shadow: 0 1px 12px rgba(42, 44, 116, .35); }
+.lateral-item.destacado { background: rgba(255, 255, 255, .16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25); }
+.lateral .reciente.activa { background: rgba(255, 255, 255, .16); }
+
+/* Vidrio esmerilado: blanco algo más presente */
+.lateral::before {
+  background:
+    radial-gradient(130% 65% at 0% 0%, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(100% 55% at 0% 100%, rgba(255, 255, 255, .26), rgba(255, 255, 255, 0) 72%),
+    linear-gradient(rgba(255, 255, 255, .22), rgba(255, 255, 255, .16)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.35'/%3E%3C/svg%3E");
+}
+.lateral .marca, .lateral-item, .lateral .reciente, .lateral-pie .interruptor { text-shadow: 0 1px 8px rgba(42, 44, 116, .45); }
+
+/* Vidrio esmerilado más blanco y mate: más velo uniforme, menos brillo y más grano */
+.lateral::before {
+  background:
+    radial-gradient(130% 60% at 0% 0%, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 72%),
+    linear-gradient(rgba(236, 238, 248, .34), rgba(236, 238, 248, .3)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.5'/%3E%3C/svg%3E");
+}
+.lateral .marca, .lateral-item, .lateral .reciente, .lateral-pie .interruptor, .lateral-vacio { text-shadow: 0 1px 6px rgba(30, 32, 95, .6); }
+
+/* Barra lateral: blanco flojo y uniforme, con borde limpio (sin difuminado) */
+.lateral::before {
+  inset: 0; backdrop-filter: none; -webkit-mask-image: none; mask-image: none;
+  background:
+    linear-gradient(rgba(240, 242, 250, .2), rgba(240, 242, 250, .2)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.3'/%3E%3C/svg%3E");
+  border-right: 1px solid rgba(255, 255, 255, .14);
+}
+
+/* ===== Barra lateral: blanco liso unos tonos rebajado, borde limpio, textos en índigo ===== */
+.lateral { background: #E4E6EF; color: #2A2C74; --borde: rgba(42, 44, 116, .12); --tenue: rgba(42, 44, 116, .6); }
+.lateral::before, .lateral::after { display: none; }
+.lateral .marca, .lateral-item, .lateral .reciente, .lateral-pie .interruptor, .lateral-vacio { text-shadow: none; }
+.lateral .marca, .lateral .logo-texto { color: #2A2C74; }
+.lateral-menu, .lateral-pie { border-color: rgba(42, 44, 116, .12); }
+.lateral-item, .lateral-item.salir-flujo, .lateral .reciente, .lateral-pie .interruptor { color: #2A2C74; }
+.lateral .icono-lateral { color: #4A73B4; }
+.lateral-item:hover:not(:disabled), .lateral-item.salir-flujo:hover { background: rgba(42, 44, 116, .08); color: #2A2C74; }
+.lateral-item:hover:not(:disabled) .icono-lateral, .lateral-item.destacado .icono-lateral { color: #2A2C74; }
+.lateral-item.destacado { background: rgba(42, 44, 116, .1); color: #2A2C74; box-shadow: none; }
+.lateral-item.destacado:hover { background: rgba(42, 44, 116, .15); }
+.lateral .reciente:hover { background: rgba(42, 44, 116, .06); }
+.lateral .reciente.activa { background: rgba(74, 115, 180, .18); color: #2A2C74; }
+.lateral .reciente-hora, .lateral-vacio { color: rgba(42, 44, 116, .58); }
+.interruptor .interruptor-pista { background: rgba(42, 44, 116, .16); box-shadow: inset 0 0 0 1px rgba(42, 44, 116, .2); }
+
+/* Fundido suave y corto del blanco de la barra hacia el índigo */
+.lateral::after {
+  display: block; content: ''; position: absolute; top: 0; bottom: 0; right: -44px; width: 44px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(228, 230, 239, .75) 0%, rgba(228, 230, 239, .4) 30%, rgba(228, 230, 239, .14) 65%, rgba(228, 230, 239, 0) 100%);
+}
+
+/* Sin borde: el blanco se disuelve de forma continua en el índigo (capa extendida con máscara) */
+.lateral { background: transparent; isolation: isolate; }
+.lateral::after { display: none; }
+.lateral::before {
+  display: block; content: ''; position: absolute; top: 0; bottom: 0; left: 0; right: -70px; z-index: -1; pointer-events: none;
+  border: 0; backdrop-filter: none; background: #E4E6EF;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 62%, rgba(0,0,0,.85) 72%, rgba(0,0,0,.5) 84%, rgba(0,0,0,.18) 93%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 62%, rgba(0,0,0,.85) 72%, rgba(0,0,0,.5) 84%, rgba(0,0,0,.18) 93%, transparent 100%);
+}
+
+/* Toda la barra en degradado continuo, con el blanco predominando */
+.lateral::before {
+  right: -90px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0,0,0,.97) 30%, rgba(0,0,0,.9) 50%, rgba(0,0,0,.78) 66%, rgba(0,0,0,.55) 80%, rgba(0,0,0,.25) 91%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, rgba(0,0,0,.97) 30%, rgba(0,0,0,.9) 50%, rgba(0,0,0,.78) 66%, rgba(0,0,0,.55) 80%, rgba(0,0,0,.25) 91%, transparent 100%);
+}
+
+/* ===== Barra lateral monotono oscuro: índigo profundo de la paleta, fundido suave al índigo del chat ===== */
+.lateral { color: #fff; --borde: rgba(255, 255, 255, .1); --tenue: rgba(255, 255, 255, .6); }
+.lateral::before { background: linear-gradient(180deg, #1B1D55 0%, #191B4E 100%); }
+.lateral .marca, .lateral .logo-texto { color: #fff; }
+.lateral-menu, .lateral-pie { border-color: rgba(255, 255, 255, .08); }
+.lateral-item, .lateral-item.salir-flujo, .lateral .reciente, .lateral-pie .interruptor { color: rgba(255, 255, 255, .86); }
+.lateral .icono-lateral { color: #8A8EF0; }
+.lateral-item:hover:not(:disabled), .lateral-item.salir-flujo:hover { background: rgba(138, 142, 240, .12); color: #fff; }
+.lateral-item:hover:not(:disabled) .icono-lateral, .lateral-item.destacado .icono-lateral { color: #fff; }
+.lateral-item.destacado { background: rgba(138, 142, 240, .16); color: #fff; }
+.lateral-item.destacado:hover { background: rgba(138, 142, 240, .24); }
+.lateral .reciente:hover { background: rgba(138, 142, 240, .1); }
+.lateral .reciente.activa { background: rgba(74, 115, 180, .35); color: #fff; }
+.lateral .reciente-hora, .lateral-vacio { color: rgba(255, 255, 255, .5); }
+.interruptor .interruptor-pista { background: rgba(0, 0, 0, .3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.lateral::before { right: -48px; }
+
+/* Fundido más ligero y sin escalones (curva suave con muchos puntos) */
+.lateral::before {
+  right: -40px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 40%, rgba(0,0,0,.96) 50%, rgba(0,0,0,.9) 58%, rgba(0,0,0,.81) 65%, rgba(0,0,0,.7) 72%, rgba(0,0,0,.57) 78%, rgba(0,0,0,.44) 83%, rgba(0,0,0,.31) 88%, rgba(0,0,0,.19) 92%, rgba(0,0,0,.09) 96%, rgba(0,0,0,.03) 98.5%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 40%, rgba(0,0,0,.96) 50%, rgba(0,0,0,.9) 58%, rgba(0,0,0,.81) 65%, rgba(0,0,0,.7) 72%, rgba(0,0,0,.57) 78%, rgba(0,0,0,.44) 83%, rgba(0,0,0,.31) 88%, rgba(0,0,0,.19) 92%, rgba(0,0,0,.09) 96%, rgba(0,0,0,.03) 98.5%, transparent 100%);
+}
+.lateral::before { background: linear-gradient(180deg, #23256B 0%, #222468 100%); }

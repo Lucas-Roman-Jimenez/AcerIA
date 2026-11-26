@@ -398,9 +398,9 @@ export default function App() {
         <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} />
       ) : (
         <main className="principal">
+          {vacio && <Planchas />}
           {vacio ? (
             <section className="inicio">
-              <Planchas />
               <div className="inicio-texto">
                 <Escritura as="h1" texto="¿Qué quieres buscar?" />
                 <div className="inicio-nombre">
