@@ -24,9 +24,11 @@ porcentaje de merma y número de operaciones.
 ## Reporte semanal de compras
 
 `GET /reportes/compras/semanal` devuelve el título, la semana de lunes a
-domingo en `Europe/Madrid` y una fila por movimiento de compra confirmado.
-Cada fila conserva las características del bulto y la cantidad sustraída
-con su unidad explícita.
+domingo en `Europe/Madrid` y una fila por bulto comprado durante esa semana.
+Cada fila incluye el formato en el título y muestra el ID del bulto, grado
+(AISI o Euronorma), acabado, espesor, ancho, largo cuando consta y peso.
+Las cantidades sustraídas se suman por bulto y unidad. Si hay varios
+movimientos del mismo bulto, se muestran las características del más reciente.
 
 El flujo de baja debe llamar a `app.reportes.registrar_compra` dentro de la
 misma transacción que actualiza el stock, pasando el bulto original antes

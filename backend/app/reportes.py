@@ -1,7 +1,8 @@
 """Registro de compras confirmadas y lectura del reporte semanal."""
 
 from contextlib import closing
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta
+from decimal import Decimal
 import json
 import math
 import sqlite3
@@ -44,23 +45,42 @@ def reporte_semanal(*, ahora: datetime | None = None) -> dict:
     ]
     with closing(get_conn()) as conexion:
         filas = conexion.execute(
-            """SELECT id, comprada_en_ms, material_json, cantidad, unidad FROM compras
+            """SELECT material_json, cantidad, unidad FROM compras
                WHERE comprada_en_ms >= ? AND comprada_en_ms < ?
                ORDER BY comprada_en_ms DESC, id""",
             limites,
         ).fetchall()
 
-    compras = []
+    compras = {}
+    cantidades = {}
     for fila in filas:
         material = json.loads(fila["material_json"])
+        bulto_id = material["id"]
+        unidad = fila["unidad"]
+        totales = cantidades.setdefault(bulto_id, {})
+        totales[unidad] = totales.get(unidad, Decimal(0)) + Decimal(str(fila["cantidad"]))
+        if bulto_id in compras:
+            continue
         formato = material.get("formato")
-        compras.append({
-            "id": fila["id"],
-            "fecha_compra": datetime.fromtimestamp(fila["comprada_en_ms"] / 1000, timezone.utc).isoformat(),
+        caracteristicas = {
+            "id": material["id"],
+            "grado": material.get("aisi") or material.get("euronorma"),
+            "acabado": material.get("acabado"),
+            "espesor_mm": material.get("espesor_mm"),
+            "ancho_mm": material.get("ancho_mm"),
+            "peso_kg": material.get("peso_kg"),
+        }
+        if material.get("largo_mm") is not None:
+            caracteristicas["largo_mm"] = material["largo_mm"]
+        compras[bulto_id] = {
             "nombre_material": f"{formato.capitalize()} de acero inoxidable" if formato else "Acero inoxidable",
-            "caracteristicas": material,
-            "cantidad_sustraida": {"valor": fila["cantidad"], "unidad": fila["unidad"]},
-        })
+            "caracteristicas": caracteristicas,
+        }
+    for bulto_id, compra in compras.items():
+        compra["cantidades_sustraidas"] = [
+            {"valor": float(valor), "unidad": unidad}
+            for unidad, valor in sorted(cantidades[bulto_id].items())
+        ]
     return {
         "titulo": "Reporte semanal de compras",
         "semana": {
@@ -68,5 +88,5 @@ def reporte_semanal(*, ahora: datetime | None = None) -> dict:
             "fin": (siguiente - timedelta(days=1)).isoformat(),
             "zona_horaria": ZONA_REPORTE.key,
         },
-        "compras": compras,
+        "compras": list(compras.values()),
     }
