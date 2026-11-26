@@ -211,7 +211,7 @@ El motor de reglas de Lucas devuelve, y Alonso pasa tal cual, un objeto `resulta
 
 Al quitarlo del carrito, o cuando caduca la reserva, vuelve a estar disponible. Las reservas se vacían cada vez que arranca el backend.
 
-**Quién reserva:** se identifica con la cabecera `X-Carrito`, que lleva un ID aleatorio del carrito (128 bits, generado en el frontend, de 100 caracteres como mucho). La lleva **cada** llamada de esta sección y también `POST /compras`. Es provisional: cuando haya login (tarea 5), el titular saldrá del token.
+**Quién reserva:** se identifica con la cabecera `X-Carrito`, que lleva un ID aleatorio del carrito (128 bits, generado en el frontend, de 100 caracteres como mucho). Solo admite letras, números, `-` y `_` (el frontend manda `k-` y 32 hexadecimales). La lleva **cada** llamada de esta sección y también `POST /compras`. No hay login (la tarea 5 no se hace), así que esta cabecera es la forma de identificar el carrito.
 
 | Llamada | Cuándo | Respuesta |
 | --- | --- | --- |
@@ -221,7 +221,37 @@ Al quitarlo del carrito, o cuando caduca la reserva, vuelve a estar disponible. 
 | `GET /reservas` | Al recargar la página | 200 `{"reservas": [...], "minutos": 15}`: tus reservas vigentes, en el orden en que se añadieron. |
 | `POST /compras` con `{"bultos": [...]}` | Al confirmar la venta | **Cambia:** solo vende los bultos con reserva vigente **tuya**. Si no, 409 con `no_disponibles` y no se vende nada. Al vender se borran esas reservas. |
 
-Sin la cabecera `X-Carrito`, todas responden 422 con `"Falta la cabecera X-Carrito."`. En `/compras`, el texto es `"El carrito está vacío o no es válido."`.
+Sin la cabecera `X-Carrito`, todas responden 422 con `"Falta la cabecera X-Carrito."`. En `/compras`, el texto es `"El carrito está vacío o no es válido."`. Una lista de bultos vacía, de más de 200 o con IDs de más de 50 caracteres da el 422 de la sección 9.
+
+---
+
+## 9. Validación de las entradas y errores 422 (tarea 6)
+
+**Nuevo.** Todo lo que entra en la API se valida con Pydantic (`backend/app/modelos.py`, límites en `config.py`). Lo mal formado se rechaza con 422 y no se busca, reserva, vende ni llama al LLM.
+
+| Llamada | Qué se valida |
+| --- | --- |
+| `POST /buscar` | `formato` es `chapa`, `bobina` o `fleje` (da igual mayúsculas). `espesor_mm`, `ancho_mm` y `largo_mm` son números mayores que 0 y como mucho 100, 5000 y 20000 mm. `grado` y `acabado` son textos de 1 a 50 caracteres. `opciones` es un objeto de listas de textos, como mucho 6 campos y 10 valores por campo. Los campos que no conoce **se ignoran**, así que se puede mandar la especificación completa (`uso`, `avisos`, `cantidad`…). |
+| `GET /stock/valores` | `campo` es `grado`, `acabado`, `formato`, `espesor_mm` o `ancho_mm`. Los filtros, con las mismas reglas que `/buscar`. |
+| `GET /stock/resumen` | `limite` entre 1 y 50. |
+| `POST /reservas`, `POST /compras` | `bultos` es una lista de 1 a 200 IDs, de 1 a 50 caracteres cada uno. |
+| `POST /chat` | `mensaje` o `texto` no vacío y de 2000 caracteres como mucho. `conversacion_id`, de 100 caracteres como mucho y solo con letras, números, `-` y `_`. |
+| Cabecera `X-Carrito` | 100 caracteres como mucho y solo letras, números, `-` y `_`. |
+
+**No se valida, a propósito,** que el grado o el acabado existan. Uno que no hay no es un error sino una petición sin stock: `/buscar` responde `sin_stock` y `/stock/valores` da 0 bultos, que es lo que usa el frontend para marcar «✗ sin stock». Lo que existe lo decide el código con el inventario y el catálogo (RNF-02).
+
+**Formato de los 422 de validación**, el mismo en toda la API:
+
+```json
+{"detail": "Datos no válidos.",
+ "errores": [{"campo": "espesor_mm", "mensaje": "debe ser mayor que 0"},
+             {"campo": "formato", "mensaje": "debe ser uno de: 'chapa', 'bobina', 'fleje'"}]}
+```
+
+- `campo` es el nombre del dato. En una lista se indica la posición (`bultos[0]`). Para la cabecera, es `X-Carrito`. Si el JSON está roto o no es un objeto, es `cuerpo`.
+- `mensaje` está en español y **nunca repite lo que se ha enviado**: ni el valor ni detalles internos de Pydantic.
+- Los 422 propios mantienen su texto en `detail` y no llevan `errores`: `"Falta la cabecera X-Carrito."` y `"El carrito está vacío o no es válido."`.
+- Los demás errores no cambian: 409 con `no_disponibles`, 404 y 204.
 
 ---
 

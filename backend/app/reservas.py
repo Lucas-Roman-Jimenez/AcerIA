@@ -8,8 +8,8 @@ a estar disponible. Las reservas caducadas no se borran con un proceso aparte: s
 Todo en BEGIN IMMEDIATE, como ventas.py: si dos peticiones reservan el mismo bulto a la vez, la segunda
 espera a que termine la primera y ve su reserva. Además, bulto_id es la clave de la tabla reservas.
 
-El titular es, de momento, la cabecera X-Carrito (un ID aleatorio que genera el frontend). Cuando haya
-login (tarea 5) será el usuario del token; este módulo no cambia.
+El titular es la cabecera X-Carrito (un ID aleatorio que genera el frontend; no hay login). Si algún
+día lo hay, el titular será el usuario y este módulo no cambia.
 """
 from __future__ import annotations
 

@@ -42,8 +42,8 @@ export async function buscarStock(esp) {
 }
 
 // ---------- Carrito con reservas (tarea 4): dos comerciales no pueden coger el mismo bulto ----------
-// Cada pestaña tiene un ID de carrito aleatorio (128 bits) que va en la cabecera X-Carrito. Provisional
-// hasta el login (tarea 5). Se guarda en sessionStorage para que, al recargar, se puedan soltar las
+// Cada pestaña tiene un ID de carrito aleatorio (128 bits) que va en la cabecera X-Carrito; no hay login.
+// Se guarda en sessionStorage para que, al recargar, se puedan soltar las
 // reservas de esta pestaña: el carrito vive en la memoria de React y se pierde al recargar.
 function idCarrito() {
   const nuevo = () => `k-${Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')}`
