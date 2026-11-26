@@ -15,6 +15,7 @@ from app.db import SCHEMA
 from app.main import obtener_reporte_semanal, obtener_tendencias_compras
 from app.reportes import registrar_compra, reporte_diario_inventario, reporte_semanal
 from app.tendencias import tendencias_compras
+from llm.catalogo import Catalogo
 
 
 BULTO = {"id": "334", "formato": "bobina", "aisi": "304L/304", "acabado": "2B",
@@ -35,28 +36,35 @@ def guardar(conexion, identificador, fecha):
                      cantidad=300.5, unidad="kg", comprada_en=fecha)
 
 
-def test_reporte_diario_distingue_reservas_vigentes_y_excluye_bultos_vendidos(base):
+def test_reporte_diario_lista_productos_agotados_y_fecha_de_la_ultima_baja(base):
     ahora = datetime(2026, 11, 26, 23, 15, tzinfo=timezone.utc)
     ahora_ms = int(ahora.timestamp() * 1000)
+    productos = [{"grado": "304", "formato": "chapa", "acabado": "2B",
+                  "espesor_mm": [2, 2], "ancho_mm": [ancho, ancho]}
+                 for ancho in (1250, 1300, 1400, 1450, 1500)]
+    catalogo = Catalogo({"grados": ["304"], "acabados": ["2B"], "formatos": ["chapa"],
+                         "productos": productos}, {})
     with sqlite3.connect(base) as conexion:
         conexion.executemany(
-            """INSERT INTO bultos (id, formato, peso_kg, estado, acabado, espesor_mm, ancho_mm)
-               VALUES (?, ?, ?, ?, '2B', 2, 1250)""",
-            [("libre", "chapa", 100, "disponible"), ("vigente", "chapa", 200, "disponible"),
-             ("caducada", "chapa", 300, "disponible"), ("vendido", "chapa", 400, "vendido"),
-             ("bloqueado", "chapa", 500, "bloqueado"), ("estatico", "bobina", 600, "reservado")],
+            """INSERT INTO bultos (id, ancho_mm, estado, formato, aisi, euronorma, peso_kg, acabado, espesor_mm)
+               VALUES (?, ?, ?, 'chapa', '304L/304', '1.4301/1.4307', 100, '2B', 2)""",
+            [("primera", 1250, "vendido"), ("ultima", 1250, "vendido"),
+             ("bloqueado", 1300, "bloqueado"), ("reservado", 1400, "disponible"),
+             ("venta-incompleta", 1450, "vendido")],
         )
-        conexion.executemany(
-            "INSERT INTO reservas VALUES (?, 'carrito', ?, ?)",
-            [("vigente", ahora_ms - 100, ahora_ms + 1), ("caducada", ahora_ms - 100, ahora_ms)],
+        conexion.execute(
+            "INSERT INTO reservas VALUES ('reservado', 'carrito', ?, ?)", (ahora_ms - 100, ahora_ms + 1),
         )
-    reporte = reporte_diario_inventario(ahora=ahora)
+        for id_bulto, en in (("primera", ahora - timedelta(days=1)), ("ultima", ahora - timedelta(minutes=5))):
+            registrar_compra(conexion, compra_id=id_bulto, comprada_en=en, cantidad=1, unidad="bultos",
+                             bulto=dict(BULTO, id=id_bulto, formato="chapa", ancho_mm=1250))
+    reporte = reporte_diario_inventario(ahora=ahora, catalogo=catalogo)
+    assert reporte["titulo"] == "Reporte diario"
     assert reporte["fecha"] == "2026-11-27"
-    assert reporte["consultado_en"] == "2026-11-27T00:15:00+01:00"
-    assert reporte["formatos"] == [
-        {"formato": "bobina", "total_bultos": 1, "disponibles": 0, "reservados": 1, "bloqueados": 0, "peso_kg": 600},
-        {"formato": "chapa", "total_bultos": 4, "disponibles": 2, "reservados": 1, "bloqueados": 1, "peso_kg": 1100},
+    assert [(fila["id"], fila["fecha_sin_stock"]) for fila in reporte["materiales_sin_stock"]] == [
+        ("chapa|304|2B|2|1250", "2026-11-27"), ("chapa|304|2B|2|1450", None), ("chapa|304|2B|2|1500", None),
     ]
+    assert reporte["materiales_sin_stock"][0]["nombre"] == "Chapa de acero inoxidable 304 · 2B · 2 mm de espesor · 1250 mm de ancho"
 
 
 def test_reporte_filtra_la_semana_madrid_y_conserva_la_ficha(base):

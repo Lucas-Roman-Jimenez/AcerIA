@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { cargarReporteSemanal } from './api.js'
 import { Tendencias } from './Tendencias.jsx'
+import { descargarJson } from './descargarJson.js'
 
 const numero = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 6 })
 const fecha = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'UTC' })
@@ -10,16 +11,6 @@ const CARACTERISTICAS = [
   ['espesor_mm', 'Espesor', medidas], ['ancho_mm', 'Ancho', medidas],
   ['largo_mm', 'Largo', medidas], ['peso_kg', 'Peso del bulto', n => `${numero.format(n)} kg`],
 ]
-
-function descargarJson(reporte) {
-  const contenido = JSON.stringify(reporte, null, 2)
-  const url = URL.createObjectURL(new Blob([contenido], { type: 'application/json' }))
-  const enlace = document.createElement('a')
-  enlace.href = url
-  enlace.download = `reporte-semanal-compras-${reporte.semana.inicio}.json`
-  enlace.click()
-  setTimeout(() => URL.revokeObjectURL(url), 0)
-}
 
 export function ReporteSemanal({ onVolver }) {
   const [reporte, setReporte] = useState(null)
@@ -47,7 +38,8 @@ export function ReporteSemanal({ onVolver }) {
         </div>
         <div className="reporte-botones">
           <button type="button" className="nueva" onClick={onVolver}>Volver a reportes</button>
-          <button type="button" className="nueva" disabled={!reporte} onClick={() => descargarJson(reporte)}>
+          <button type="button" className="nueva" disabled={!reporte}
+            onClick={() => descargarJson(reporte, `reporte-semanal-compras-${reporte.semana.inicio}.json`)}>
             Descargar JSON
           </button>
         </div>
