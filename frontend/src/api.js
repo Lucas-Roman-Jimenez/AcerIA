@@ -63,3 +63,12 @@ export async function cargarReporteSemanal(signal) {
   if (!r.ok) throw new Error(`El servidor respondió ${r.status}.`)
   return r.json()
 }
+
+// Tendencias de compras por semana y formato (Lucas): unidad 'kg', 'bultos' o 'piezas'.
+export async function cargarTendencias(semanas, unidad, signal) {
+  if (!API) throw new Error('Las tendencias necesitan conexión con el backend.')
+  const consulta = new URLSearchParams({ semanas: String(semanas), unidad })
+  const r = await fetch(`${API}/reportes/compras/tendencias?${consulta}`, { signal })
+  if (!r.ok) throw new Error(`El servidor respondió ${r.status}.`)
+  return r.json()
+}
