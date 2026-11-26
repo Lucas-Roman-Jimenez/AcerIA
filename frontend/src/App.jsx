@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { enviarMensaje, resumenStock, consultarValores, venderCarrito } from './api.js'
+import { enviarMensaje, resumenStock, consultarValores, venderCarrito, reservarBultos, liberarBulto, vaciarReservas } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
 import { Acero } from './Acero.jsx'
@@ -11,7 +11,8 @@ import { Cercanos } from './Cercanos.jsx'
 import { sugerirCorreccion } from './sugerir.js'
 import { pideBorrarConsulta, pideQuitar, frasesQuitar, textoNoSeleccionado } from './quitar.js'
 import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
-import { ReporteSemanal } from './ReporteSemanal.jsx'
+import { Reportes } from './Reportes.jsx'
+import { gradoVisible } from './grados.js'
 import { Escritura } from './Escritura.jsx'
 import { CabeceraVideos } from './CabeceraVideos.jsx'
 
@@ -64,7 +65,8 @@ export default function App() {
   const [carrito, setCarrito] = useState([])
   const [verCarrito, setVerCarrito] = useState(false)
   const [avisoInicio, setAvisoInicio] = useState(null)
-  const [verReporte, setVerReporte] = useState(false)
+  const [vistaReporte, setVistaReporte] = useState(null)
+  const verReporte = vistaReporte !== null
   // Respuesta que acaba de llegar: es la única que se escribe letra a letra
   const [fresco, setFresco] = useState(null)
   const actualRef = useRef(actual)
@@ -74,7 +76,7 @@ export default function App() {
   const dictadoRef = useRef(null)
 
   useEffect(() => { resumenStock().then(setStock).catch(() => setStock([])) }, [])
-  useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando])
+  useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando, verReporte])
   useEffect(() => () => descartarDictado(dictadoRef), [])
   const [lento, setLento] = useState(false)
   useEffect(() => {
@@ -253,21 +255,33 @@ export default function App() {
     setDemo(null)
     setVerCarrito(false)
     setVerComparacion(false)
-    setVerReporte(false)
+    setVistaReporte(null)
     setAvisoInicio(null)
     nuevaConsulta()
   }
 
-  // Al añadir un material al carrito se empieza un chat nuevo para la siguiente petición.
-  function alternarCarrito(tipo, item) {
+  // Al añadir un material al carrito se reserva (si otro comercial lo tiene, lanza el error y la tarjeta
+  // lo muestra) y se empieza un chat nuevo para la siguiente petición. Al quitarlo se suelta la reserva.
+  async function alternarCarrito(tipo, item) {
     if (carrito.some(c => c.item.id === item.id)) {
-      setCarrito(cs => cs.filter(c => c.item.id !== item.id))
+      quitarDelCarrito(item.id)
       return
     }
-    setCarrito(cs => [...cs, { tipo, item }])
+    await reservarBultos([item.id])
+    setCarrito(cs => cs.some(c => c.item.id === item.id) ? cs : [...cs, { tipo, item }])
     nuevaConsulta()
     const b = item.origen ?? item
     setAvisoInicio(`Añadido al carrito: bulto ${item.id}${b.grado ? ` (${[b.grado, b.acabado, b.formato].filter(Boolean).join(' ')})` : ''}. Puedes hacer una petición nueva.`)
+  }
+
+  function quitarDelCarrito(id) {
+    setCarrito(cs => cs.filter(c => c.item.id !== id))
+    liberarBulto(id)
+  }
+
+  function vaciarCarrito() {
+    setCarrito([])
+    vaciarReservas()
   }
 
   function alternarComparar(tipo, item) {
@@ -305,23 +319,20 @@ export default function App() {
   const previa = vacio && texto.trim() ? interpretarTexto(texto) : null
 
 
-  if (verReporte) {
-    return <div className="app"><ReporteSemanal onVolver={() => setVerReporte(false)} /></div>
-  }
-
   return (
-    <div className={`app ${vacio ? 'portada' : ''}`}>
+    <div className={`app ${verReporte ? 'en-reportes' : vacio ? 'portada' : ''}`}>
       <aside className="lateral">
         <button type="button" className="marca" onClick={salir} title="Volver al inicio">
-          <span className="logo-luna" aria-hidden />
+          <img className="logo-aceria" src="/logo-aceria.svg" alt="AcerIA" width="46" height="46" />
           <span className="logo-texto">ACERIA</span>
         </button>
 
         <nav className="lateral-menu" aria-label="Principal">
-          <button type="button" className="lateral-item destacado" onClick={salir}>
+          <button type="button" className={`lateral-item ${verReporte ? '' : 'destacado'}`} onClick={salir}>
             <Icono nombre="nueva" /> Nueva consulta
           </button>
-          <button type="button" className="lateral-item" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
+          <button type="button" className="lateral-item" onClick={() => { setVistaReporte(null); pasoDemo(0) }}
+            disabled={pensando || demo !== null}
             title="Reproduce la conversación de la demo paso a paso">
             <Icono nombre="demo" /> Demo guiada
           </button>
@@ -329,8 +340,10 @@ export default function App() {
             <Icono nombre="carrito" /> Carrito
             {carrito.length > 0 && <span className="contador">{carrito.length}</span>}
           </button>
-          <button type="button" className="lateral-item" onClick={() => { cancelarDictado(); setVerReporte(true) }}>
-            <Icono nombre="reporte" /> Reporte semanal
+          <button type="button" className={`lateral-item ${verReporte ? 'destacado' : ''}`}
+            aria-current={verReporte ? 'page' : undefined}
+            onClick={() => { cancelarDictado(); setVistaReporte('inventario') }}>
+            <Icono nombre="reporte" /> Reportes
           </button>
           {!vacio && (
             <button type="button" className="lateral-item salir-flujo" onClick={salir}
@@ -345,7 +358,7 @@ export default function App() {
           {conversaciones.length === 0 && <p className="lateral-vacio">Aquí aparecerán tus consultas.</p>}
           {conversaciones.map(c => (
             <button key={c.id} className={`reciente ${c.id === actual.id ? 'activa' : ''}`}
-              onClick={() => { cancelarDictado(); setFresco(null); setActual(c); setDetalle(null) }}>
+              onClick={() => { cancelarDictado(); setVistaReporte(null); setFresco(null); setActual(c); setDetalle(null) }}>
               <span className="reciente-texto">{c.mensajes[0]?.texto}</span>
               {c.creada && <span className="reciente-hora">{cuando(c.creada)}</span>}
             </button>
@@ -376,13 +389,16 @@ export default function App() {
 
         <CabeceraVideos />
 
+      {verReporte ? (
+        <Reportes vista={vistaReporte} onCambiarVista={setVistaReporte} />
+      ) : (
         <main className="principal">
           {vacio ? (
             <section className="inicio">
               <div className="inicio-texto">
                 <Escritura as="h1" texto="¿Qué quieres buscar?" />
                 <div className="inicio-nombre">
-                  {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
+                  {previa && [gradoVisible(previa.grado), previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
                 </div>
                 {avisoInicio && <p className="aviso-inicio" role="alert">{avisoInicio}</p>}
               </div>
@@ -494,12 +510,13 @@ export default function App() {
           <Casillas texto={texto} base={esp} onElegir={enviar} deshabilitado={pensando}
             onQuitar={k => { const f = frasesQuitar([k]); enviar(f.backend, actual, { sinCorregir: true, mostrado: f.visible }) }} />
         </main>
+      )}
       </div>
 
       {detalle && <Detalle item={detalle} esp={esp} onCerrar={() => setDetalle(null)} />}
       {verCarrito && (
-        <Carrito carrito={carrito} onQuitar={id => setCarrito(cs => cs.filter(c => c.item.id !== id))}
-          onVaciar={() => setCarrito([])} onCerrar={() => setVerCarrito(false)}
+        <Carrito carrito={carrito} onQuitar={quitarDelCarrito}
+          onVaciar={vaciarCarrito} onCerrar={() => setVerCarrito(false)}
           onVender={async ids => {
             const r = await venderCarrito(ids)
             setCarrito([])

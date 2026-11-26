@@ -120,4 +120,5 @@ def test_vite_no_sirve_todo_el_repositorio():
 def test_compras_vacia_devuelve_un_mensaje_fijo(cliente):
     r = cliente.post("/compras", json={"bultos": []})
     assert r.status_code == 422
-    assert r.json()["detail"] == "El carrito está vacío o no es válido."
+    assert r.json() == {"detail": "Datos no válidos.",                 # tarea 6: formato común de los 422
+                        "errores": [{"campo": "bultos", "mensaje": "no puede estar vacío"}]}

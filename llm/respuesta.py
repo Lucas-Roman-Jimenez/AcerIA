@@ -178,6 +178,14 @@ def _nota_uso(esp: Optional[Especificacion], catalogo: Optional[Catalogo]) -> st
     return f"Para {uso['uso']}, el catálogo indica {lista_y(uso['grados'])}{fuente}."
 
 
+def _nota_uso_desconocido(esp: Optional[Especificacion]) -> str:
+    """Si el comercial dio un uso que el catálogo no respalda, se dice en el texto (no solo en el panel).
+    Si el uso sí está en el catálogo, ya lo cita _nota_uso."""
+    if esp is None:
+        return ""
+    return " ".join(a for a in esp.avisos if a.startswith("El catálogo no indica qué grado"))
+
+
 def _nota_criterio(resultado: dict[str, Any]) -> str:
     """Criterio de ordenación que manda el backend (RNF-09). Solo si hay 2 o más propuestas que ordenar."""
     if len(resultado.get("exactos") or []) + len(resultado.get("transformables") or []) < 2:
@@ -194,10 +202,11 @@ def _texto_valido(texto: str, resultado: dict[str, Any], fuente: Any, catalogo: 
     ids = {_id(b) for k in ("exactos", "transformables", "alternativas") for b in resultado.get(k) or []}
     if not texto or not no_inventa(texto, fuente, catalogo):
         return False
-    if not ids <= set(_ID.findall(texto)) | {i for i in ids if i in texto}:
+    # Los IDs reales son números («1343»): se buscan como palabra completa, no como trozo de otro número.
+    if not all(re.search(rf"(?<![\w.,]){re.escape(i)}(?![\w]|[.,]\d)", texto) for i in ids):
         return False  # se ha dejado algún bulto
     if set(_ID.findall(texto)) - ids:
-        return False  # ha inventado un identificador
+        return False  # ha inventado un identificador con letras (los números inventados los frena no_inventa)
     if resultado.get("alternativas") and not (resultado.get("exactos") or resultado.get("transformables")):
         if "alternativ" not in texto.lower():
             return False  # las alternativas deben presentarse como tales
@@ -217,7 +226,8 @@ def responder(resultado: dict[str, Any], especificacion: Especificacion | dict |
     texto_plantilla = plantilla(resultado)
     esp_obj = (especificacion if isinstance(especificacion, Especificacion)
                else Especificacion.desde_dict(especificacion) if especificacion else None)
-    notas = (_nota_recomendacion(resultado, esp_obj), _nota_uso(esp_obj, catalogo), _nota_criterio(resultado),
+    notas = (_nota_recomendacion(resultado, esp_obj), _nota_uso(esp_obj, catalogo), _nota_uso_desconocido(esp_obj),
+             _nota_criterio(resultado),
              _nota_cantidad(resultado.get("exactos") or [], especificacion))
     total = sum(len(resultado.get(k) or []) for k in ("exactos", "transformables", "alternativas"))
     if not usar_llm or total <= 1:

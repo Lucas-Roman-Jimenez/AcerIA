@@ -333,7 +333,7 @@ def test_cantidad_cubierta_no_anade_nada():
 @pytest.mark.parametrize("intencion, esperado", [
     ("saludo", "¡Hola!"),
     ("agradecimiento", "De nada"),
-    ("reserva", "No puedo reservar bultos"),
+    ("reserva", "añádelo al carrito"),
     ("plazo", "plazos de entrega"),
     ("fuera_de_tema", "inventario"),
 ])

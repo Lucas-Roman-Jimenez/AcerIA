@@ -1,13 +1,8 @@
-import fichas from './fichas_aceria.json'
+import { fichasDelGrado, gradoVisible } from './grados.js'
 
-// El inventario real trae grados dobles como «304L/304»: vale la ficha de cualquiera de ellos.
 export function buscarFicha(grado) {
-  if (!grado) return null
-  if (grado.includes('/')) return grado.split('/').map(buscarFicha).find(Boolean) ?? null
-  const g = grado.toUpperCase()
-  return fichas.find(f => f.aisi?.toUpperCase() === g)
-    ?? fichas.find(f => f.en === grado || f.uns?.toUpperCase().includes(g) || f.mat.replace(' ', '') === g.replace(' ', ''))
-    ?? null
+  const candidatas = fichasDelGrado(grado)
+  return candidatas.length === 1 && candidatas[0].descripcion ? candidatas[0] : null
 }
 
 // Renders de estudio en public/materiales/<formato>-<acabado>.webp.
@@ -35,7 +30,9 @@ export function Acero({ esp, id }) {
   const grado = esp.grado ?? (esp.opciones?.grado?.length === 1 ? esp.opciones.grado[0] : null)
   if (!grado && !esp.formato) return null
   const acabado = esp.acabado ?? (esp.opciones?.acabado?.length === 1 ? esp.opciones.acabado[0] : null)
-  const ficha = buscarFicha(grado)
+  // Del remoto: las fichas del grado (puede haber varias) y el nombre unificado del grado.
+  const fichas = fichasDelGrado(grado)
+  const ficha = fichas.length === 1 ? fichas[0] : null
   const detalle = [acabado ?? esp.opciones?.acabado?.join('/'), esp.formato].filter(Boolean).join(' · ')
   return (
     <figure className="acero vitrina">
@@ -44,14 +41,12 @@ export function Acero({ esp, id }) {
       </div>
       <figcaption className="vitrina-pie">
         <div className="vitrina-nombre">
-          <span className="vitrina-fina">{ficha ? `Inoxidable ${ficha.familia}` : 'Acero inoxidable'}</span>
-          <span className="vitrina-gruesa">{grado ?? esp.formato}</span>
+          <span className="vitrina-fina">{ficha?.familia ? `Inoxidable ${ficha.familia}` : 'Acero inoxidable'}</span>
+          <span className="vitrina-gruesa">{grado ? gradoVisible(grado) : esp.formato}</span>
         </div>
-        {(detalle || ficha) && (
-          <div className="vitrina-meta">{[detalle, ficha && `EN ${ficha.en}`, ficha?.mat].filter(Boolean).join(' · ')}</div>
-        )}
-        {ficha && <p className="vitrina-desc">{enFrase(ficha.aplicaciones.slice(0, 5))}</p>}
-        {ficha && <small className="fuente">Fuente: ficha técnica {ficha.mat} de AcerIA</small>}
+        {detalle && <div className="vitrina-meta">{detalle}</div>}
+        {ficha?.aplicaciones?.length > 0 && <p className="vitrina-desc">{enFrase(ficha.aplicaciones.slice(0, 5))}</p>}
+        {fichas.length > 0 && <small className="fuente">Referencias AcerIA · {fichas.map(f => `${f.mat} (EN ${f.en})`).join(', ')}</small>}
       </figcaption>
     </figure>
   )

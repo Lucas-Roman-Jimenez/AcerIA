@@ -18,19 +18,19 @@ Hackathon IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto 
 
 ## Decisiones tomadas
 - Python, proveedor de LLM intercambiable (`LLM_PROVEEDOR=anthropic|openai`).
-- Contrato ampliado con `largo_mm`, `cantidad`, `opciones`, `uso`, `fuente_uso`, `avisos` e `indiferentes` (ver `docs/contrato.md`).
+- Contrato ampliado con `largo_mm`, `cantidad`, `opciones`, `uso`, `fuente_uso`, `avisos` e `indiferentes`, y `aviso_ia` en `/chat` (ver `docs/contrato.md`).
+- La salida del LLM se valida en dos capas: forma y tipos con Pydantic (`llm/modelos.py`) y valores contra el catálogo en `interprete._validar()`.
+- Si al comercial le da igual un dato, `responder()` recomienda el valor con más stock (por kg si el pedido es en kg o t). Lo calcula el código.
 - El LLM solo hace la extracción (una llamada por mensaje). Las preguntas y las respuestas salen de plantillas por defecto, por velocidad (RNF-05) y para que no inventen (RNF-01). `pregunta_tras_busqueda()` no usa nunca el LLM. No cambiar esto sin preguntar a Nacho.
 - LLM del hackathon: Claude por el AI Gateway de Databricks. El modelo se llama `system.ai.claude-sonnet-5-5` (sin el prefijo `system.ai.` da 403).
 - Los mensajes que no son un pedido (saludo, gracias, precio, plazo, reserva, consulta técnica, fuera de tema) tienen respuesta fija, sin LLM.
 
 ## Pendiente
-- **Catálogo real de Lucas** (`datos/catalogo.json` y `glosario.json`): en cuanto esté, cambiar `RUTA_DATOS` en `llm/catalogo.py`. Es lo que más limita: con el catálogo de ejemplo la evaluación de Lucas da 37,5 % de interpretación; con un catálogo sacado del inventario real, 95,8 % (umbral RNF-03: 85 %).
-- Después, repetir `tests/bateria_llm.py`, la evaluación de Lucas (`tests/evaluar_api.py`) y `docs/guion_demo.md` con los datos reales.
-- Decidir con Lucas el caso CL-08 («304 brillante de 2 mm»): su caso espera que se pregunte siempre ante un término ambiguo (RF-05); el módulo busca con las opciones y solo pregunta si el stock se distingue (RF-07).
-- Alonso: conectar `/chat` al módulo (sigue con respuestas de prueba), pasar `historial` a `pregunta_tras_busqueda()` y decidir el formato de las opciones para botones.
-- Stanis: pintar `indiferentes` («Cualquiera») y, si se quiere, `criterio_orden` encima de las tarjetas (RNF-09).
-- Merge request !1 (`nacho/llm` → `main`) pendiente de aceptar.
-- Confirmar con el mentor `CAMPOS_MINIMOS` (ahora grado + espesor) y las tolerancias.
+Estado a 26/11/2026: catálogo y glosario reales en `datos/`, `/chat` conectado, evaluación de Lucas al 100 % y batería de 53 escenarios sin fallos (`docs/evaluacion.md`). Queda:
+- Confirmar con el mentor `CAMPOS_MINIMOS` (ahora grado + espesor), las tolerancias y si la merma del orden RF-14 va en % o en kg.
+- Stanis: pintar la nota de IA desde `aviso_ia` de `/chat` (`docs/legal_ia.md` §3), `indiferentes` («Cualquiera») y unificar los títulos de los grados (EN y AISI se mezclan en las tarjetas).
+- Formato de las opciones para botones en `/chat` (`opciones` va vacío).
+- Antes de presentar: `python arrancar.py --reiniciar-demo` y el guion de `docs/guion_demo.md`.
 
 ## Normas de equipo
 - Carpetas acordadas: `backend/`, `llm/`, `frontend/`, `voz/` y `tests/`. Cada persona en su rama, con merge frecuente a `main`.

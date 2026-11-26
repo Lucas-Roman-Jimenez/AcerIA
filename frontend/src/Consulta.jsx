@@ -1,5 +1,6 @@
 import { buscarFicha } from './Acero.jsx'
 import { gradoParaBackend } from './Flujo.jsx'
+import { gradoVisible } from './grados.js'
 
 const NOMBRES = {
   espesor_mm: 'grosores', ancho_mm: 'anchos', acabado: 'acabados', formato: 'formatos', grado: 'tipos de acero',
@@ -8,11 +9,12 @@ const num = v => String(v).replace('.', ',')
 
 export function formatearValor(campo, v) {
   if (campo === 'espesor_mm' || campo === 'ancho_mm') return `${num(v)} mm`
+  if (campo === 'grado') return gradoVisible(v)
   return String(v)
 }
 
 function describirFiltros(filtros) {
-  const partes = [filtros.formato, filtros.grado, filtros.acabado,
+  const partes = [filtros.formato, gradoVisible(filtros.grado), filtros.acabado,
     filtros.espesor_mm != null && `${num(filtros.espesor_mm)} mm`,
     filtros.ancho_mm != null && `${num(filtros.ancho_mm)} mm de ancho`].filter(Boolean)
   return partes.length ? ` de ${partes.join(' · ')}` : ''

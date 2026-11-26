@@ -30,8 +30,15 @@ class Catalogo:
         self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
         self.grados_en_por_comercial: dict[str, set[str]] = {}
         nomenclatura = catalogo.get("nomenclatura_grados")
-        if nomenclatura:
-            for en, referencias in nomenclatura["grados"].items():
+        self.aisi_por_en: dict[str, str] = {}
+        if nomenclatura and nomenclatura["referencia"] == "AISI":
+            for codigo, referencias in nomenclatura["grados"].items():
+                for referencia_en in referencias["en"]:
+                    if referencias["sistema"] == "AISI":
+                        self.aisi_por_en[referencia_en] = codigo
+                if referencias["sistema"] != "EN":
+                    self.grados_en_por_comercial[codigo.upper()] = set(referencias["en"])
+            for en, referencias in nomenclatura["referencias_en"].items():
                 for fuente in referencias.get("fichas", []) + referencias.get("otras_fuentes", []):
                     grado = fuente["grado_comercial"]
                     if grado:
@@ -120,6 +127,10 @@ class Catalogo:
     def grado_indicado_para_uso(self, grado: str, grados_del_uso: list[str]) -> bool:
         """True si el grado, o su designación EN, está entre los que el catálogo indica para un uso."""
         return grado in grados_del_uso or not self.grados_en_por_comercial.get(grado, set()).isdisjoint(grados_del_uso)
+
+    def etiqueta_en(self, en: str) -> str:
+        aisi = self.aisi_por_en.get(en)
+        return f"AISI {aisi} (EN {en})" if aisi else f"EN {en}"
 
     # ---------- usos ----------
     def uso(self, nombre: Optional[str]) -> Optional[dict[str, Any]]:
