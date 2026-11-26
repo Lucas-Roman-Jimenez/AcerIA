@@ -68,7 +68,7 @@ Para enseñar: en el panel «Lo que he entendido» se ve cómo se completa la es
 ## Detalles conocidos del inventario
 
 - Con `304 de 2 mm` (sin acabado) pregunta «¿1/4 HT o 2B?»: el inventario trae «1/4 HT», «2/4 HT» y «3/4 HT» en la columna de acabado, pero son dureza. Evitar esa petición o dar el acabado.
-- Cuando falta el grado, los ejemplos que propone son designaciones EN (1.4016, 1.4021…): el catálogo usa ya la nomenclatura EN.
+- Cuando falta el grado, propone los habituales del inventario: «Por ejemplo: 304, 316L y 430». Los grados se nombran en AISI cuando el catálogo documenta la equivalencia (1.4404 → 316L), y si hay muchas opciones se nombran 4 y «u otros N».
 - Los grados todavía se muestran con orígenes mezclados: «para ambiente marino» se entiende como 1.4462, pero la tarjeta dice 2205, y las peticiones en AISI (304, 316L) salen en AISI. Lo unifica Stanis (títulos de los aceros). Si el jurado pregunta: 1.4462 (EN) y 2205 son el mismo acero dúplex.
 
 ---
