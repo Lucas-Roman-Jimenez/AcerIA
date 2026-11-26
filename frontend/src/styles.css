@@ -471,10 +471,14 @@ button:disabled { cursor: default; opacity: .5; }
 .altavoz { color: var(--metal); }
 
 /* Reposición (Reposicion.jsx): cabecera de color por sección; texto con contraste ≥ 4,5:1 */
-.repo-seccion { --repo-fondo: var(--superficie); --repo-texto: var(--texto); margin-bottom: 28px; border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
-.repo-seccion.reponer { --repo-fondo: #B3261E; --repo-texto: #fff; }          /* 6,6:1 */
-.repo-seccion.vigilar { --repo-fondo: var(--naranja); --repo-texto: var(--tinta); }  /* 7,1:1 */
-.repo-seccion.puntual { --repo-fondo: #F2C94C; --repo-texto: var(--tinta); }  /* 12,6:1 */
+/* Tonos cálidos claros que contrastan con el índigo de Stanis (#2A2C74); texto en índigo oscuro. */
+.repo-seccion {
+  --repo-fondo: var(--superficie); --repo-texto: #1B1C4D; margin-bottom: 28px; border-radius: 8px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--repo-fondo) 45%, transparent); background: rgba(255, 255, 255, .04);
+}
+.repo-seccion.reponer { --repo-fondo: #F2706A; }   /* coral: texto 5,5:1 */
+.repo-seccion.vigilar { --repo-fondo: #F79A4C; }   /* mandarina: texto 7,3:1 */
+.repo-seccion.puntual { --repo-fondo: #F6CF63; }   /* ámbar: texto 10,6:1 */
 .repo-seccion-cabecera { background: var(--repo-fondo); color: var(--repo-texto); padding: 12px 16px; }
 .repo-seccion-cabecera h2 { margin: 0; font-size: 1.1rem; }
 .repo-seccion-cabecera p { margin: 4px 0 0; font-size: .85rem; }
