@@ -2,7 +2,8 @@
 
 Resultado de `tests/evaluar_api.py` (el evaluador de Lucas) **contra el servidor real**: `/chat` con el módulo LLM, el buscador de Alonso con el motor de reglas, la base de datos de 2411 bultos y el **catálogo y glosario reales** de `datos/` (nomenclatura EN y orientaciones de obra).
 
-- **Fecha:** 26 de noviembre de 2026 · **código:** `main` en `110da5b` (con la recomendación «me da igual», el aviso de IA, la validación con Pydantic, las alternativas RF-29 y las orientaciones de obra)
+- **Fecha:** 26 de noviembre de 2026 · **código:** `main` en `93c3807` (con la recomendación «me da igual», el aviso de IA, la validación con Pydantic de la salida del LLM y de la API, las reservas, las alternativas RF-29, las orientaciones de obra y los grados en AISI)
+- **Duración:** 53 s · resultado guardado en `tests/informe_evaluacion_final.json`
 - **LLM:** `system.ai.claude-sonnet-5-5` por el AI Gateway de Databricks
 - **Resultado:** el script termina con `exit 0`
 
