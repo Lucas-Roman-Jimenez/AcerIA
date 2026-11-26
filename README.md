@@ -7,8 +7,8 @@ IndesIAHack 2026, reto de AcerIA: asistente comercial por voz y texto que interp
 ```
 llm/             Nacho (P2)  interpretación, validación contra catálogo, preguntas y respuesta
 tests/           tests de llm, reglas y buscador; conjunto de pruebas y evaluación (Lucas)
-demo_consola.py  prueba real del módulo llm con búsqueda simulada
-datos_ejemplo/   catálogo, glosario e inventario inventados para desarrollar
+arrancar.py      arranca la aplicación completa (backend + frontend) con un comando
+datos_ejemplo/   catálogo, glosario e inventario inventados: solo para tests y para el frontend sin backend
 backend/         Alonso (P1) FastAPI + SQLite, buscador, transformables, ranking, orquestación
 frontend/        Stanis (P3) chat, tarjetas, panel «Lo que he entendido», voz alta
 datos/           Lucas (P4)  catalogo.json y glosario.json reales
@@ -41,11 +41,10 @@ Usa `127.0.0.1` y no `localhost`: en la red de la URJC `localhost` acaba en el p
 ```bash
 pip install -r requirements.txt
 python -m pytest -q         # sin conexión ni clave
-python demo_consola.py      # prueba real con el LLM (búsqueda simulada); en Windows, antes: chcp 65001
-python tests/bateria_llm.py # 42 escenarios contra el LLM real; con prefijos (p. ej. V F) lanza solo esos
+python tests/bateria_llm.py # 48 escenarios con el LLM y los datos reales; con prefijos (p. ej. V F) solo esos
 ```
 
-`tests/bateria_llm.py` no lo ejecuta `pytest` porque llama al LLM real y gasta tokens. Al final resume errores y tiempos (mediana, máximo y mensajes de más de 5 s); que cada respuesta tenga sentido hay que revisarlo a mano. Hay que repetirla con los datos reales de Lucas.
+`tests/bateria_llm.py` no lo ejecuta `pytest` porque llama al LLM real y gasta tokens. Al final resume errores y tiempos (mediana, máximo y mensajes de más de 5 s); que cada respuesta tenga sentido hay que revisarlo a mano. Usa el mismo camino que `POST /chat` (`responder_chat()`): catálogo y glosario reales, buscador de Alonso, motor de Lucas y los 2411 bultos. No vende nada.
 
 ### Configuración del LLM (gateway del hackathon)
 
@@ -90,7 +89,7 @@ else:
 
 ### Qué escenarios cubre
 
-Probado con los escenarios de `tests/bateria_llm.py` contra el LLM real (mediana 1,0 s por mensaje, ninguno inventa datos):
+Probado con los escenarios de `tests/bateria_llm.py` contra el LLM real y los datos reales (48 escenarios, mediana 1,4 s por mensaje, ninguno inventa datos):
 
 | Escenario | Comportamiento |
 | --- | --- |
@@ -132,7 +131,7 @@ El resultado de búsqueda que espera `responder()` admite en cada bulto `peso_kg
 ### Decisiones pendientes
 
 - `CAMPOS_MINIMOS` en `llm/interprete.py`: ahora es grado + espesor. **Confirmar con el mentor** qué datos son imprescindibles para buscar.
-- Los ficheros de `datos_ejemplo/` son inventados para desarrollar. Lucas los sustituye por los reales (`catalogo.json`, `glosario.json`) con el mismo formato.
+- `datos_ejemplo/` son datos inventados: los usan los tests del módulo (`tests/test_llm.py`, `tests/test_aclaraciones_llm.py`), que así no dependen de los datos reales, y el frontend cuando arranca sin backend (`src/mock.js`). La aplicación usa los reales de `datos/`.
 
 ### Estructura
 
@@ -146,8 +145,7 @@ llm/
   control.py      control anti-invención de cifras, valores y bultos
   proveedores.py  Anthropic, OpenAI y ClienteFalso para tests
 tests/test_llm.py    tests sin conexión (pytest)
-tests/bateria_llm.py escenarios contra el LLM real (a mano)
-demo_consola.py
+tests/bateria_llm.py escenarios contra el LLM y los datos reales (a mano)
 docs/contrato.md     contrato JSON completo con ejemplos
 docs/guion_demo.md   conversación de la demo con las respuestas reales
 ```
