@@ -17,7 +17,8 @@ from app.reservas import liberar, liberar_todas, mis_reservas, reservar
 from app.reportes import reporte_diario_inventario, reporte_semanal
 from app.modelos import (MENSAJE_GENERAL, PATRON_CARRITO, CampoStock, Especificacion, Formato, ListaBultos,
                          MensajeChat, errores_legibles)
-from app.tendencias import tendencias_compras
+from app.tendencias import recomendaciones_reposicion, tendencias_compras
+from app.ventas_demo import preparar_ventas_demo
 from app.fichas import FichaNoDisponible, FichaNoEncontrada, obtener_pdf
 
 
@@ -26,6 +27,9 @@ async def lifespan(app: FastAPI):
     # Crea la base de datos al arrancar (RNF-12). Conserva ventas y reporte salvo que se pida
     # reiniciar la demo (python arrancar.py --reiniciar-demo pone ACERIA_REINICIAR_DEMO=1).
     crear_db(reiniciar_ventas=os.getenv("ACERIA_REINICIAR_DEMO") == "1")
+    # Ventas simuladas para los reportes; python arrancar.py --sin-ventas-demo pone ACERIA_VENTAS_DEMO=0.
+    if creadas := preparar_ventas_demo(os.getenv("ACERIA_VENTAS_DEMO", "1") != "0"):
+        print(f"✔ {creadas} ventas simuladas (demo-*) para los reportes")
     cargar_env()        # clave y modelo del LLM desde el .env de la raíz (RNF-13)
     yield
 
@@ -94,6 +98,11 @@ def obtener_tendencias_compras(
     unidad: Literal["kg", "bultos", "piezas"] = "kg",
 ):
     return tendencias_compras(semanas, unidad)
+
+
+@app.get("/reportes/reposicion")
+def obtener_reposicion():
+    return recomendaciones_reposicion()
 
 
 def titular_actual(x_carrito: str = Header("", max_length=100, pattern=PATRON_CARRITO)) -> str:
