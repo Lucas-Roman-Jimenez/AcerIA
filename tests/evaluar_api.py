@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import re
 from pathlib import Path
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -165,6 +166,24 @@ def _aclaracion(respuesta, campo):
     }
 
 
+def _orientacion_obra(respuesta, esperado):
+    especificacion = respuesta.get("especificacion") or {}
+    texto = respuesta.get("pregunta") or ""
+    fuente = especificacion.get("fuente_uso")
+    observado = {
+        "uso": especificacion.get("uso"),
+        "fuente": fuente,
+        "referencias_en": re.findall(r"\bEN (1\.\d{4})\b", texto),
+    }
+    sin_seleccion = (
+        not especificacion.get("grado") and not (especificacion.get("opciones") or {}).get("grado")
+        and not any(respuesta.get(campo) for campo in ("exactos", "transformables", "alternativas"))
+    )
+    correcta = (respuesta.get("estado") == "pregunta" and "?" in texto
+                and observado == esperado and sin_seleccion and (fuente is None or fuente in texto))
+    return correcta, {**observado, "sin_seleccion": sin_seleccion, "pregunta": texto}
+
+
 def _evaluar_peticion(enviar, endpoint, datos, comprobar, esperado):
     try:
         return comprobar(enviar(endpoint, datos), esperado)
@@ -187,10 +206,12 @@ def _resumir(anotaciones):
 
 def evaluar(casos, enviar, *, solo_resultados=False):
     interpretacion, resultados, transformables, reglas_locales = [], [], [], []
+    orientaciones_obra = []
     for caso in casos:
         esperado = caso["esperado"]
         detalle = {"id": caso["id"], "peticion": caso["peticion"]}
         categoria = caso["categoria"]
+        metrica_chat = interpretacion
         if categoria in ("transformacion", "imposible"):
             actual = REGLAS[esperado["regla"]](**esperado["entrada"])
             reglas_locales.append((actual == esperado["cumple_condiciones"],
@@ -225,6 +246,9 @@ def evaluar(casos, enviar, *, solo_resultados=False):
             comprobar = _aclaracion
             objetivo = {"espesor": "espesor_mm"}.get(campo, campo)
             detalle["pedir_aclaracion_sobre"] = objetivo
+        elif categoria == "orientacion_obra":
+            comprobar, objetivo = _orientacion_obra, esperado
+            metrica_chat = orientaciones_obra
         else:
             raise ValueError(f"Categoría desconocida: {categoria!r}")
 
@@ -232,7 +256,7 @@ def evaluar(casos, enviar, *, solo_resultados=False):
             continue
         chat = {"conversacion_id": str(uuid4()), "mensaje": caso["peticion"]}
         acierto, observado = _evaluar_peticion(enviar, "/chat", chat, comprobar, objetivo)
-        interpretacion.append((acierto, dict(detalle, **observado)))
+        metrica_chat.append((acierto, dict(detalle, **observado)))
 
     informe = {
         "umbral_pct": UMBRAL,
@@ -243,6 +267,8 @@ def evaluar(casos, enviar, *, solo_resultados=False):
         informe["interpretacion"] = _resumir(interpretacion)
     if transformables:
         informe["transformables_api"] = _resumir(transformables)
+    if orientaciones_obra:
+        informe["orientaciones_obra"] = _resumir(orientaciones_obra)
     return informe
 
 
@@ -268,6 +294,8 @@ def main():
     metricas = ["resultados", "transformables_api"]
     if not args.solo_resultados:
         metricas.append("interpretacion")
+    if "orientaciones_obra" in informe:
+        metricas.append("orientaciones_obra")
     correcto = all(informe[metrica]["cumple_umbral"] for metrica in metricas)
     return 0 if correcto and not informe["reglas_locales"]["fallos"] else 1
 

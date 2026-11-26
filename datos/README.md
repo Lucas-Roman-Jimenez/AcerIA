@@ -35,6 +35,17 @@ usa su campo `euronorma` cuando esté documentado y conserva las dos designacion
 si tiene doble certificación. Por ejemplo, la entrada «316L» puede referirse
 a EN 1.4404, 1.4432 o 1.4435.
 
+## Consultas de obra
+
+`orientaciones_obra` registra las expresiones para identificar consultas
+de fachada, cubierta, lluvia frecuente y humedad. Para fachada, la entrada
+vincula al uso documentado «adornos arquitectónicos» en `usos`, con sus fichas
+MAT y los grados EN. El asistente pregunta por el tipo de elemento y su
+exposición antes de elegir un grado. La lluvia y la humedad tienen prioridad
+si aparecen junto a «fachada» porque la aplicación de la ficha por sí sola
+no acredita la aptitud en esas condiciones. Para la cubierta, la lluvia y
+la humedad, la respuesta pide los datos que faltan.
+
 ## Normalizar una copia del inventario
 
 Con `openpyxl` instalado en el entorno de importación:

@@ -4,7 +4,7 @@ import { escuchar, leerEnAlto } from './voz.js'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
 import { Acero, Dibujo } from './Acero.jsx'
 import { Casillas } from './Casillas.jsx'
-import { interpretarTexto, detectarConsulta, detectarUso, recomendarPorUso } from './previa.js'
+import { interpretarTexto, detectarConsulta, detectarUso, detectarUsoDeObra, recomendarPorUso } from './previa.js'
 import { Consulta, textoConsulta } from './Consulta.jsx'
 import { Uso, construirUso } from './Uso.jsx'
 import { Cercanos } from './Cercanos.jsx'
@@ -135,7 +135,8 @@ export default function App() {
     setAvisoInicio(null)
     const base = { ...conv, creada: conv.creada ?? new Date(), mensajes: [...conv.mensajes, { rol: 'comercial', texto: mostrado ?? limpio }] }
     // Erratas («bbbobina»): se pregunta antes de buscar, sin llamar al backend.
-    const sugerencia = !sinCorregir && sugerirCorreccion(limpio)
+    const usoDeObra = detectarUsoDeObra(limpio)
+    const sugerencia = !sinCorregir && !usoDeObra && sugerirCorreccion(limpio)
     const entendido = sugerencia?.corregido ?? limpio
     // «Borra la consulta», «empezar de nuevo», «olvídalo»…: se vuelve a la página principal.
     if (!sinCorregir && pideBorrarConsulta(entendido)) {
@@ -163,7 +164,7 @@ export default function App() {
     guardar(base)
     setPensando(true)
     try {
-      const recomendacion = detectarUso(limpio) && recomendarPorUso(limpio)
+      const recomendacion = !usoDeObra && detectarUso(limpio) && recomendarPorUso(limpio)
       // Lo que pregunta no aparece en las fichas técnicas: no se inventa (RNF-01), se manda a un comercial y se empieza de cero.
       if (recomendacion && !recomendacion.grados.length) {
         const textoBot = `Lo que preguntas («${limpio}») no aparece en las fichas técnicas de AcerIA, así que no puedo recomendarte nada fiable. Pregúntalo a un comercial. Mientras, puedes escribir una petición nueva.`
@@ -181,7 +182,7 @@ export default function App() {
         return
       }
       const pregunta = detectarConsulta(limpio)
-      if (pregunta) {
+      if (pregunta && !usoDeObra) {
         await responderConsulta(limpio, pregunta, base, conv, false)
         return
       }
@@ -190,7 +191,7 @@ export default function App() {
       // El backend descarta sin aviso los valores que no existen: si el mensaje traía medidas o números
       // y no se ha entendido ningún dato, también cuenta como «todo incorrecto».
       const e = r.especificacion ?? {}
-      const sinNingunDato = r.tipo !== 'error' && !conv.ultima?.especificacion
+      const sinNingunDato = r.tipo !== 'error' && !e.uso && !conv.ultima?.especificacion
         && ['grado', 'acabado', 'formato', 'espesor_mm', 'ancho_mm', 'largo_mm'].every(k => e[k] == null)
         && !Object.keys(e.opciones ?? {}).length && /\d/.test(limpio)
       if (analisis?.estado === 'todo_mal' || sinNingunDato) {

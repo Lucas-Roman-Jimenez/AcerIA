@@ -55,10 +55,17 @@ def _parsear_json(texto: str) -> dict[str, Any]:
     return json.loads(texto[ini:fin + 1])
 
 
-def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequence[str] = ()) -> dict[str, Any]:
+def _extraer(historial, cliente: ClienteLLM, catalogo: Catalogo, minimos: Sequence[str] = (),
+             consulta_obra: bool = False) -> dict[str, Any]:
     sistema = prompts.SISTEMA_EXTRACCION.format(catalogo=catalogo.resumen_para_prompt(),
                                                 minimos=", ".join(minimos) or "ninguno")
     usuario = prompts.USUARIO_EXTRACCION.format(conversacion=_conversacion(historial))
+    if consulta_obra:
+        sistema += (
+            "\nSi te piden consejo para una obra, conserva la aplicación y la exposición descritas. "
+            "Si el comercial pregunta qué grado usar, clasifica como consulta_tecnica. "
+            "No rellenes el grado ni sus opciones a menos que el comercial los haya indicado."
+        )
     ultimo_error = None
     for _ in range(2):  # un reintento si el JSON llega mal formado
         # max_tokens holgado: el modelo también piensa antes de responder y no conviene cortarle.
@@ -302,6 +309,19 @@ def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo
     }.get(intencion)
 
 
+def _responder_orientacion_obra(catalogo, orientacion, minimos):
+    aplicacion = catalogo.uso(orientacion.get("aplicacion_documentada"))
+    esp = Especificacion(uso=orientacion["uso"])
+    _calcular_faltan(esp, minimos)
+    pregunta = orientacion["aclaracion"]
+    if aplicacion and aplicacion.get("fuente") and aplicacion.get("grados"):
+        esp.fuente_uso = aplicacion["fuente"]
+        grados = lista_y([f"EN {g}" for g in aplicacion["grados"]])
+        pregunta = (f"Para {aplicacion['uso']}, AcerIA documenta {grados} ({esp.fuente_uso}). "
+                    f"{pregunta}")
+    return ResultadoInterpretacion("pregunta", esp, pregunta)
+
+
 def _plantilla_previa(esp: Especificacion, problemas: dict[str, Any], catalogo: Catalogo,
                       minimos: Sequence[str]) -> Optional[str]:
     """Pregunta ANTES de buscar, o None si ya se puede buscar."""
@@ -368,12 +388,22 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     """
     # Los mensajes vacíos del comercial no aportan nada; si no queda ninguno, no se llama al LLM.
     historial = [m for m in historial if m.get("rol") != "comercial" or str(m.get("texto") or "").strip()]
-    if not any(m.get("rol") == "comercial" for m in historial):
+    ultimo = next((m["texto"] for m in reversed(historial) if m.get("rol") == "comercial"), None)
+    if ultimo is None:
         return ResultadoInterpretacion("pregunta", Especificacion(faltan=list(minimos)), "¿Qué material necesitas?")
     cliente = cliente or _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
-    bruto = _extraer(historial, cliente, catalogo, minimos)
+    orientacion = catalogo.orientacion_obra(ultimo)
+    bruto = _extraer(historial, cliente, catalogo, minimos, consulta_obra=orientacion is not None)
+    if isinstance(bruto.get("uso"), str):
+        # Conserva los condicionantes de exposición reconocidos al interpretar la conversación.
+        orientacion = catalogo.orientacion_obra(f"{ultimo} {bruto['uso']}")
     esp, problemas = _validar(bruto, catalogo)
+    intencion = problemas["intencion"]
+    opciones = bruto.get("opciones")
+    grado_pedido = bruto.get("grado") or (isinstance(opciones, dict) and opciones.get("grado"))
+    if orientacion and (intencion == "consulta_tecnica" or (intencion == "pedido" and not grado_pedido)):
+        return _responder_orientacion_obra(catalogo, orientacion, minimos)
     if problemas["intencion"] != "pedido":
         _calcular_faltan(esp, minimos)
         return ResultadoInterpretacion("pregunta", esp, _respuesta_intencion(esp, problemas["intencion"], catalogo))

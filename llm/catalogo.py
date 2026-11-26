@@ -7,6 +7,7 @@ from __future__ import annotations
 import difflib
 import json
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Optional
 
@@ -24,6 +25,7 @@ class Catalogo:
         self.formatos: list[str] = catalogo["formatos"]
         self.productos: list[dict[str, Any]] = catalogo.get("productos", [])
         self.usos: list[dict[str, Any]] = catalogo.get("usos", [])
+        self.orientaciones_obra: list[dict[str, Any]] = catalogo.get("orientaciones_obra", [])
         self.terminos: list[dict[str, Any]] = glosario.get("terminos", [])
         self.validar_combinaciones: bool = catalogo.get("validar_combinaciones", True)
         self.grados_en_por_comercial: dict[str, set[str]] = {}
@@ -127,6 +129,11 @@ class Catalogo:
             if u["uso"].lower() == _norm_texto(nombre).lower():
                 return u
         return None
+
+    def orientacion_obra(self, texto: str) -> Optional[dict[str, Any]]:
+        normalizado = unicodedata.normalize("NFD", texto.casefold())
+        sin_tildes = "".join(c for c in normalizado if not unicodedata.combining(c))
+        return next((o for o in self.orientaciones_obra if re.search(o["patron"], sin_tildes)), None)
 
     # ---------- texto para el prompt ----------
     def resumen_para_prompt(self) -> str:

@@ -3541,6 +3541,29 @@
     {"grado": "S32101", "acabado": "N4-G-180", "formato": "bobina", "espesor_mm": [1.0, 1.0], "ancho_mm": [1498.0, 1498.0]},
     {"grado": "S32101", "acabado": "NR.1", "formato": "fleje", "espesor_mm": [4.0, 4.0], "ancho_mm": [120.0, 120.0]}
   ],
+  "orientaciones_obra": [
+    {
+      "uso": "exterior con lluvia frecuente",
+      "patron": "\\b(lluvias?|llueve|llueva|llovia|llovizna|lluvios[oa]s?|precipitaciones)\\b",
+      "aclaracion": "Con solo la frecuencia de lluvia, el catálogo de AcerIA no permite elegir un grado. ¿Es una fachada, una cubierta u otro elemento? ¿Está expuesto a salitre o contaminación?"
+    },
+    {
+      "uso": "ambiente húmedo",
+      "patron": "\\b(humedad|humed[oa]s?|condensacion)\\b",
+      "aclaracion": "Con solo la humedad, el catálogo de AcerIA no permite elegir un grado. ¿Es para interior o exterior? ¿Habrá contacto continuo con agua o exposición a cloruros?"
+    },
+    {
+      "uso": "cubierta de edificio",
+      "patron": "\\b(cubiertas?|tejados?|azoteas?|techumbres?|techos?)\\b",
+      "aclaracion": "El catálogo de AcerIA no identifica un grado para esta cubierta. ¿Será un revestimiento o un elemento estructural? ¿A qué ambiente estará expuesto?"
+    },
+    {
+      "uso": "fachada",
+      "patron": "\\b(fachadas?)\\b",
+      "aplicacion_documentada": "adornos arquitectónicos",
+      "aclaracion": "¿Tu fachada es decorativa, de revestimiento o estructural? ¿A qué ambiente estará expuesta?"
+    }
+  ],
   "usos": [
     {
       "uso": "adornos arquitectónicos",

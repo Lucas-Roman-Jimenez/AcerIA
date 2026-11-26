@@ -89,6 +89,35 @@ def test_pregunta_antes_de_buscar(api, llm_falso):
     assert r["especificacion"]["faltan"] == ["espesor_mm"]
 
 
+@pytest.mark.parametrize("intencion", ["pedido", "consulta_tecnica"])
+def test_orientacion_por_obra_con_catalogo_y_evaluador_reales(api, llm_falso, monkeypatch, intencion):
+    from evaluar_api import CASOS, evaluar
+
+    cliente, _ = api
+    casos = [c for c in json.loads(CASOS.read_text(encoding="utf-8")) if c["categoria"] == "orientacion_obra"]
+    llm_falso(*(extraccion(intencion=intencion, uso="atmósfera marina") for _ in casos))
+    monkeypatch.setattr(interprete, "_catalogo", Catalogo.cargar())
+
+    def enviar(ruta, datos):
+        assert ruta == "/chat"
+        return chat(cliente, datos["mensaje"], datos["conversacion_id"])
+
+    informe = evaluar(casos, enviar)["orientaciones_obra"]
+    assert informe["total"] == 5
+    assert not informe["fallos"]
+
+
+def test_un_pedido_con_grado_y_espesor_se_busca_aunque_mencione_una_fachada(api, llm_falso, monkeypatch):
+    cliente, _ = api
+    llm_falso(extraccion(grado="304", acabado="2B", formato="chapa", espesor_mm=2, ancho_mm=1250, largo_mm=2500,
+                        uso="fachada"))
+    monkeypatch.setattr(interprete, "_catalogo", Catalogo.cargar())
+    r = chat(cliente, "Busco chapa 304 2B de 2 × 1250 × 2500 para una fachada", conv="pedido-para-fachada")
+    assert r["estado"] == "resultados"
+    assert r["especificacion"]["grado"] == "304"
+    assert r["exactos"]
+
+
 # «brillante» = BA sale del glosario (BA y 2R) y de normalizar(), no de reglas en el código.
 @pytest.mark.parametrize("acabado,opciones", [(None, {"acabado": ["BA", "2R"]}), ("2R", {})])
 def test_cl08_interpreta_brillante_como_ba_y_comunica_sin_stock(api, llm_falso, monkeypatch, acabado, opciones):
