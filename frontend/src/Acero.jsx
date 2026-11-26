@@ -1,13 +1,8 @@
-import fichas from './fichas_aceria.json'
+import { fichasDelGrado, gradoVisible } from './grados.js'
 
-// El inventario real trae grados dobles como «304L/304»: vale la ficha de cualquiera de ellos.
 export function buscarFicha(grado) {
-  if (!grado) return null
-  if (grado.includes('/')) return grado.split('/').map(buscarFicha).find(Boolean) ?? null
-  const g = grado.toUpperCase()
-  return fichas.find(f => f.aisi?.toUpperCase() === g)
-    ?? fichas.find(f => f.en === grado || f.uns?.toUpperCase().includes(g) || f.mat.replace(' ', '') === g.replace(' ', ''))
-    ?? null
+  const candidatas = fichasDelGrado(grado)
+  return candidatas.length === 1 && candidatas[0].descripcion ? candidatas[0] : null
 }
 
 // Renders de estudio en public/materiales/<formato>-<acabado>.webp.
@@ -25,21 +20,22 @@ export function Acero({ esp, id }) {
   const grado = esp.grado ?? (esp.opciones?.grado?.length === 1 ? esp.opciones.grado[0] : null)
   if (!grado && !esp.formato) return null
   const acabado = esp.acabado ?? (esp.opciones?.acabado?.length === 1 ? esp.opciones.acabado[0] : null)
-  const ficha = buscarFicha(grado)
+  const fichas = fichasDelGrado(grado)
+  const ficha = fichas.length === 1 ? fichas[0] : null
   return (
     <div className="acero">
       <Dibujo formato={esp.formato} acabado={acabado} id={`acero-${id}`} />
       <div className="acero-info">
         <div className="acero-nombre">
-          {[grado, acabado ?? esp.opciones?.acabado?.join('/'), esp.formato].filter(Boolean).join(' · ')}
+          {[gradoVisible(grado), acabado ?? esp.opciones?.acabado?.join('/'), esp.formato].filter(Boolean).join(' · ')}
         </div>
-        {ficha && (
+        {ficha?.familia && (
           <>
-            <div className="acero-familia">Inoxidable {ficha.familia} · EN {ficha.en} · {ficha.mat}</div>
+            <div className="acero-familia">Inoxidable {ficha.familia}</div>
             <ul>{ficha.aplicaciones.slice(0, 4).map(a => <li key={a}>{a.replace(/\.$/, '')}</li>)}</ul>
-            <small className="fuente">Fuente: ficha técnica {ficha.mat} de AcerIA</small>
           </>
         )}
+        {fichas.length > 0 && <small className="fuente">Referencias AcerIA · {fichas.map(f => `${f.mat} (EN ${f.en})`).join(', ')}</small>}
       </div>
     </div>
   )

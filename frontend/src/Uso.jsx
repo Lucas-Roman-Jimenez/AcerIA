@@ -1,4 +1,5 @@
 import { gradoParaBackend } from './Flujo.jsx'
+import { gradoVisible } from './grados.js'
 
 const num = v => String(v).replace('.', ',')
 
@@ -15,9 +16,9 @@ function stockDe(rec, valores) {
 
 export function construirUso(texto, recomendacion, valoresStock) {
   const grados = recomendacion.grados.map(r => ({ ...r, stock: stockDe(r, valoresStock) }))
-  const lista = grados.map(g => g.grado).join(', ')
-  const conStock = grados.filter(g => g.stock).map(g => g.grado)
-  const sinStock = grados.filter(g => !g.stock).map(g => g.grado)
+  const lista = grados.map(g => gradoVisible(g.grado)).join(', ')
+  const conStock = grados.filter(g => g.stock).map(g => gradoVisible(g.grado))
+  const sinStock = grados.filter(g => !g.stock).map(g => gradoVisible(g.grado))
   let textoBot
   if (!grados.length) {
     textoBot = 'El catálogo de AcerIA no indica ningún grado para ese uso. Prueba a describirlo con otras palabras '
@@ -50,8 +51,8 @@ export function Uso({ uso, onElegir, deshabilitado }) {
       {uso.grados.map(g => (
         <button key={g.grado} type="button" className={`valor-stock ${g.stock ? '' : 'sin-stock'}`}
           disabled={deshabilitado} onClick={() => onElegir(gradoParaBackend(g.stock?.valor ?? g.grado, g.grado))} title={g.ficha.descripcion}>
-          <span className="valor-stock-nombre">{g.grado}</span>
-          <span className="valor-stock-ayuda">Inoxidable {g.ficha.familia} · {g.ficha.mat}</span>
+          <span className="valor-stock-nombre">{gradoVisible(g.grado)}</span>
+          <span className="valor-stock-ayuda">Inoxidable {g.ficha.familia} · AcerIA {g.ficha.mat}</span>
           <span className="valor-stock-motivo">{g.motivo}</span>
           <span className="valor-stock-cantidad">
             {g.stock ? `${g.stock.bultos} ${g.stock.bultos === 1 ? 'bulto' : 'bultos'} · ${num(Math.round(g.stock.toneladas * 10) / 10)} t` : 'Sin stock ahora'}

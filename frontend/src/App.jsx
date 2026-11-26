@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { enviarMensaje, resumenStock, consultarValores, venderCarrito } from './api.js'
+import { enviarMensaje, resumenStock, consultarValores, venderCarrito, reservarBultos, liberarBulto, vaciarReservas } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
 import { Acero, Dibujo } from './Acero.jsx'
@@ -12,6 +12,7 @@ import { sugerirCorreccion } from './sugerir.js'
 import { pideBorrarConsulta, pideQuitar, frasesQuitar, textoNoSeleccionado } from './quitar.js'
 import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
 import { ReporteSemanal } from './ReporteSemanal.jsx'
+import { gradoVisible } from './grados.js'
 import { Escritura } from './Escritura.jsx'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
@@ -257,16 +258,28 @@ export default function App() {
     nuevaConsulta()
   }
 
-  // Al añadir un material al carrito se empieza un chat nuevo para la siguiente petición.
-  function alternarCarrito(tipo, item) {
+  // Al añadir un material al carrito se reserva (si otro comercial lo tiene, lanza el error y la tarjeta
+  // lo muestra) y se empieza un chat nuevo para la siguiente petición. Al quitarlo se suelta la reserva.
+  async function alternarCarrito(tipo, item) {
     if (carrito.some(c => c.item.id === item.id)) {
-      setCarrito(cs => cs.filter(c => c.item.id !== item.id))
+      quitarDelCarrito(item.id)
       return
     }
-    setCarrito(cs => [...cs, { tipo, item }])
+    await reservarBultos([item.id])
+    setCarrito(cs => cs.some(c => c.item.id === item.id) ? cs : [...cs, { tipo, item }])
     nuevaConsulta()
     const b = item.origen ?? item
     setAvisoInicio(`Añadido al carrito: bulto ${item.id}${b.grado ? ` (${[b.grado, b.acabado, b.formato].filter(Boolean).join(' ')})` : ''}. Puedes hacer una petición nueva.`)
+  }
+
+  function quitarDelCarrito(id) {
+    setCarrito(cs => cs.filter(c => c.item.id !== id))
+    liberarBulto(id)
+  }
+
+  function vaciarCarrito() {
+    setCarrito([])
+    vaciarReservas()
   }
 
   function alternarComparar(tipo, item) {
@@ -386,7 +399,7 @@ export default function App() {
               <div className="inicio-texto">
                 <Escritura as="h1" texto="¿Qué quieres buscar?" />
                 <div className="inicio-nombre">
-                  {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
+                  {previa && [gradoVisible(previa.grado), previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
                 </div>
                 {avisoInicio && <p className="aviso-inicio" role="alert">{avisoInicio}</p>}
                 <p className="ayuda-inicio">Escribe o dicta lo que pide el cliente. Si no sabes qué pedir, pregunta qué hay: «¿qué grosores hay de 304?» o «¿qué acero recomiendas para hornos?»</p>
@@ -504,8 +517,8 @@ export default function App() {
 
       {detalle && <Detalle item={detalle} esp={esp} onCerrar={() => setDetalle(null)} />}
       {verCarrito && (
-        <Carrito carrito={carrito} onQuitar={id => setCarrito(cs => cs.filter(c => c.item.id !== id))}
-          onVaciar={() => setCarrito([])} onCerrar={() => setVerCarrito(false)}
+        <Carrito carrito={carrito} onQuitar={quitarDelCarrito}
+          onVaciar={vaciarCarrito} onCerrar={() => setVerCarrito(false)}
           onVender={async ids => {
             const r = await venderCarrito(ids)
             setCarrito([])

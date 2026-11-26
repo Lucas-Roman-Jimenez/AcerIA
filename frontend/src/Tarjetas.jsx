@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { buscarFicha } from './Acero.jsx'
+import { fichasDelGrado, gradoVisible } from './grados.js'
 
 const ETIQUETAS = { exacto: 'Cumple', transformable: 'Transformable', alternativa: 'Alternativa' }
 
@@ -18,6 +18,26 @@ function medidas(b) {
 
 // En un transformable, los datos del bulto vienen en `origen` (o en el propio objeto si el backend los aplana).
 const datosBulto = (tipo, item) => (tipo === 'transformable' ? item.origen ?? item : item)
+const gradoBulto = bulto => gradoVisible(bulto.grado ?? bulto.aisi, bulto.euronorma)
+const valorBulto = (bulto, campo) => campo === 'grado' ? gradoBulto(bulto) : bulto[campo]
+
+// Transformable: qué bulto hay hoy, qué se obtiene y qué hay que hacer. Lo usan la tarjeta y el carrito.
+// Todo sale del motor de reglas (resultado, acciones, merma); si no viene `resultado`, devuelve null.
+export function transformacion(item) {
+  const r = item.resultado
+  if (!r) return null
+  const antes = item.origen ?? item.bulto ?? item
+  const peso = r.peso_util_kg ?? r.peso_kg
+  const piezas = r.piezas > 1 ? ` (${r.piezas} piezas)` : ''
+  return {
+    antes: `${antes.formato} ${medidas(antes)}${antes.peso_kg != null ? `, ${num(antes.peso_kg)} kg` : ''}`,
+    despues: `${r.formato} ${medidas(r)}${piezas}${peso != null ? `, ${num(peso)} kg útiles` : ''}`,
+    acciones: acciones(item).join(' y '),
+    merma: item.merma_kg != null
+      ? `merma ${item.merma_estimada ? 'estimada ' : ''}${num(item.merma_kg)} kg${item.merma_pct != null ? ` (${num(item.merma_pct)} %)` : ''}`
+      : null,
+  }
+}
 
 const ORIGEN = {
   exacto: 'Inventario',
@@ -27,6 +47,8 @@ const ORIGEN = {
 
 export function Tarjeta({ tipo, item, onClick, comparando, onComparar }) {
   const b = datosBulto(tipo, item)
+  const t = tipo === 'transformable' ? transformacion(item) : null
+  if (t) return <TarjetaTransformable item={item} b={b} t={t} onClick={onClick} comparando={comparando} onComparar={onComparar} />
   return (
     <div className={`tarjeta ${tipo} ${comparando ? 'comparando' : ''}`}>
       <button type="button" className="tarjeta-cuerpo" onClick={onClick}>
@@ -34,7 +56,7 @@ export function Tarjeta({ tipo, item, onClick, comparando, onComparar }) {
           <span className="tarjeta-id">{item.id}</span>
           <span className="tarjeta-tipo">{ETIQUETAS[tipo]}</span>
         </div>
-        {b.grado && <div className="tarjeta-spec">{b.grado} {b.acabado} · {b.formato}</div>}
+        {gradoBulto(b) && <div className="tarjeta-spec">{gradoBulto(b)} {b.acabado} · {b.formato}</div>}
         {b.espesor_mm != null && <div className="tarjeta-medidas">{medidas(b)}</div>}
         <div className="tarjeta-extra">
           {b.peso_kg != null && <span>{num(b.peso_kg)} kg</span>}
@@ -86,7 +108,7 @@ function Coincidencias({ esp, bulto }) {
       const opciones = esp.opciones?.[k]
       if (pedido == null && !opciones) return null
       const ok = pedido != null ? igual(pedido, bulto[k]) : opciones.some(o => igual(o, bulto[k]))
-      return { k, etiqueta, pedido: pedido ?? opciones.join(' o '), real: bulto[k] ?? '—', ok }
+      return { k, etiqueta, pedido: pedido ?? opciones.join(' o '), real: valorBulto(bulto, k) ?? '—', ok }
     })
     .filter(Boolean)
   if (!filas.length) return null
@@ -107,8 +129,35 @@ function Coincidencias({ esp, bulto }) {
   )
 }
 
+// Un transformable no cumple tal cual: se dice arriba, se enseña en grande lo que se obtiene y
+// debajo de qué bulto sale y qué hay que hacer.
+function TarjetaTransformable({ item, b, t, onClick, comparando, onComparar }) {
+  const r = item.resultado
+  return (
+    <div className={`tarjeta transformable ${comparando ? 'comparando' : ''}`}>
+      <button type="button" className="tarjeta-cuerpo" onClick={onClick}>
+        <div className="tarjeta-cabeza">
+          <span className="tarjeta-id">{item.id}</span>
+          <span className="tarjeta-tipo">{ETIQUETAS.transformable}</span>
+        </div>
+        <div className="tarjeta-requiere">Requiere transformación</div>
+        <div className="tarjeta-paso tarjeta-obtienes"><span>Obtienes</span>{b.grado} {r.acabado ?? b.acabado} · {t.despues}</div>
+        <div className="tarjeta-paso"><span>Sale de</span>{t.antes}{b.ubicacion ? ` · ${b.ubicacion}` : ''}</div>
+        <div className="tarjeta-paso"><span>Hay que</span>{t.acciones}{t.merma ? ` · ${t.merma}` : ''}
+          {item.num_operaciones > 1 && ` · ${item.num_operaciones} operaciones`}</div>
+        <div className="tarjeta-origen">Fuente: {ORIGEN.transformable} · ver de dónde sale</div>
+      </button>
+      {onComparar && (
+        <label className="tarjeta-comparar">
+          <input type="checkbox" checked={comparando} onChange={onComparar} /> Comparar
+        </label>
+      )}
+    </div>
+  )
+}
+
 function Fuentes({ tipo, item, bulto }) {
-  const ficha = buscarFicha(bulto.grado)
+  const fichas = fichasDelGrado(bulto.grado ?? bulto.aisi, bulto.euronorma)
   return (
     <div className="fuentes">
       <h3>De dónde sale cada dato</h3>
@@ -118,7 +167,9 @@ function Fuentes({ tipo, item, bulto }) {
           <li><b>Acciones{item.merma_kg != null ? ' y merma' : ''}</b>: las calcula el motor de reglas a partir del fichero de reglas de transformación de AcerIA, no el asistente.
             {item.merma_estimada && ' La merma es una estimación.'}</li>
         )}
-        {ficha && <li><b>Grado {bulto.grado}</b>: ficha técnica {ficha.mat} del catálogo de AcerIA (EN {ficha.en}, inoxidable {ficha.familia}).</li>}
+        {fichas.length > 0 && (
+          <li><b>Referencias AcerIA del grado {gradoBulto(bulto)}</b> · {fichas.map(f => `${f.mat} (EN ${f.en})`).join(', ')}</li>
+        )}
         <li><b>Texto de la respuesta</b>: lo redacta el asistente solo con estos datos; si añadiera algo que no está aquí, se sustituye por una plantilla.</li>
       </ul>
     </div>
@@ -143,8 +194,8 @@ export function Detalle({ item: { tipo, item }, esp, onCerrar }) {
             {FILAS.filter(([k]) => antes[k] != null || despues?.[k] != null).map(([k, etiqueta]) => (
               <tr key={k} className={despues && antes[k] !== despues[k] ? 'cambia' : ''}>
                 <th>{etiqueta}</th>
-                <td>{antes[k] ?? '—'}</td>
-                {despues && <td>{despues[k] ?? '—'}</td>}
+                <td>{valorBulto(antes, k) ?? '—'}</td>
+                {despues && <td>{valorBulto(despues, k) ?? '—'}</td>}
               </tr>
             ))}
           </tbody>
@@ -169,8 +220,9 @@ const FILAS_COMPARAR = [
   ['Tipo', (t) => ETIQUETAS[t.tipo]],
   ...FILAS.slice(0, 8).map(([k, etiqueta]) => [etiqueta, (t) => {
     const b = datosBulto(t.tipo, t.item)
-    const d = t.tipo === 'transformable' ? t.item.resultado?.[k] : undefined
-    return d != null && d !== b[k] ? `${b[k] ?? '—'} → ${d}` : b[k]
+    const antes = valorBulto(b, k)
+    const d = t.tipo === 'transformable' && t.item.resultado ? valorBulto(t.item.resultado, k) : undefined
+    return d != null && d !== antes ? `${antes ?? '—'} → ${d}` : antes
   }]),
   ['Ubicación', (t) => datosBulto(t.tipo, t.item).ubicacion],
   ['Acciones', (t) => acciones(t.item).join(' · ') || 'Ninguna'],

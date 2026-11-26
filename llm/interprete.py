@@ -305,7 +305,7 @@ def _responder_orientacion_obra(catalogo, orientacion, minimos, esp: Especificac
     pregunta = orientacion["aclaracion"]
     if aplicacion and aplicacion.get("fuente") and aplicacion.get("grados"):
         esp.fuente_uso = aplicacion["fuente"]
-        grados = lista_y([f"EN {g}" for g in aplicacion["grados"]])
+        grados = lista_y([catalogo.etiqueta_en(g) for g in aplicacion["grados"]])
         pregunta = (f"Para {aplicacion['uso']}, AcerIA documenta {grados} ({esp.fuente_uso}). "
                     f"{pregunta}")
     return ResultadoInterpretacion("pregunta", esp, pregunta)
