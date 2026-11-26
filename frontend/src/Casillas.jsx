@@ -99,6 +99,12 @@ function useRegla(zona) {
 export function Casillas({ texto, base, onElegir, onQuitar, deshabilitado }) {
   const [abierto, setAbierto] = useState(null)
   const [valores, setValores] = useState({})
+  const [todos, setTodos] = useState({})
+  // Todos los valores del inventario (sin filtros), para enseñar también los que no hay con lo elegido.
+  useEffect(() => {
+    Promise.all(CAMPOS.map(async ([k]) => [k, (await consultarValores(k, {})).valores]))
+      .then(pares => setTodos(Object.fromEntries(pares))).catch(() => {})
+  }, [])
   const raiz = useRef(null)
   const regla = useRegla(raiz)
   const previa = texto.trim() ? interpretarTexto(texto) : null
@@ -174,13 +180,19 @@ export function Casillas({ texto, base, onElegir, onQuitar, deshabilitado }) {
                   : !enStock.length ? <span className="tenue">No hay stock con el resto de datos.</span>
                   : (
                     <div className="editor-lista">
-                      {enStock.map(o => (
+                      {enStock.map((o, i, todos) => (
                         <button key={o.valor} type="button" role="option" aria-selected={esElegido(k, o.valor)}
                           className={`chip-stock ${esElegido(k, o.valor) ? 'elegido' : ''}`} disabled={deshabilitado}
+                          style={{ '--i': Math.min(i, 14), '--p': o.bultos / Math.max(...todos.map(t => t.bultos)) }}
                           onClick={() => (esElegido(k, o.valor) ? quitar(k) : elegir(k, o.valor))}
                           title={esElegido(k, o.valor) ? 'Pulsa para quitarlo' : `${o.bultos} bultos · ${num(o.toneladas)} t`}>
                           {conUnidad(unidad, o.valor)} <small>{esElegido(k, o.valor) ? '✕' : o.bultos}</small>
                         </button>
+                      ))}
+                      {(todos[k] ?? []).filter(t => !enStock.some(o => String(o.valor) === String(t.valor))).map(t => (
+                        <span key={`x-${t.valor}`} className="chip-agotado" title="No hay stock con lo que ya has elegido">
+                          {conUnidad(unidad, t.valor)}
+                        </span>
                       ))}
                     </div>
                   )}
