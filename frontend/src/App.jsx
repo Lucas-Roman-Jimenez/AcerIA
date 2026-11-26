@@ -302,23 +302,22 @@ export default function App() {
 
   return (
     <div className={`app ${vacio ? 'portada' : ''}`}>
-      <div className="utilidades">
-        <label className="interruptor" title="Leer en voz alta cada respuesta del asistente">
-          <input type="checkbox" checked={vozActiva}
-            onChange={e => { setVozActiva(e.target.checked); window.speechSynthesis?.cancel() }} />
-          <span className="interruptor-pista" aria-hidden />
-          Leer respuestas en voz alta
-        </label>
-        <div className="utilidades-derecha">
-          <span>{hoy}</span>
-          {totalBultos > 0 && <span className="resalte">{totalBultos.toLocaleString('es-ES')} bultos disponibles</span>}
-        </div>
-      </div>
-
       <header className="cabecera">
         <div className="fondo-video" aria-hidden>
           <video src="/video/cabecera.mp4" autoPlay muted loop playsInline
             onError={e => { e.currentTarget.style.display = 'none' }} />
+        </div>
+        <div className="utilidades">
+          <label className="interruptor" title="Leer en voz alta cada respuesta del asistente">
+            <input type="checkbox" checked={vozActiva}
+              onChange={e => { setVozActiva(e.target.checked); window.speechSynthesis?.cancel() }} />
+            <span className="interruptor-pista" aria-hidden />
+            Leer respuestas en voz alta
+          </label>
+          <div className="utilidades-derecha">
+            <span>{hoy}</span>
+            {totalBultos > 0 && <span className="resalte">{totalBultos.toLocaleString('es-ES')} bultos disponibles</span>}
+          </div>
         </div>
         <nav className="principal-cabecera" aria-label="Principal">
           <button type="button" className="marca" onClick={salir} title="Volver al inicio">
