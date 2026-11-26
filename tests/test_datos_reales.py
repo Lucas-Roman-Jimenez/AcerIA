@@ -34,6 +34,29 @@ def test_glosario_operativo_apunta_a_codigos_presentes_en_el_inventario():
         assert all(catalogo.normalizar(termino["campo"], valor) == valor for valor in termino["valores"])
 
 
+def test_nomenclatura_en_conserva_equivalencias_y_procedencia():
+    datos = json.loads((DATOS / "catalogo.json").read_text(encoding="utf-8"))
+    nomenclatura = datos["nomenclatura_grados"]
+    grados = nomenclatura["grados"]
+    assert nomenclatura["referencia"] == "EN"
+    assert set(grados) == {f["en"] for f in datos["fichas"]} | {"1.4306"}
+    for ficha in datos["fichas"]:
+        campos = ("mat", "designacion_comercial", "grado_comercial", "uns")
+        assert {campo: ficha[campo] for campo in campos} in grados[ficha["en"]]["fichas"]
+        assert ficha["fuente"]["archivo"] and ficha["fuente"]["pagina"] == 1
+    assert grados["1.4306"]["otras_fuentes"][0]["grado_comercial"] == "304L"
+    assert "304L/304" in nomenclatura["codigos_inventario_compuestos"]["1.4301/1.4307"]
+    assert nomenclatura["codigos_inventario_sin_validacion_en"]["1.4310Mo"] == ["301"]
+
+
+def test_aliases_ambiguos_siguen_admitidos_sin_asignar_un_unico_en():
+    catalogo = Catalogo.cargar(DATOS)
+    assert catalogo.normalizar("grado", "AISI 316L") == "316L"
+    assert catalogo.grados_en_por_comercial["316L"] == {"1.4404", "1.4432", "1.4435"}
+    assert catalogo.grados_en_por_comercial["304L"] == {"1.4306", "1.4307"}
+    assert catalogo.grados_en_por_comercial["301"] == {"1.4310"}
+
+
 def test_usos_del_catalogo_conservan_la_ficha_y_distinguen_ambiente_marino():
     catalogo = Catalogo.cargar(DATOS)
     alimentaria = catalogo.uso("industria alimentaria")

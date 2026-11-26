@@ -15,6 +15,26 @@ carecen de una tabla de fabricación por espesor, ancho, acabado y formato.
 Por eso el intérprete valida los códigos y deja que el buscador compruebe
 si hay una coincidencia o una transformación para las medidas pedidas.
 
+## Nomenclatura de los grados
+
+En `catalogo.json`, `nomenclatura_grados.grados` usa una clave por designación
+EN. Es la referencia para mostrar los grados en el catálogo. Las fichas
+relacionadas conservan la designación comercial y el UNS publicado. El código
+MAT remite a la entrada de `fichas`, donde están el archivo y la página.
+`otras_fuentes` incluye referencias directas a la web de AcerIA.
+
+`designaciones_inventario` conserva lo que figura en la columna AISI de la hoja
+DATA. Un bulto con dos certificaciones conserva ambas, como `1.4301/1.4307`.
+El código `1.4310Mo` con etiqueta `301` figura en el inventario y queda registrado
+en `codigos_inventario_sin_validacion_en` hasta disponer de respaldo documental.
+
+La lista raíz `grados` contiene los códigos que acepta el intérprete. El glosario
+resuelve las denominaciones de voz y los códigos MAT. Un alias comercial puede
+apuntar a varias designaciones EN. Para identificar un bulto en pantalla,
+usa su campo `euronorma` cuando esté documentado y conserva las dos designaciones
+si tiene doble certificación. Por ejemplo, la entrada «316L» puede referirse
+a EN 1.4404, 1.4432 o 1.4435.
+
 ## Normalizar una copia del inventario
 
 Con `openpyxl` instalado en el entorno de importación:
