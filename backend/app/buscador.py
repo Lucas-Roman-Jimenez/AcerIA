@@ -7,6 +7,7 @@ de Lucas (RF-12) y en la verificación final anti-invención (RNF-01, RNF-02).
 from app import config
 from app.db import disponibles, grados
 from reglas.motor import aplicar_reglas
+from reglas.sustitucion import permite_sustituir_dimensiones
 
 EPS = 1e-9                                       # margen para comparar decimales (2.0 vs 1.9999999)
 MEDIDAS = ["espesor_mm", "ancho_mm", "largo_mm"]
@@ -147,3 +148,50 @@ def buscar_bultos(objetivo: dict) -> tuple[list[dict], list[dict]]:
     exactos.sort(key=lambda b: id_natural(b["id"]))
     transformables.sort(key=clave_transformable)
     return exactos, transformables
+
+
+def buscar_alternativas(objetivo: dict, bultos: list[dict] | None = None) -> list[dict]:
+    """RF-29: chapas reales del mismo grado, acabado y espesor con otra medida (regla de sustitución).
+
+    Solo se llama si no hay exactos ni transformables. Cada alternativa es un bulto (como los
+    exactos) más 'diferencias': textos con lo que no cumple. Nunca relaja grado, acabado ni espesor.
+    """
+    if objetivo.get("formato") not in (None, "chapa") or objetivo.get("espesor_mm") is None:
+        return []
+    if objetivo.get("ancho_mm") is None and objetivo.get("largo_mm") is None:
+        return []
+    tol_espesor = objetivo["tolerancias"].get("espesor_mm", 0.0)
+    candidatas = []
+    for b in disponibles() if bultos is None else bultos:
+        if b.get("estado", "disponible") != "disponible":     # disponibles() ya filtra; esto cubre bultos=...
+            continue
+        if b.get("formato") != "chapa" or b.get("largo_mm") is None:
+            continue
+        if not _cumple_grado(b, objetivo):
+            continue
+        acabado = (b.get("acabado") or "").upper()
+        if objetivo["acabados"] and acabado not in objetivo["acabados"]:
+            continue
+        if abs(b["espesor_mm"] - objetivo["espesor_mm"]) > tol_espesor + EPS:
+            continue
+        ancho_p = objetivo.get("ancho_mm") or b["ancho_mm"]
+        largo_p = objetivo.get("largo_mm") or b["largo_mm"]
+        grado = a_respuesta(b)["grado"]
+        if not permite_sustituir_dimensiones(
+            hay_medida_exacta=False,
+            grado_pedido=grado, acabado_pedido=acabado, espesor_pedido=objetivo["espesor_mm"],
+            dimensiones_pedidas=(ancho_p, largo_p),
+            grado_alternativo=grado, acabado_alternativo=acabado, espesor_alternativo=objetivo["espesor_mm"],
+            dimensiones_alternativas=(b["ancho_mm"], b["largo_mm"]),
+        ):
+            continue
+        diferencias = [
+            f"{nombre} {real:g} mm (pedido {pedido:g} mm)"
+            for nombre, real, pedido in (("ancho", b["ancho_mm"], objetivo.get("ancho_mm")),
+                                         ("largo", b["largo_mm"], objetivo.get("largo_mm")))
+            if pedido is not None and abs(real - pedido) > EPS
+        ]
+        distancia = abs(b["ancho_mm"] - ancho_p) + abs(b["largo_mm"] - largo_p)
+        candidatas.append((distancia, id_natural(b["id"]), dict(a_respuesta(b), diferencias=diferencias)))
+    candidatas.sort(key=lambda c: (c[0], c[1]))
+    return [c[2] for c in candidatas[: config.MAX_ALTERNATIVAS]]

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.db import crear_db, disponibles
-from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_bultos, construir_objetivo, valores_disponibles
+from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_alternativas, buscar_bultos, construir_objetivo, valores_disponibles
 from app.conversacion import cargar_env, responder_chat
 from app.reportes import reporte_semanal
 
@@ -114,10 +114,11 @@ def chat_prueba(m: MensajeChat):
 def buscar(espec: dict):
     objetivo = construir_objetivo(espec)
     exactos, transformables = buscar_bultos(objetivo)
+    alternativas = [] if exactos or transformables else buscar_alternativas(objetivo)   # RF-29
     return {
         "estado": "resultados" if exactos or transformables else "sin_stock",
         "objetivo": objetivo,
-        "exactos": exactos, "transformables": transformables, "alternativas": [],
+        "exactos": exactos, "transformables": transformables, "alternativas": alternativas,
         "criterio_orden": CRITERIO_ORDEN,
     }
 

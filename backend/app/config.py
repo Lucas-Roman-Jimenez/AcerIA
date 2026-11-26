@@ -24,3 +24,6 @@ TOL_LARGO_MM = 0.0
 
 # RF-14. Orden de los transformables. POR CONFIRMAR con el mentor: el PDF pide operaciones > merma > ID.
 ORDEN_TRANSFORMABLES = ("num_operaciones", "merma_pct", "id")
+
+# RF-29. Máximo de alternativas cercanas cuando no hay stock.
+MAX_ALTERNATIVAS = 3
