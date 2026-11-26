@@ -80,8 +80,8 @@ def obtener_tendencias_compras(
 
 
 def titular_actual(x_carrito: str = Header("", max_length=100, pattern=PATRON_CARRITO)) -> str:
-    """Quién reserva y vende. Provisional hasta el login (tarea 5): un ID aleatorio de carrito que el
-    frontend manda en la cabecera X-Carrito. Con login, saldrá del token y el resto no cambia."""
+    """Quién reserva y vende: el ID aleatorio de carrito que el frontend manda en la cabecera X-Carrito.
+    No hay login (la tarea 5 no se hace); si algún día lo hay, solo cambia esta función."""
     return x_carrito.strip()
 
 
