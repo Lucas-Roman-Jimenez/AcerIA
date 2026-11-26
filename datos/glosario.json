@@ -365,6 +365,7 @@
   "pendientes_de_confirmacion": [
     {
       "termino": "brillante",
+      "campo": "acabado",
       "motivo": "Ejemplo del PDF de tareas. El inventario contiene BA y carece de 2R como acabado superior."
     },
     {

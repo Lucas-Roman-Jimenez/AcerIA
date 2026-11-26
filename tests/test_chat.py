@@ -89,6 +89,44 @@ def test_pregunta_antes_de_buscar(api, llm_falso):
     assert r["especificacion"]["faltan"] == ["espesor_mm"]
 
 
+@pytest.mark.parametrize("acabado,opciones", [(None, {"acabado": ["BA", "2R"]}), ("BA", {})])
+def test_cl08_aclara_brillante_y_acepta_un_acabado_explicito(api, llm_falso, monkeypatch, acabado, opciones):
+    from evaluar_api import CASOS, evaluar
+
+    cliente, conversacion = api
+    caso = next(c for c in json.loads(CASOS.read_text(encoding="utf-8")) if c["id"] == "CL-08")
+    llm_falso(
+        extraccion(grado="304", formato="chapa", espesor_mm=2, acabado=acabado, opciones=opciones),
+        extraccion(grado="304", formato="chapa", espesor_mm=2, acabado="BA"),
+    )
+    monkeypatch.setattr(interprete, "_catalogo", Catalogo.cargar())
+    consultadas = []
+    buscar = conversacion.buscar_bultos
+
+    def buscar_con_registro(objetivo):
+        consultadas.append(objetivo)
+        return buscar(objetivo)
+
+    monkeypatch.setattr(conversacion, "buscar_bultos", buscar_con_registro)
+    respuestas = []
+
+    def enviar(ruta, datos):
+        assert ruta == "/chat"
+        respuestas.append(datos["conversacion_id"])
+        respuesta = chat(cliente, datos["mensaje"], conv=datos["conversacion_id"])
+        assert respuesta["pregunta"] == "Cuando dices «brillante», ¿qué acabado concreto necesitas?"
+        assert respuesta["especificacion"]["acabado"] is None
+        assert "acabado" not in respuesta["especificacion"]["opciones"]
+        return respuesta
+
+    informe = evaluar([caso], enviar)
+    assert informe["interpretacion"]["aciertos"] == 1
+    assert consultadas == []
+    aclarada = chat(cliente, "BA", conv=respuestas[0])
+    assert aclarada["especificacion"]["acabado"] == "BA"
+    assert consultadas[0]["acabados"] == ["BA"]
+
+
 def test_el_historial_se_guarda_por_conversacion(api, llm_falso):
     cliente, conversacion = api
     llm_falso(extraccion(grado="304"), extraccion(grado="304", espesor_mm=2, acabado="2B"))

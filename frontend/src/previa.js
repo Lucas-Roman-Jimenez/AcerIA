@@ -1,7 +1,7 @@
 // Lectura orientativa del texto contra el catálogo. La interpretación válida es siempre la del backend.
 import fichas from './fichas_aceria.json'
 
-const GLOSARIO = { brillante: ['BA', '2R'], mate: ['2B'], 'en caliente': ['1D'] }
+const GLOSARIO = { mate: ['2B'], 'en caliente': ['1D'] }
 const FORMATOS = {
   chapa: 'chapa|lamina|plancha|placa|hoja',
   bobina: 'bobina|rollo',
