@@ -18,5 +18,6 @@
     "reduccion_max": 0.75,
     "merma_kg": 0
   },
+  "fleje": { "ancho_max_mm": 600 },
   "densidad_kg_mm3": 0.0000079
 }

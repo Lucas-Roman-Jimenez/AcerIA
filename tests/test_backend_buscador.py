@@ -96,3 +96,33 @@ def test_bulto_reservado_nunca_sale(db):
         conn.execute("UPDATE bultos SET estado = 'reservado' WHERE id = '1312'")
     obj = objetivo(grado="304", acabado="2B", formato="chapa", espesor_mm=2.0, ancho_mm=1250, largo_mm=2500)
     assert "1312" not in {b["id"] for b in buscar_exactos(obj)}
+
+# ---------- RF-14: un único criterio de orden ----------
+
+def test_criterio_orden_pone_operaciones_antes_que_merma():
+    from app.buscador import CRITERIO_ORDEN
+    assert CRITERIO_ORDEN.index("operaciones") < CRITERIO_ORDEN.index("merma")
+
+
+def test_id_natural_ordena_numeros_como_numeros_y_letras_detras():
+    from app.buscador import id_natural
+    assert sorted(["100", "B-1", "99", "A-2"], key=id_natural) == ["99", "100", "A-2", "B-1"]
+
+
+def test_buscar_y_chat_devuelven_el_mismo_criterio_orden(monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+    from llm import ErrorLLM
+    from app import buscador, conversacion
+    from app.buscador import CRITERIO_ORDEN
+    from app.main import app
+
+    def sin_llm(historial):
+        raise ErrorLLM("sin LLM en el test")
+
+    monkeypatch.setattr(buscador, "disponibles", lambda: [])
+    monkeypatch.setattr(conversacion, "interpretar", sin_llm)
+    cliente = TestClient(app)
+    buscar = cliente.post("/buscar", json={"grado": "304", "espesor_mm": 2}).json()
+    chat = cliente.post("/chat", json={"conversacion_id": "rf14", "mensaje": "304 de 2 mm"}).json()
+    assert buscar["criterio_orden"] == chat["criterio_orden"] == CRITERIO_ORDEN

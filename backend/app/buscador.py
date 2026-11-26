@@ -7,9 +7,27 @@ de Lucas (RF-12) y en la verificación final anti-invención (RNF-01, RNF-02).
 from app import config
 from app.db import disponibles, grados
 from reglas.motor import aplicar_reglas
+from reglas.sustitucion import permite_sustituir_dimensiones
 
 EPS = 1e-9                                       # margen para comparar decimales (2.0 vs 1.9999999)
 MEDIDAS = ["espesor_mm", "ancho_mm", "largo_mm"]
+
+_NOMBRES_CRITERIO = {"num_operaciones": "nº de operaciones", "merma_pct": "% de merma",
+                     "merma_kg": "kg de merma", "id": "ID"}
+CRITERIO_ORDEN = "exactos > " + " > ".join(_NOMBRES_CRITERIO[c] for c in config.ORDEN_TRANSFORMABLES)
+
+
+def id_natural(bulto_id) -> tuple:
+    """'99' < '100' como número; los ID con letras van detrás, en orden alfabético."""
+    s = str(bulto_id)
+    return (0, int(s), "") if s.isdigit() else (1, 0, s)
+
+
+def clave_transformable(t: dict) -> tuple:
+    """RF-14: clave de orden de un transformable según config.ORDEN_TRANSFORMABLES."""
+    valores = {"num_operaciones": t["num_operaciones"], "merma_pct": t["merma_pct"],
+               "merma_kg": t["merma_kg"], "id": id_natural(t["bulto_id"])}
+    return tuple(valores[c] for c in config.ORDEN_TRANSFORMABLES)
 
 
 def _valores_aceptados(espec: dict, campo: str) -> list[str] | None:
@@ -107,7 +125,10 @@ def valores_disponibles(campo: str, espec: dict, bultos: list[dict] | None = Non
 
 
 def buscar_bultos(objetivo: dict) -> tuple[list[dict], list[dict]]:
-    """Busca en una sola lectura del inventario y verifica cada resultado del motor."""
+    """Busca en una sola lectura del inventario y verifica cada resultado del motor.
+
+    De cada bulto solo se devuelve su mejor transformación según RF-14 (clave_transformable).
+    """
     exactos = []
     transformables = []
     for bulto in disponibles():
@@ -116,8 +137,61 @@ def buscar_bultos(objetivo: dict) -> tuple[list[dict], list[dict]]:
             continue
         if not _cumple_grado(bulto, objetivo):
             continue
+        mejor = None
         for transformacion in aplicar_reglas(bulto, objetivo, config.MAX_OPERACIONES):
-            if cumple(transformacion["resultado"], objetivo):
-                transformables.append(dict(transformacion, bulto=a_respuesta(bulto)))
-    transformables.sort(key=lambda item: (item["merma_pct"], item["num_operaciones"]))
+            if not cumple(transformacion["resultado"], objetivo):
+                continue
+            if mejor is None or clave_transformable(transformacion) < clave_transformable(mejor):
+                mejor = transformacion
+        if mejor is not None:
+            transformables.append(dict(mejor, bulto=a_respuesta(bulto)))
+    exactos.sort(key=lambda b: id_natural(b["id"]))
+    transformables.sort(key=clave_transformable)
     return exactos, transformables
+
+
+def buscar_alternativas(objetivo: dict, bultos: list[dict] | None = None) -> list[dict]:
+    """RF-29: chapas reales del mismo grado, acabado y espesor con otra medida (regla de sustitución).
+
+    Solo se llama si no hay exactos ni transformables. Cada alternativa es un bulto (como los
+    exactos) más 'diferencias': textos con lo que no cumple. Nunca relaja grado, acabado ni espesor.
+    """
+    if objetivo.get("formato") not in (None, "chapa") or objetivo.get("espesor_mm") is None:
+        return []
+    if objetivo.get("ancho_mm") is None and objetivo.get("largo_mm") is None:
+        return []
+    tol_espesor = objetivo["tolerancias"].get("espesor_mm", 0.0)
+    candidatas = []
+    for b in disponibles() if bultos is None else bultos:
+        if b.get("estado", "disponible") != "disponible":     # disponibles() ya filtra; esto cubre bultos=...
+            continue
+        if b.get("formato") != "chapa" or b.get("largo_mm") is None:
+            continue
+        if not _cumple_grado(b, objetivo):
+            continue
+        acabado = (b.get("acabado") or "").upper()
+        if objetivo["acabados"] and acabado not in objetivo["acabados"]:
+            continue
+        if abs(b["espesor_mm"] - objetivo["espesor_mm"]) > tol_espesor + EPS:
+            continue
+        ancho_p = objetivo.get("ancho_mm") or b["ancho_mm"]
+        largo_p = objetivo.get("largo_mm") or b["largo_mm"]
+        grado = a_respuesta(b)["grado"]
+        if not permite_sustituir_dimensiones(
+            hay_medida_exacta=False,
+            grado_pedido=grado, acabado_pedido=acabado, espesor_pedido=objetivo["espesor_mm"],
+            dimensiones_pedidas=(ancho_p, largo_p),
+            grado_alternativo=grado, acabado_alternativo=acabado, espesor_alternativo=objetivo["espesor_mm"],
+            dimensiones_alternativas=(b["ancho_mm"], b["largo_mm"]),
+        ):
+            continue
+        diferencias = [
+            f"{nombre} {real:g} mm (pedido {pedido:g} mm)"
+            for nombre, real, pedido in (("ancho", b["ancho_mm"], objetivo.get("ancho_mm")),
+                                         ("largo", b["largo_mm"], objetivo.get("largo_mm")))
+            if pedido is not None and abs(real - pedido) > EPS
+        ]
+        distancia = abs(b["ancho_mm"] - ancho_p) + abs(b["largo_mm"] - largo_p)
+        candidatas.append((distancia, id_natural(b["id"]), dict(a_respuesta(b), diferencias=diferencias)))
+    candidatas.sort(key=lambda c: (c[0], c[1]))
+    return [c[2] for c in candidatas[: config.MAX_ALTERNATIVAS]]

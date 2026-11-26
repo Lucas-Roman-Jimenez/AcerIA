@@ -16,8 +16,12 @@ peso, el espesor, el ancho y la densidad acordada de 7,9 kg/dm³. El
 resultado marca esa estimación.
 
 El motor necesita un espesor objetivo para proponer laminación y un largo
-objetivo para proponer corte de bobina a chapa. Las alternativas por
-sustitución de dimensiones son responsabilidad del backend.
+objetivo para proponer corte de bobina a chapa. Un corte a fleje solo es
+válido si estrecha el bulto y el ancho resultante es menor que
+`fleje.ancho_max_mm` (600 mm, el mismo umbral que usa el backend para
+llamar fleje a un bulto). Las alternativas por
+sustitución de dimensiones las aplica `buscador.buscar_alternativas()`
+del backend, con `sustitucion.permite_sustituir_dimensiones`.
 
 Desde la raíz del proyecto:
 
