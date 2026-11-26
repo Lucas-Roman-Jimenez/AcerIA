@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fichasDelGrado, gradoVisible, tienePdf } from './grados.js'
+import { fichasDelGrado, gradoVisible, referenciasDelGrado, textoMAT, textoEN, tienePdf } from './grados.js'
 import { urlFicha } from './api.js'
 
 const ETIQUETAS = { exacto: 'Cumple', transformable: 'Transformable', alternativa: 'Alternativa' }
@@ -20,7 +20,19 @@ function medidas(b) {
 // En un transformable, los datos del bulto vienen en `origen` (o en el propio objeto si el backend los aplana).
 const datosBulto = (tipo, item) => (tipo === 'transformable' ? item.origen ?? item : item)
 const gradoBulto = bulto => gradoVisible(bulto.grado ?? bulto.aisi, bulto.euronorma)
-const valorBulto = (bulto, campo) => campo === 'grado' ? gradoBulto(bulto) : bulto[campo]
+const refsBulto = bulto => referenciasDelGrado(bulto.grado ?? bulto.aisi, bulto.euronorma)
+const valorBulto = (bulto, campo) => (
+  campo === 'grado' ? gradoBulto(bulto)
+    : campo === 'ref_en' ? textoEN(refsBulto(bulto))
+      : campo === 'ref_mat' ? textoMAT(refsBulto(bulto))
+        : bulto[campo])
+
+// Referencia internacional (EN) y de AcerIA (MAT) en una línea pequeña de la tarjeta.
+function LineaReferencias({ bulto }) {
+  const r = refsBulto(bulto)
+  const texto = [textoEN(r), textoMAT(r, 3)].filter(Boolean).join(' · ')
+  return texto ? <div className="tarjeta-ref" title="Referencia internacional (EN) · Referencia AcerIA (MAT)">{texto}</div> : null
+}
 
 // Transformable: qué bulto hay hoy, qué se obtiene y qué hay que hacer. Lo usan la tarjeta y el carrito.
 // Todo sale del motor de reglas (resultado, acciones, merma); si no viene `resultado`, devuelve null.
@@ -58,6 +70,7 @@ export function Tarjeta({ tipo, item, onClick, comparando, onComparar }) {
           <span className="tarjeta-tipo">{ETIQUETAS[tipo]}</span>
         </div>
         {gradoBulto(b) && <div className="tarjeta-spec">{gradoBulto(b)} {b.acabado} · {b.formato}</div>}
+        <LineaReferencias bulto={b} />
         {b.espesor_mm != null && <div className="tarjeta-medidas">{medidas(b)}</div>}
         <div className="tarjeta-extra">
           {b.peso_kg != null && <span>{num(b.peso_kg)} kg</span>}
@@ -87,6 +100,8 @@ const FILAS = [
   ['espesor_mm', 'Espesor (mm)'], ['ancho_mm', 'Ancho (mm)'], ['largo_mm', 'Largo (mm)'],
   ['peso_kg', 'Peso (kg)'], ['piezas', 'Piezas'], ['ubicacion', 'Ubicación'], ['estado', 'Estado'],
 ]
+// En el detalle, tras el grado: su referencia internacional (EN) y la de AcerIA (MAT).
+const FILAS_DETALLE = [FILAS[0], ['ref_en', 'Referencia internacional'], ['ref_mat', 'Referencia AcerIA'], ...FILAS.slice(1)]
 
 function useEscape(onCerrar) {
   useEffect(() => {
@@ -143,6 +158,7 @@ function TarjetaTransformable({ item, b, t, onClick, comparando, onComparar }) {
         </div>
         <div className="tarjeta-requiere">Requiere transformación</div>
         <div className="tarjeta-paso tarjeta-obtienes"><span>Obtienes</span>{b.grado} {r.acabado ?? b.acabado} · {t.despues}</div>
+        <LineaReferencias bulto={b} />
         <div className="tarjeta-paso"><span>Sale de</span>{t.antes}{b.ubicacion ? ` · ${b.ubicacion}` : ''}</div>
         <div className="tarjeta-paso"><span>Hay que</span>{t.acciones}{t.merma ? ` · ${t.merma}` : ''}
           {item.num_operaciones > 1 && ` · ${item.num_operaciones} operaciones`}</div>
@@ -231,8 +247,8 @@ export function Detalle({ item: { tipo, item }, esp, onCerrar }) {
         <table>
           <thead><tr><th /><th>{despues ? 'Antes' : 'Valor'}</th>{despues && <th>Después</th>}</tr></thead>
           <tbody>
-            {FILAS.filter(([k]) => antes[k] != null || despues?.[k] != null).map(([k, etiqueta]) => (
-              <tr key={k} className={despues && antes[k] !== despues[k] ? 'cambia' : ''}>
+            {FILAS_DETALLE.filter(([k]) => valorBulto(antes, k) != null || (despues && valorBulto(despues, k) != null)).map(([k, etiqueta]) => (
+              <tr key={k} className={despues && valorBulto(antes, k) !== valorBulto(despues, k) ? 'cambia' : ''}>
                 <th>{etiqueta}</th>
                 <td>{valorBulto(antes, k) ?? '—'}</td>
                 {despues && <td>{valorBulto(despues, k) ?? '—'}</td>}
