@@ -43,7 +43,16 @@ Responsable: Nacho (P2). Describe cómo usa la IA el asistente comercial y qué 
 | Art. 4: alfabetización en IA | Que quien usa el sistema sepa cómo funciona y sus límites | Esta guía y una formación breve a los comerciales: el asistente puede equivocarse al interpretar y hay que revisar antes de confirmar |
 | Art. 50.4: texto publicado para informar al público | Solo para textos de interés público | No aplica: las respuestas son internas |
 
-**Fechas:** el reglamento está en vigor desde el 1 de agosto de 2024. La alfabetización (art. 4) se aplica desde el 2 de febrero de 2025 y la transparencia (art. 50), desde el 2 de agosto de 2026. **Verificar** si la propuesta de «Ómnibus Digital» de la Comisión ha cambiado algún plazo antes de presentar.
+**Fechas:** el reglamento está en vigor desde el 1 de agosto de 2024. La alfabetización (art. 4) se aplica desde el 2 de febrero de 2025 y la transparencia (art. 50), desde el 2 de agosto de 2026.
+
+**Ómnibus Digital sobre IA (Reglamento (UE) 2026/1744, en vigor desde el 27 de julio de 2026)**, comprobado el 26/11/2026:
+
+- **No aplaza el art. 50.** La transparencia se aplica desde el 2 de agosto de 2026, como estaba previsto.
+- **Única transición:** los sistemas generativos que ya estaban en el mercado antes del 2 de agosto de 2026 tienen hasta el **2 de diciembre de 2026** para el marcado legible por máquina (art. 50.2). Un sistema nuevo, como este, tiene que cumplirlo desde que se pone en servicio. Por eso `aviso_ia` va ya en cada respuesta.
+- **Lo que sí se aplaza** es el alto riesgo del anexo III, hasta el 2 de diciembre de 2027. A este asistente no le afecta, porque no es de alto riesgo.
+- La Comisión publicó sus directrices sobre el art. 50 en julio de 2026.
+
+Fuentes consultadas (secundarias; para producción, revisar el texto en el DOUE): [euai-act.com](https://www.euai-act.com/es/articles/eu-ai-act-digital-omnibus-2026), [Jones Walker](https://www.joneswalker.com/en/insights/blogs/ai-law-blog/yes-august-2-still-matters-the-eu-approved-a-high-risk-ai-delay-but-most-trans.html), [Delvy](https://delvy.es/omnibus-digital-sobre-ia-articulo-50-ai-act/), [Economist & Jurist](https://www.economistjurist.es/articulos-juridicos-destacados/europa-reescribe-el-ai-act-el-omnibus-de-ia-ya-es-ley-y-la-transparencia-no-espera/).
 
 ---
 

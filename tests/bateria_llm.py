@@ -67,6 +67,12 @@ ESCENARIOS = [
     # Por uso (RF-26)
     ("U1 ambiente marino", ["chapa para ambiente marino de 2 mm"]),
     ("U2 industria alimentaria", ["algo para industria alimentaria de 1 mm"]),
+    # Obra (orientaciones_obra de Lucas): sin fuente no elige grado, pregunta lo que falta
+    ("U3 lluvia", ["chapa para un edificio donde llueve mucho"]),
+    ("U4 lluvia y qué grado", ["¿qué acero me recomiendas para un edificio donde llueva mucho?"]),
+    ("U5 fachada", ["chapa de 2 mm para una fachada"]),
+    ("U6 lluvia con grado", ["chapa 316L 2B de 2 mm para un edificio donde llueve mucho"]),
+    ("U7 humedad y aclaración", ["chapa para un sitio con mucha humedad", "es exterior y está cerca del mar"]),
     # Transformaciones (RF-11 a RF-14)
     ("X1 solo transformables", ["chapa 304 2B de 1 x 1250 x 2500"]),
     ("X2 exactos y transformables", ["chapa 304 2B de 2 x 1250 x 2500"]),
