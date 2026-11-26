@@ -1144,3 +1144,27 @@ button:disabled { cursor: default; opacity: .5; }
 .app.portada .principal { padding-bottom: 96px; }
 /* Algo más de aire entre el buscador y las casillas */
 .casillas { margin-top: 28px; }
+
+/* Ficha técnica en PDF a la derecha del detalle de un bulto (PanelFicha en Tarjetas.jsx) */
+.modal-fondo.con-ficha { gap: 16px; padding: 0 16px; }
+.ficha-panel {
+  width: min(380px, 32vw); height: 88vh; display: flex; flex-direction: column;
+  background: var(--fondo-2); border: 1px solid var(--borde); border-top: 2px solid var(--azul);
+}
+.ficha-cabeza { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--borde); }
+.ficha-pestanas { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; }
+.ficha-pestanas button {
+  background: none; border: 1px solid var(--borde); border-radius: 999px; color: var(--tenue);
+  padding: 3px 10px; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer;
+}
+.ficha-pestanas button[aria-selected="true"] { background: var(--azul); border-color: var(--azul-claro); color: #fff; }
+.ficha-cabeza a { color: var(--acento); text-decoration: none; font-size: 15px; padding: 0 4px; }
+.ficha-panel iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+.ficha-panel > p { padding: 16px; }
+.ficha-plegada {
+  align-self: center; writing-mode: vertical-rl; transform: rotate(180deg);
+  background: var(--fondo-2); color: var(--plata); border: 1px solid var(--borde); border-left: 2px solid var(--azul);
+  padding: 14px 6px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.ficha-plegada:hover { color: #fff; }
+@media (max-width: 900px) { .ficha-panel, .ficha-plegada { display: none; } }

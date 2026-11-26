@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from typing import Literal
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,6 +18,7 @@ from app.reportes import reporte_diario_inventario, reporte_semanal
 from app.modelos import (MENSAJE_GENERAL, PATRON_CARRITO, CampoStock, Especificacion, Formato, ListaBultos,
                          MensajeChat, errores_legibles)
 from app.tendencias import tendencias_compras
+from app.fichas import FichaNoDisponible, FichaNoEncontrada, obtener_pdf
 
 
 @asynccontextmanager
@@ -59,6 +60,22 @@ def compatibilizar(r: dict) -> dict:
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/fichas/{mat}")
+def ficha_pdf(mat: str = Path(min_length=3, max_length=20, pattern=r"^[A-Za-z0-9 _-]+$")):
+    """PDF de la ficha técnica de AcerIA («MAT 120»), para el panel lateral de las tarjetas.
+    Solo las fichas del catálogo; se descarga de Databricks la primera vez y después sale de la caché."""
+    try:
+        ruta = obtener_pdf(mat)
+    except FichaNoEncontrada:
+        raise HTTPException(404, "Esa ficha no está en el catálogo.")
+    except FichaNoDisponible as e:
+        log.info("Ficha %s no disponible: %s", mat, e)       # el detalle, al log
+        raise HTTPException(503, "La ficha no está disponible ahora mismo.")
+    return FileResponse(ruta, media_type="application/pdf",
+                        headers={"Content-Disposition": f'inline; filename="{ruta.name}"',
+                                 "Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/reportes/compras/semanal")
