@@ -126,6 +126,7 @@ async function cargarReporte(ruta, signal) {
 
 export const cargarReporteSemanal = signal => cargarReporte('compras/semanal', signal)
 export const cargarReporteDiarioInventario = signal => cargarReporte('inventario/diario', signal)
+export const cargarReposicion = signal => cargarReporte('reposicion', signal)
 
 // Tendencias de compras por semana y formato (Lucas): unidad 'kg', 'bultos' o 'piezas'.
 export async function cargarTendencias(semanas, unidad, signal) {

@@ -471,6 +471,36 @@ button:disabled { cursor: default; opacity: .5; }
 .punto { color: var(--metal); }
 .altavoz { color: var(--metal); }
 
+/* Reposición (Reposicion.jsx): cabecera de color por sección; texto con contraste ≥ 4,5:1 */
+.repo-seccion { --repo-fondo: var(--superficie); --repo-texto: var(--texto); margin-bottom: 28px; border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+.repo-seccion.reponer { --repo-fondo: #B3261E; --repo-texto: #fff; }          /* 6,6:1 */
+.repo-seccion.vigilar { --repo-fondo: var(--naranja); --repo-texto: var(--tinta); }  /* 7,1:1 */
+.repo-seccion.puntual { --repo-fondo: #F2C94C; --repo-texto: var(--tinta); }  /* 12,6:1 */
+.repo-seccion-cabecera { background: var(--repo-fondo); color: var(--repo-texto); padding: 12px 16px; }
+.repo-seccion-cabecera h2 { margin: 0; font-size: 1.1rem; }
+.repo-seccion-cabecera p { margin: 4px 0 0; font-size: .85rem; }
+.repo-contador { font-weight: 400; }
+.repo-vacia { margin: 0; padding: 14px 16px; color: var(--tenue); }
+.repo-filtro { display: flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; }
+.repo-filtro input { width: 18px; height: 18px; accent-color: var(--azul-claro); }
+.repo-tabla { width: 100%; border-collapse: collapse; font-size: .9rem; table-layout: fixed; }
+.repo-tabla th:first-child { width: 36%; }   /* mismas columnas en las tres secciones */
+.repo-tabla :is(th, td) { padding: 10px 16px; text-align: right; border-bottom: 1px solid var(--borde); font-variant-numeric: tabular-nums; }
+.repo-tabla :is(th, td):first-child { text-align: left; }
+.repo-tabla th { color: var(--tenue); font-weight: 500; }
+.repo-tabla tr:last-child td { border-bottom: 0; }
+.repo-material { text-transform: capitalize; font-weight: 600; }
+/* En móvil cada fila pasa a ficha: sin scroll horizontal y con la etiqueta de cada dato */
+@media (max-width: 640px) {
+  .repo-tabla thead { display: none; }
+  .repo-tabla tr { display: block; padding: 10px 16px; border-bottom: 1px solid var(--borde); }
+  .repo-tabla tr:last-child { border-bottom: 0; }
+  .repo-tabla td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border: 0; }
+  .repo-tabla td::before { content: attr(data-campo); color: var(--tenue); }
+  .repo-tabla td:first-child { display: block; padding-bottom: 6px; }
+  .repo-tabla td:first-child::before { content: none; }
+}
+
 /* Tendencias de compras (Tendencias.jsx) */
 .tendencias { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--borde); }
 .tend-cabecera { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
