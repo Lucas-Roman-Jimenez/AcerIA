@@ -25,6 +25,17 @@ El módulo convierte lo que dice el comercial en una especificación. El LLM
 ayuda a elegir qué dato aclarar entre los candidatos válidos. El código
 valida la especificación contra el catálogo y la disponibilidad contra el stock.
 
+### Arrancar la aplicación completa (un comando, RNF-12)
+
+```bash
+pip install -r requirements.txt -r backend/requirements.txt   # una vez
+python arrancar.py                                            # backend + frontend en modo real
+```
+
+Levanta el backend en http://127.0.0.1:8000 (desde la raíz, para que encuentre `llm/` y `reglas/`) y, cuando responde, el frontend en http://127.0.0.1:5173 conectado a él (sin datos simulados). Instala `frontend/node_modules` si falta y abre el navegador. `Ctrl+C` para los dos. Necesita Node.js y el `.env` de la raíz.
+
+Usa `127.0.0.1` y no `localhost`: en la red de la URJC `localhost` acaba en el proxy (SendaURJC). Opciones: `--sin-navegador`, `--puerto-backend`, `--puerto-frontend`.
+
 ### Puesta en marcha
 
 ```bash
