@@ -289,8 +289,6 @@ export default function App() {
     setDemo({ paso: i, nota: paso.nota })
   }
 
-  const noServidas = conversaciones.filter(c => c.ultima?.tipo === 'respuesta'
-    && !c.ultima.exactos.length && !c.ultima.transformables.length).length
   const esp = actual.ultima?.especificacion
   const vacio = actual.mensajes.length === 0
   const totalBultos = stock.reduce((n, s) => n + s.bultos, 0)
@@ -304,45 +302,41 @@ export default function App() {
 
   return (
     <div className={`app ${vacio ? 'portada' : ''}`}>
+      <div className="utilidades">
+        <label className="interruptor" title="Leer en voz alta cada respuesta del asistente">
+          <input type="checkbox" checked={vozActiva}
+            onChange={e => { setVozActiva(e.target.checked); window.speechSynthesis?.cancel() }} />
+          <span className="interruptor-pista" aria-hidden />
+          Leer respuestas en voz alta
+        </label>
+        <div className="utilidades-derecha">
+          <span>{hoy}</span>
+          {totalBultos > 0 && <span className="resalte">{totalBultos.toLocaleString('es-ES')} bultos disponibles</span>}
+        </div>
+      </div>
+
       <header className="cabecera">
         <div className="fondo-video" aria-hidden>
           <video src="/video/cabecera.mp4" autoPlay muted loop playsInline
             onError={e => { e.currentTarget.style.display = 'none' }} />
         </div>
-        <div className="utilidades">
-          <span className="estado" title="Consultas de esta sesión para las que no había stock ni transformación posible">
-            Demanda no servida: <b>{noServidas}</b>
-          </span>
-          <label className="interruptor" title="Leer en voz alta cada respuesta del asistente">
-            <input type="checkbox" checked={vozActiva}
-              onChange={e => { setVozActiva(e.target.checked); window.speechSynthesis?.cancel() }} />
-            <span className="interruptor-pista" aria-hidden />
-            Leer respuestas en voz alta
-          </label>
-          <div className="utilidades-derecha">
-            <span><b>INOX·STOCK</b> | {hoy}{totalBultos > 0 && <> | <span className="resalte">{totalBultos.toLocaleString('es-ES')} bultos disponibles</span></>}</span>
-          </div>
-        </div>
-        <div className="principal-cabecera">
-          <div className="marca">
+        <nav className="principal-cabecera" aria-label="Principal">
+          <button type="button" className="marca" onClick={salir} title="Volver al inicio">
             <span className="logo-luna" aria-hidden />
-            <span className="logo-texto">INOX<span className="punto">·</span>STOCK</span>
+            <span className="logo-texto">ACERIA</span>
+          </button>
+          <div className="menu">
+            <button type="button" className="menu-enlace" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
+              title="Reproduce la conversación de la demo paso a paso">Demo guiada</button>
+            <button type="button" className="menu-enlace" onClick={() => { cancelarDictado(); setVerReporte(true) }}>Reporte semanal</button>
           </div>
           <div className="acciones">
-            <button className="demo-boton" onClick={() => pasoDemo(0)} disabled={pensando || demo !== null}
-              title="Reproduce la conversación de la demo paso a paso">▶ Demo guiada</button>
-            <button className="nueva carrito-cabecera" onClick={() => setVerCarrito(true)}>🛒 Carrito ({carrito.length})</button>
-          <button className="nueva" type="button" onClick={() => {
-            cancelarDictado()
-            setVerReporte(true)
-          }}>Reporte semanal</button>
-          <button className="nueva" onClick={nuevaConsulta}>+ Nueva consulta</button>
+            <button type="button" className="menu-enlace carrito-cabecera" onClick={() => setVerCarrito(true)}>
+              Carrito{carrito.length > 0 && <span className="contador">{carrito.length}</span>}
+            </button>
+            <button type="button" className="boton-destacado" onClick={nuevaConsulta}>Nueva consulta</button>
           </div>
-        </div>
-        <div className="lema">
-          <p>Asistente de inventario comercial</p>
-          <span>Acero inoxidable · stock real · transformaciones según las reglas de AcerIA</span>
-        </div>
+        </nav>
       </header>
 
       <div className="ticker" aria-label="Resumen de stock">
