@@ -345,7 +345,7 @@ def test_api_reservar_lo_que_tiene_otro_da_409(api):
     api.post("/reservas", json={"bultos": ["334"]}, headers=_h("a"))
     r = api.post("/reservas", json={"bultos": ["23", "334"]}, headers=_h("b"))
     assert r.status_code == 409
-    assert r.json()["detail"]["no_disponibles"] == ["334"]
+    assert "no_disponibles" not in r.json()["detail"]                              # con varios no dice cuáles
     assert api.get("/reservas", headers=_h("b")).json()["reservas"] == []           # todo o nada
 
 
@@ -447,3 +447,12 @@ def test_la_api_acepta_los_hosts_locales(api, host):
 def test_la_api_rechaza_otro_host_dns_rebinding(api):
     r = api.post("/reservas", json={"bultos": ["334"]}, headers={"Host": "web-maliciosa.example:8000", **_h("a")})
     assert r.status_code == 400
+
+
+def test_api_409_con_varios_bultos_no_dice_cuales(api, base):
+    a, b = _disponibles(base, 2)
+    assert api.post("/reservas", json={"bultos": [a]}, headers=_h("otro")).status_code == 200
+    r = api.post("/reservas", json={"bultos": [a, b]}, headers=_h("x"))
+    assert r.status_code == 409 and "no_disponibles" not in r.json()["detail"]
+    solo = api.post("/reservas", json={"bultos": [a, a]}, headers=_h("x"))    # repetido = un bulto
+    assert solo.status_code == 409 and solo.json()["detail"]["no_disponibles"] == [a]

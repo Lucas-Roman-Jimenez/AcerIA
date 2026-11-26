@@ -161,8 +161,12 @@ def crear_reserva(r: ListaBultos, titular: str = Depends(titular_actual)):
     try:
         return {"reservas": reservar(r.bultos, titular), "minutos": config.RESERVA_MINUTOS}
     except BultosNoDisponibles as e:
-        raise HTTPException(409, {"mensaje": "Algún bulto ya está reservado o no está disponible; "
-                                             "no se ha reservado nada.", "no_disponibles": e.ids})
+        # Con un solo bulto se dice cuál (es el que se acaba de pedir). Con varios no: si no, una sola
+        # petición de 200 IDs serviría para sondear qué bultos tienen reservados los demás.
+        detalle = {"mensaje": "Algún bulto ya está reservado o no está disponible; no se ha reservado nada."}
+        if len({str(i).strip() for i in r.bultos}) == 1:
+            detalle["no_disponibles"] = e.ids
+        raise HTTPException(409, detalle)
     except DemasiadasReservas:
         raise HTTPException(409, {"mensaje": f"Un carrito puede tener como mucho {config.MAX_RESERVAS_CARRITO} "
                                              "bultos reservados; no se ha reservado nada.",

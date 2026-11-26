@@ -215,7 +215,7 @@ Al quitarlo del carrito, o cuando caduca la reserva, vuelve a estar disponible. 
 
 | Llamada | Cuándo | Respuesta |
 | --- | --- | --- |
-| `POST /reservas` con `{"bultos": ["334"]}` | Al añadir al carrito | 200 `{"reservas": [{"bulto_id": "334", "expira_en": "2026-11-26T10:15:00+01:00"}], "minutos": 15}`. Se reservan todos o ninguno. Si un bulto ya era tuyo, se renueva su caducidad. 409 `{"detail": {"mensaje": ..., "no_disponibles": ["334"]}}` si alguno lo tiene otro o no está disponible. |
+| `POST /reservas` con `{"bultos": ["334"]}` | Al añadir al carrito | 200 `{"reservas": [{"bulto_id": "334", "expira_en": "2026-11-26T10:15:00+01:00"}], "minutos": 15}`. Se reservan todos o ninguno. Si un bulto ya era tuyo, se renueva su caducidad. 409 `{"detail": {"mensaje": ..., "no_disponibles": ["334"]}}` si alguno lo tiene otro o no está disponible. `no_disponibles` solo viene cuando se pide **un** bulto; con varios, el 409 lleva solo `mensaje`, para que no sirva para sondear qué tienen reservado los demás. |
 | `DELETE /reservas/{bulto_id}` | Al quitar un bulto del carrito | 204. Si no está en tu carrito, 404. |
 | `DELETE /reservas` | Al vaciar el carrito | 200 `{"liberadas": 2}`. Solo libera las tuyas. |
 | `GET /reservas` | Al recargar la página | 200 `{"reservas": [...], "minutos": 15}`: tus reservas vigentes, en el orden en que se añadieron. |

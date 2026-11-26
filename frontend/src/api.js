@@ -83,7 +83,9 @@ export async function reservarBultos(ids) {
   const datos = await r.json().catch(() => ({}))
   if (r.status === 409 && datos.detail?.maximo) throw new Error(datos.detail.mensaje)   // límite por carrito
   if (r.status === 409) {
-    const ocupados = datos.detail?.no_disponibles ?? ids
+    // Con varios bultos el backend no dice cuáles (contrato §8): mensaje general.
+    const ocupados = datos.detail?.no_disponibles ?? (ids.length === 1 ? ids : null)
+    if (!ocupados) throw new Error('Algún bulto del carrito lo tiene reservado otro comercial o ya no está disponible.')
     throw new Error(`${ocupados.length === 1 ? `El bulto ${ocupados[0]}` : `Los bultos ${ocupados.join(', ')}`} `
       + 'lo tiene reservado otro comercial o ya no está disponible.')
   }
