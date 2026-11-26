@@ -331,7 +331,7 @@ export default function App() {
       <aside className="lateral">
         <button type="button" className="marca" onClick={salir} title="Volver al inicio">
           <img className="logo-aceria" src="/logo-aceria.svg" alt="AcerIA" width="46" height="46" />
-          <span className="logo-texto">ACERIA</span>
+          <span className="logo-texto" aria-label="acer.IA">ACER<span className="logo-ia">.IA</span></span>
         </button>
 
         <nav className="lateral-menu" aria-label="Principal">

@@ -1421,3 +1421,67 @@ button:disabled { cursor: default; opacity: .5; }
 }
 .ficha-plegada:hover { color: #fff; }
 @media (max-width: 900px) { .ficha-panel, .ficha-plegada { display: none; } }
+
+/* Efecto dithering en la barra lateral: trama ordenada de puntos (Bayer 4×4) que se va aclarando
+   hacia el borde, más un grano fino que rompe las bandas del degradado */
+.lateral::before {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' shape-rendering='crispEdges'%3E%3Cg fill='%238A8EF0'%3E%3Crect x='0' y='0' width='1' height='1' opacity='.55'/%3E%3Crect x='2' y='2' width='1' height='1' opacity='.55'/%3E%3Crect x='2' y='0' width='1' height='1' opacity='.3'/%3E%3Crect x='0' y='2' width='1' height='1' opacity='.3'/%3E%3Crect x='1' y='1' width='1' height='1' opacity='.15'/%3E%3Crect x='3' y='3' width='1' height='1' opacity='.15'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 4px 4px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.25'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #23256B 0%, #222468 100%);
+  image-rendering: pixelated;
+}
+.lateral::after {
+  display: block; content: ''; position: absolute; inset: 0 -40px 0 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, #23256B 0%, rgba(35, 37, 107, .7) 45%, rgba(35, 37, 107, 0) 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+}
+
+/* Dithering muy leve en toda la página: la misma trama Bayer 4×4 en una capa fija encima de todo */
+.lateral::before { background: linear-gradient(180deg, #23256B 0%, #222468 100%); }
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: .09;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' shape-rendering='crispEdges'%3E%3Cg fill='%23fff'%3E%3Crect x='0' y='0' width='1' height='1'/%3E%3Crect x='2' y='2' width='1' height='1'/%3E%3Crect x='2' y='0' width='1' height='1' opacity='.55'/%3E%3Crect x='0' y='2' width='1' height='1' opacity='.55'/%3E%3Crect x='1' y='1' width='1' height='1' opacity='.25'/%3E%3Crect x='3' y='3' width='1' height='1' opacity='.25'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 4px 4px;
+  image-rendering: pixelated; mix-blend-mode: overlay;
+}
+
+/* ACERIA: «IA» destacado en naranja, algo más grande y con sombra */
+.logo-texto { display: inline-flex; align-items: baseline; }
+.logo-ia {
+  color: #F07D00; font-size: 1.22em; line-height: .8; margin-left: 1px;
+  text-shadow: 0 2px 0 rgba(120, 50, 0, .55), 0 4px 14px rgba(240, 125, 0, .45);
+}
+/* IA mate: naranja sin brillo y sombra suave de relieve, sin línea dura */
+.logo-ia { color: #E07A12; text-shadow: 0 3px 7px rgba(8, 10, 40, .55), 0 1px 2px rgba(8, 10, 40, .3); }
+
+/* IA: naranja mate con volumen (degradado vertical como metal fundido sin brillo), sombra de relieve suave
+   y, al pasar por encima del logo, un barrido de calor lento que recorre las letras */
+.logo-ia {
+  position: relative; text-shadow: none; color: transparent;
+  background: linear-gradient(180deg, #F6A04A 0%, #E9801C 45%, #C9620A 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 3px 5px rgba(8, 10, 40, .55)) drop-shadow(0 1px 1px rgba(8, 10, 40, .35));
+}
+.logo-ia::after {
+  content: 'IA'; position: absolute; inset: 0; color: transparent; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 214, 160, .55) 50%, transparent 70%) -150% 0 / 250% 100% no-repeat;
+  -webkit-background-clip: text; background-clip: text;
+  transition: background-position 1.1s ease;
+}
+.marca:hover .logo-ia::after { background-position: 150% 0; }
+@media (prefers-reduced-motion: reduce) { .logo-ia::after { transition: none; } }
+/* IA con otra tipografía: Unbounded, geométrica y redonda, contrasta con la Bebas estrecha de ACER */
+.logo-ia, .logo-ia::after { font-family: 'Unbounded', var(--logo); font-weight: 600; font-size: .78em; letter-spacing: .5px; }
+.logo-ia { margin-left: 3px; }
+/* IA con la tipografía de la referencia: sans geométrica gruesa y compacta (Manrope 800) */
+.logo-ia, .logo-ia::after { font-family: 'Manrope', var(--logo); font-weight: 800; font-size: .92em; letter-spacing: -0.5px; }
+/* Logo entero con el estilo de la referencia: minúsculas, sans geométrica gruesa (Manrope 800) */
+.lateral .logo-texto { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 34px; letter-spacing: -1.2px; text-transform: lowercase; }
+.logo-ia, .logo-ia::after { font-family: 'Manrope', sans-serif; font-size: 1em; letter-spacing: -1.2px; text-transform: lowercase; }
+.logo-ia { margin-left: 0; }
+.logo-ia, .logo-ia::after { text-transform: uppercase; letter-spacing: -0.5px; font-size: .9em; }
+.logo-ia::after { content: '.IA'; }
+/* Campo de texto redondeado (forma de píldora) */
+.entrada, .principal .entrada { border-radius: 999px !important; padding-left: 22px; overflow: hidden; }
+.entrada .microfono, .entrada .icono { border-radius: 999px; }
