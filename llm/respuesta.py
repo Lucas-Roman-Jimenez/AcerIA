@@ -35,7 +35,7 @@ def _caracteristicas(b: dict[str, Any], con_formato: bool = False) -> list[str]:
     if b.get("peso_kg"):
         partes.append(f"{fmt_num(b['peso_kg'])} kg")
     if b.get("piezas"):
-        partes.append(f"{fmt_num(b['piezas'])} piezas")
+        partes.append(f"{fmt_num(b['piezas'])} pieza{'' if b['piezas'] == 1 else 's'}")
     if b.get("ubicacion"):
         partes.append(str(b["ubicacion"]))
     return partes

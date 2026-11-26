@@ -270,7 +270,9 @@ def _respuesta_intencion(esp: Especificacion, intencion: str, catalogo: Catalogo
     hay_datos = _describir(esp) != "material"
     buscar = f"¿Quieres que busque {_describir(esp)}?" if hay_datos else "¿Qué material necesitas?"
     usos = [u["uso"] for u in catalogo.usos]
-    ejemplo_usos = f" (por ejemplo, {lista_o(usos)})" if usos else ""
+    # El catálogo real tiene unos 90 usos: se nombran como mucho MAX_USOS_EJEMPLO, primero los más habituales.
+    ejemplos = [u for u in USOS_PREFERIDOS if u in usos] + [u for u in usos if u not in USOS_PREFERIDOS]
+    ejemplo_usos = f" (por ejemplo, {lista_o(ejemplos[:MAX_USOS_EJEMPLO])})" if usos else ""
     return {
         "saludo": "¡Hola! ¿Qué material necesita tu cliente? Dime grado, acabado, espesor o para qué lo quiere.",
         "agradecimiento": "De nada. ¿Necesitas buscar algo más?",
@@ -365,6 +367,10 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     pregunta = _redactar(plantilla, cliente if redactar_con_llm else None, catalogo)
     return ResultadoInterpretacion("pregunta", esp, pregunta)
 
+
+MAX_USOS_EJEMPLO = 4
+USOS_PREFERIDOS = ("atmósfera marina", "industria alimentaria", "decoración y arquitectura",
+                   "aplicaciones a altas temperaturas")
 
 ORDEN_DISTINGUIR = ("acabado", "grado", "formato", "espesor_mm", "ancho_mm", "largo_mm")
 
