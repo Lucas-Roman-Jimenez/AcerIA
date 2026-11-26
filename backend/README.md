@@ -70,6 +70,13 @@ Cada fila trae la referencia, `vendido_t`, `disponible_t`, `semanas_con_ventas`,
 `cobertura_dias` y `cumple_filtro` (más de 2 t vendidas y menos de 2 t
 disponibles). Las referencias que no entran en ninguna sección no se devuelven.
 
+Para que se vea con datos, cada arranque crea ventas simuladas
+(`app/ventas_demo.py`) de las 4 semanas completas anteriores a partir del stock
+real, con filas en las tres secciones. Ninguna cae en la semana en curso, así
+que el reporte semanal solo muestra ventas reales. Sus IDs empiezan por `demo-`
+y sus bultos no existen, así que no quitan stock. Se recrean en cada arranque;
+`python arrancar.py --sin-ventas-demo` las borra. Las ventas reales no se tocan.
+
 El flujo de baja debe llamar a `app.reportes.registrar_compra` dentro de la
 misma transacción que actualiza el stock, pasando el bulto original antes
 de la baja, un ID único por movimiento, la cantidad realmente descontada,

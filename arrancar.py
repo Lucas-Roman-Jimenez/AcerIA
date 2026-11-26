@@ -2,6 +2,7 @@
 
     python arrancar.py                 # backend + frontend y abre el navegador
     python arrancar.py --sin-navegador
+    python arrancar.py --sin-ventas-demo   # sin las ventas simuladas de Reposición y Tendencias
 
 Levanta el backend (FastAPI, desde la raíz para que encuentre llm/ y reglas/) y, cuando responde,
 el frontend (Vite) conectado a él. Usa 127.0.0.1 y no «localhost»: en algunas redes (p. ej. la
@@ -57,6 +58,8 @@ def main() -> int:
     parser.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador")
     parser.add_argument("--reiniciar-demo", action="store_true",
                         help="vaciar las ventas de la demo y el reporte semanal (si no, se conservan)")
+    parser.add_argument("--sin-ventas-demo", action="store_true",
+                        help="no crear las ventas simuladas (demo-*) de las últimas 4 semanas que usan los reportes")
     args = parser.parse_args()
 
     if not (RAIZ / ".env").exists():
@@ -79,6 +82,7 @@ def main() -> int:
             [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
              "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ,
             env={**os.environ, "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0",
+                 "ACERIA_VENTAS_DEMO": "0" if args.sin_ventas_demo else "1",
                  "ACERIA_CORS_ORIGENES": web})
         if not esperar(f"{api}/health", 90, backend):
             print("El backend no ha arrancado. Revisa el error de arriba "

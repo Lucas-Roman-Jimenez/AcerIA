@@ -179,3 +179,28 @@ def test_una_semana_nunca_es_reponer_y_recurrente_con_poco_stock_no_es_puntual(b
     filas = por_ancho(recomendaciones_reposicion(ahora=AHORA))
     assert filas[1000][0] == "puntual"
     assert 1001 not in filas
+
+
+def test_ventas_demo_rellenan_las_tres_secciones_sin_tocar_el_stock(base):
+    from app.ventas_demo import preparar_ventas_demo, sembrar_ventas_demo
+
+    for n in range(8):
+        stock(base, 1500 + n * 10, 6000 + n * 1000)       # referencias de 5-20 t
+    for n in range(5):
+        stock(base, 800 + n * 10, 1500 + n * 50)          # referencias de menos de 2 t
+    vender(base, 2000, {0: 500})                          # una venta real que debe conservarse
+    creadas = sembrar_ventas_demo(ahora=AHORA)
+    assert sembrar_ventas_demo(ahora=AHORA) == creadas    # repetir no duplica
+
+    informe = recomendaciones_reposicion(ahora=AHORA)
+    secciones = informe["secciones"]
+    assert all(secciones[s] for s in ("reponer", "vigilar", "puntual"))
+    assert any(f["cumple_filtro"] for filas in secciones.values() for f in filas)
+    assert any(f["disponible_t"] == 0 for f in secciones["reponer"])
+    with sqlite3.connect(base) as conexion:
+        assert conexion.execute("SELECT COUNT(*) FROM bultos WHERE estado = 'disponible'").fetchone()[0] == 13
+
+    preparar_ventas_demo(False)
+    with sqlite3.connect(base) as conexion:
+        restantes = conexion.execute("SELECT id FROM compras").fetchall()
+    assert len(restantes) == 1 and not restantes[0][0].startswith("demo-")
