@@ -2,6 +2,7 @@
 import fichas from './fichas_aceria.json'
 import glosario from '../../datos/glosario.json'
 import { orientaciones_obra } from '../../datos/catalogo.json'
+import { gradoVisible } from './grados.js'
 
 const GLOSARIO = { mate: ['2B'], 'en caliente': ['1D'] }
 const ALIAS_ACABADO = Object.fromEntries(glosario.terminos
@@ -17,14 +18,16 @@ const FAMILIAS = { austenitico: 'austenítico', duplex: 'dúplex', ferritico: 'f
 const normaliza = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/mat\s*/g, 'mat ')
 const PATRONES_OBRA = orientaciones_obra.map(({ patron }) => new RegExp(patron))
 export const detectarUsoDeObra = texto => PATRONES_OBRA.some(patron => patron.test(normaliza(texto)))
-const nombreGrado = f => f.aisi?.replace(' DDQ', '') ?? f.mat
+const nombreGrado = f => f.aisi?.replace(' DDQ', '') ?? gradoVisible(f.en).replace(/^EN /, '')
 const escapa = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const unicos = xs => [...new Set(xs)]
 const numero = s => parseFloat(s.replace(',', '.'))
 
 // Cada designación del catálogo (AISI, EN, MAT) apunta a su grado; las más largas primero.
-const DESIGNACIONES = fichas.flatMap(f => [f.aisi, f.aisi?.replace(' DDQ', ''), f.en, f.mat]
-  .filter(Boolean).map(d => [normaliza(d), nombreGrado(f)]))
+const DESIGNACIONES = fichas.flatMap(f => [
+  [f.aisi, f.aisi?.replace(/\s+/g, '')], [f.en, f.en], [f.mat, f.en],
+  [gradoVisible(f.en), gradoVisible(f.en).replace(/^EN /, '')],
+].filter(([d]) => d).map(([d, grado]) => [normaliza(d), grado]))
   .sort((a, b) => b[0].length - a[0].length)
 
 const CONSULTAS = [

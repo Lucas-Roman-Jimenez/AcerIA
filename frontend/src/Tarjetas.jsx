@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { buscarFicha } from './Acero.jsx'
+import { fichasDelGrado, gradoVisible } from './grados.js'
 
 const ETIQUETAS = { exacto: 'Cumple', transformable: 'Transformable', alternativa: 'Alternativa' }
 
@@ -18,6 +18,8 @@ function medidas(b) {
 
 // En un transformable, los datos del bulto vienen en `origen` (o en el propio objeto si el backend los aplana).
 const datosBulto = (tipo, item) => (tipo === 'transformable' ? item.origen ?? item : item)
+const gradoBulto = bulto => gradoVisible(bulto.grado ?? bulto.aisi, bulto.euronorma)
+const valorBulto = (bulto, campo) => campo === 'grado' ? gradoBulto(bulto) : bulto[campo]
 
 const ORIGEN = {
   exacto: 'Inventario',
@@ -34,7 +36,7 @@ export function Tarjeta({ tipo, item, onClick, comparando, onComparar }) {
           <span className="tarjeta-id">{item.id}</span>
           <span className="tarjeta-tipo">{ETIQUETAS[tipo]}</span>
         </div>
-        {b.grado && <div className="tarjeta-spec">{b.grado} {b.acabado} · {b.formato}</div>}
+        {gradoBulto(b) && <div className="tarjeta-spec">{gradoBulto(b)} {b.acabado} · {b.formato}</div>}
         {b.espesor_mm != null && <div className="tarjeta-medidas">{medidas(b)}</div>}
         <div className="tarjeta-extra">
           {b.peso_kg != null && <span>{num(b.peso_kg)} kg</span>}
@@ -86,7 +88,7 @@ function Coincidencias({ esp, bulto }) {
       const opciones = esp.opciones?.[k]
       if (pedido == null && !opciones) return null
       const ok = pedido != null ? igual(pedido, bulto[k]) : opciones.some(o => igual(o, bulto[k]))
-      return { k, etiqueta, pedido: pedido ?? opciones.join(' o '), real: bulto[k] ?? '—', ok }
+      return { k, etiqueta, pedido: pedido ?? opciones.join(' o '), real: valorBulto(bulto, k) ?? '—', ok }
     })
     .filter(Boolean)
   if (!filas.length) return null
@@ -108,7 +110,7 @@ function Coincidencias({ esp, bulto }) {
 }
 
 function Fuentes({ tipo, item, bulto }) {
-  const ficha = buscarFicha(bulto.grado)
+  const fichas = fichasDelGrado(bulto.grado ?? bulto.aisi, bulto.euronorma)
   return (
     <div className="fuentes">
       <h3>De dónde sale cada dato</h3>
@@ -118,7 +120,9 @@ function Fuentes({ tipo, item, bulto }) {
           <li><b>Acciones{item.merma_kg != null ? ' y merma' : ''}</b>: las calcula el motor de reglas a partir del fichero de reglas de transformación de AcerIA, no el asistente.
             {item.merma_estimada && ' La merma es una estimación.'}</li>
         )}
-        {ficha && <li><b>Grado {bulto.grado}</b>: ficha técnica {ficha.mat} del catálogo de AcerIA (EN {ficha.en}, inoxidable {ficha.familia}).</li>}
+        {fichas.length > 0 && (
+          <li><b>Referencias AcerIA del grado {gradoBulto(bulto)}</b> · {fichas.map(f => `${f.mat} (EN ${f.en})`).join(', ')}</li>
+        )}
         <li><b>Texto de la respuesta</b>: lo redacta el asistente solo con estos datos; si añadiera algo que no está aquí, se sustituye por una plantilla.</li>
       </ul>
     </div>
@@ -143,8 +147,8 @@ export function Detalle({ item: { tipo, item }, esp, onCerrar }) {
             {FILAS.filter(([k]) => antes[k] != null || despues?.[k] != null).map(([k, etiqueta]) => (
               <tr key={k} className={despues && antes[k] !== despues[k] ? 'cambia' : ''}>
                 <th>{etiqueta}</th>
-                <td>{antes[k] ?? '—'}</td>
-                {despues && <td>{despues[k] ?? '—'}</td>}
+                <td>{valorBulto(antes, k) ?? '—'}</td>
+                {despues && <td>{valorBulto(despues, k) ?? '—'}</td>}
               </tr>
             ))}
           </tbody>
@@ -169,8 +173,9 @@ const FILAS_COMPARAR = [
   ['Tipo', (t) => ETIQUETAS[t.tipo]],
   ...FILAS.slice(0, 8).map(([k, etiqueta]) => [etiqueta, (t) => {
     const b = datosBulto(t.tipo, t.item)
-    const d = t.tipo === 'transformable' ? t.item.resultado?.[k] : undefined
-    return d != null && d !== b[k] ? `${b[k] ?? '—'} → ${d}` : b[k]
+    const antes = valorBulto(b, k)
+    const d = t.tipo === 'transformable' && t.item.resultado ? valorBulto(t.item.resultado, k) : undefined
+    return d != null && d !== antes ? `${antes ?? '—'} → ${d}` : antes
   }]),
   ['Ubicación', (t) => datosBulto(t.tipo, t.item).ubicacion],
   ['Acciones', (t) => acciones(t.item).join(' · ') || 'Ninguna'],

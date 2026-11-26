@@ -12,6 +12,7 @@ import { sugerirCorreccion } from './sugerir.js'
 import { pideBorrarConsulta, pideQuitar, frasesQuitar, textoNoSeleccionado } from './quitar.js'
 import { Flujo, Carrito, analizar, textoAnalisis } from './Flujo.jsx'
 import { ReporteSemanal } from './ReporteSemanal.jsx'
+import { gradoVisible } from './grados.js'
 
 // Guion de docs/guion_demo.md (rama de Nacho) más las consultas para quien no conoce la nomenclatura.
 const DEMO = [
@@ -372,7 +373,7 @@ export default function App() {
               <div className="inicio-texto">
                 <h1>¿Qué quieres buscar?</h1>
                 <div className="inicio-nombre">
-                  {previa && [previa.grado, previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
+                  {previa && [gradoVisible(previa.grado), previa.acabado ?? previa.opciones.acabado?.join('/'), previa.formato].filter(Boolean).join(' · ')}
                 </div>
                 {avisoInicio && <p className="aviso-inicio" role="alert">{avisoInicio}</p>}
                 <p className="ayuda-inicio">Escribe o dicta lo que pide el cliente. Si no sabes qué pedir, pregunta qué hay: «¿qué grosores hay de 304?» o «¿qué acero recomiendas para hornos?»</p>

@@ -25,9 +25,40 @@
     }
   ],
   "nomenclatura_grados": {
-    "referencia": "EN",
+    "referencia": "AISI",
     "fuente_inventario": {"archivo": "backend/data/inventario.xlsx", "hoja": "DATA", "columnas": ["Euronorma", "AISI"]},
     "grados": {
+      "1.4513": {"sistema": "EN", "en": ["1.4513"]},
+      "1.4828": {"sistema": "EN", "en": ["1.4828"]},
+      "2001": {"sistema": "dúplex", "en": ["1.4482"]},
+      "201": {"sistema": "AISI", "en": ["1.4372"]},
+      "2101": {"sistema": "dúplex", "en": ["1.4162"], "alias": ["S32101"]},
+      "2205": {"sistema": "dúplex", "en": ["1.4462"]},
+      "2304": {"sistema": "dúplex", "en": ["1.4362"]},
+      "301": {"sistema": "AISI", "en": ["1.4310"]},
+      "301LN": {"sistema": "AISI", "en": ["1.4318"]},
+      "304": {"sistema": "AISI", "en": ["1.4301"], "alias": ["304DDQ"]},
+      "304L": {"sistema": "AISI", "en": ["1.4306", "1.4307"]},
+      "309S": {"sistema": "AISI", "en": ["1.4833"]},
+      "310S": {"sistema": "AISI", "en": ["1.4845"]},
+      "314": {"sistema": "AISI", "en": ["1.4841"], "fuente": ""},
+      "316": {"sistema": "AISI", "en": ["1.4401"]},
+      "316L": {"sistema": "AISI", "en": ["1.4404", "1.4432", "1.4435"]},
+      "316Ti": {"sistema": "AISI", "en": ["1.4571"]},
+      "321": {"sistema": "AISI", "en": ["1.4541"]},
+      "409L": {"sistema": "AISI", "en": ["1.4512"]},
+      "420": {"sistema": "AISI", "en": ["1.4021", "1.4028", "1.4031", "1.4034"]},
+      "420MoV": {"sistema": "AISI", "en": ["1.4116"]},
+      "430": {"sistema": "AISI", "en": ["1.4016"]},
+      "430Nb": {"sistema": "AISI", "en": ["1.4511"]},
+      "430Ti": {"sistema": "AISI", "en": ["1.4510"]},
+      "434": {"sistema": "AISI", "en": ["1.4113"]},
+      "436": {"sistema": "AISI", "en": ["1.4526"], "fuente": ""},
+      "441": {"sistema": "AISI", "en": ["1.4509"], "fuente": ""},
+      "444": {"sistema": "AISI", "en": ["1.4521"]},
+      "904L": {"sistema": "AISI", "en": ["1.4539"]}
+    },
+    "referencias_en": {
       "1.4016": {
         "fichas": [
           {"mat": "MAT 490", "designacion_comercial": "430", "grado_comercial": "430", "uns": ["S43000"]},
@@ -84,7 +115,7 @@
       },
       "1.4306": {
         "otras_fuentes": [
-          {"designacion_comercial": "304L", "grado_comercial": "304L", "url": ""}
+          {"mat": "MAT 232", "designacion_comercial": "304L", "grado_comercial": "304L", "url": ""}
         ],
         "designaciones_inventario": ["304L"]
       },
@@ -299,6 +330,7 @@
     "430NB",
     "430TI",
     "434",
+    "436",
     "441",
     "444",
     "904L",
