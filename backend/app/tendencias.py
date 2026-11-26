@@ -10,6 +10,7 @@ from app.reportes import ZONA_REPORTE, reporte_de_semana
 
 
 FORMATOS = ("bobina", "chapa", "fleje")
+CAMPOS_MATERIAL = ("formato", "grado", "acabado", "espesor_mm", "ancho_mm", "largo_mm")
 
 
 def _lunes(fecha):
@@ -31,6 +32,13 @@ def _material(bulto):
     )
 
 
+def _stock_disponible(conexion):
+    return conexion.execute(
+        """SELECT formato, aisi, euronorma, acabado, espesor_mm, ancho_mm, largo_mm, peso_kg
+           FROM bultos WHERE estado = 'disponible'""",
+    ).fetchall()
+
+
 def tendencias_compras(semanas: int, unidad: str, *, ahora: datetime | None = None) -> dict:
     ahora = (ahora or datetime.now(ZONA_REPORTE)).astimezone(ZONA_REPORTE)
     actual = _lunes(ahora.date())
@@ -46,10 +54,7 @@ def tendencias_compras(semanas: int, unidad: str, *, ahora: datetime | None = No
         reportes = [
             reporte_de_semana(conexion, lunes, hasta_ms=hasta) for lunes in lunes_del_periodo
         ]
-        stock = conexion.execute(
-            """SELECT formato, aisi, euronorma, acabado, espesor_mm, ancho_mm, largo_mm, peso_kg
-               FROM bultos WHERE estado = 'disponible'""",
-        ).fetchall() if con_stock else []
+        stock = _stock_disponible(conexion) if con_stock else []
 
     def semana_de(ms):
         return _lunes(datetime.fromtimestamp(ms / 1000, ZONA_REPORTE).date())
@@ -98,11 +103,124 @@ def tendencias_compras(semanas: int, unidad: str, *, ahora: datetime | None = No
         })
         anterior = lunes if completa else None
 
-    campos = ("formato", "grado", "acabado", "espesor_mm", "ancho_mm", "largo_mm")
     materiales = [
-        {**dict(zip(campos, material)), "comprado": float(cantidad),
+        {**dict(zip(CAMPOS_MATERIAL, material)), "comprado": float(cantidad),
          "stock_actual": float(disponibilidades[material]) if con_stock else None}
         for material, cantidad in sorted(compras.items(), key=lambda par: (-par[1], str(par[0])))
     ]
     return {"unidad": unidad, "zona_horaria": ZONA_REPORTE.key,
             "semanas": serie, "materiales": materiales}
+
+
+# --- Reposición ---------------------------------------------------------------
+
+SEMANAS_REPOSICION = 4
+DIAS_REPOSICION = SEMANAS_REPOSICION * 7
+UMBRALES_REPOSICION = {
+    "semanas_minimas_recurrente": 2,     # reponer y vigilar: ventas en al menos 2 semanas
+    "cobertura_reponer_dias": 7,         # reponer: cobertura < 7
+    "cobertura_vigilar_max_dias": 14,    # vigilar: 7 <= cobertura <= 14
+    "puntual_stock_max_t": 2,            # salida puntual: 1 semana con ventas y stock < 2 t
+}
+FILTRO_REPOSICION = {"vendido_min_t": 2, "stock_max_t": 2}   # ambos estrictos
+SECCIONES_REPOSICION = ("reponer", "vigilar", "puntual")
+
+
+def _kg_vendidos(compra) -> Decimal:
+    """Kilos de una compra consolidada; 0 si el peso no se puede reconstruir.
+
+    kg y t se suman directamente. Un bulto entero solo cuenta si no hay kg ni t
+    registrados y se conoce su peso. Las piezas no cuentan: la ficha del reporte
+    no trae las piezas del bulto.
+    """
+    kg = Decimal(0)
+    bultos = None
+    for importe in compra["cantidades_sustraidas"]:
+        valor = Decimal(str(importe["valor"]))
+        if importe["unidad"] == "kg":
+            kg += valor
+        elif importe["unidad"] == "t":
+            kg += valor * 1000
+        elif importe["unidad"] == "bultos":
+            bultos = valor
+    peso = compra["caracteristicas"].get("peso_kg")
+    if not kg and bultos == 1 and peso:
+        kg = Decimal(str(peso))
+    return kg
+
+
+def _seccion(semanas: int, cobertura: Decimal, stock_kg: Decimal) -> str | None:
+    u = UMBRALES_REPOSICION
+    if semanas >= u["semanas_minimas_recurrente"]:
+        if cobertura < u["cobertura_reponer_dias"]:
+            return "reponer"
+        if cobertura <= u["cobertura_vigilar_max_dias"]:
+            return "vigilar"
+    elif semanas == 1 and stock_kg < u["puntual_stock_max_t"] * 1000:
+        return "puntual"
+    return None
+
+
+def recomendaciones_reposicion(*, ahora: datetime | None = None) -> dict:
+    """Clasifica las referencias vendidas en las últimas 4 semanas completas según su cobertura."""
+    ahora = (ahora or datetime.now(ZONA_REPORTE)).astimezone(ZONA_REPORTE)
+    actual = _lunes(ahora.date())
+    lunes_del_periodo = [actual - timedelta(weeks=n) for n in range(SEMANAS_REPOSICION, 0, -1)]
+    hasta = int(ahora.timestamp() * 1000)
+    with closing(get_conn()) as conexion:
+        conexion.execute("BEGIN")
+        reportes = [reporte_de_semana(conexion, lunes, hasta_ms=hasta) for lunes in lunes_del_periodo]
+        stock = _stock_disponible(conexion)
+
+    vendido = defaultdict(Decimal)
+    semanas_con_venta = defaultdict(set)
+    for lunes, reporte in zip(lunes_del_periodo, reportes):
+        for compra in reporte["compras"]:
+            kg = _kg_vendidos(compra)
+            if kg <= 0:
+                continue
+            material = _material(dict(compra["caracteristicas"], formato=compra["formato"]))
+            vendido[material] += kg
+            semanas_con_venta[material].add(lunes)
+
+    disponible = defaultdict(Decimal)
+    for bulto in stock:
+        if bulto["peso_kg"] is not None:
+            disponible[_material(dict(bulto))] += Decimal(str(bulto["peso_kg"]))
+
+    filas = []
+    for material, kg in vendido.items():
+        stock_kg = disponible[material]
+        semanas = len(semanas_con_venta[material])
+        cobertura = stock_kg / (kg / DIAS_REPOSICION)
+        seccion = _seccion(semanas, cobertura, stock_kg)
+        if seccion is None:
+            continue
+        filas.append((cobertura, -kg, str(material), {
+            **dict(zip(CAMPOS_MATERIAL, material)),
+            "seccion": seccion,
+            "vendido_t": round(float(kg / 1000), 3),
+            "disponible_t": round(float(stock_kg / 1000), 3),
+            "semanas_con_ventas": semanas,
+            "cobertura_dias": round(float(cobertura), 1),
+            "cumple_filtro": (kg > FILTRO_REPOSICION["vendido_min_t"] * 1000
+                              and stock_kg < FILTRO_REPOSICION["stock_max_t"] * 1000),
+        }))
+    filas.sort(key=lambda fila: fila[:3])
+    secciones = {nombre: [] for nombre in SECCIONES_REPOSICION}
+    for *_, fila in filas:
+        secciones[fila["seccion"]].append(fila)
+
+    return {
+        "periodo": {
+            "inicio": lunes_del_periodo[0].isoformat(),
+            "fin": (actual - timedelta(days=1)).isoformat(),
+            "semanas": SEMANAS_REPOSICION,
+            "dias": DIAS_REPOSICION,
+            "zona_horaria": ZONA_REPORTE.key,
+        },
+        "stock_a": ahora.isoformat(timespec="seconds"),
+        "umbrales": UMBRALES_REPOSICION,
+        "filtro": FILTRO_REPOSICION,
+        "secciones": secciones,
+    }
