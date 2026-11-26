@@ -3,8 +3,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from app import config
 from app.db import crear_db, disponibles
 from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_alternativas, buscar_bultos, construir_objetivo, valores_disponibles
 from app.conversacion import cargar_env, responder_chat
@@ -22,13 +23,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Asistente de inventario AcerIA", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES,   # nunca "*": otra web podría vender bultos
+                   allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 
 class MensajeChat(BaseModel):
-    conversacion_id: str | None = None
-    mensaje: str | None = None      # formato de Alonso y de la evaluación de Lucas
-    texto: str | None = None        # formato del frontend de Stanis (docs/contrato.md §6)
+    conversacion_id: str | None = Field(None, max_length=100)
+    mensaje: str | None = Field(None, max_length=config.MAX_LONGITUD_MENSAJE)   # formato de Alonso y de la evaluación de Lucas
+    texto: str | None = Field(None, max_length=config.MAX_LONGITUD_MENSAJE)     # formato del frontend de Stanis (docs/contrato.md §6)
 
 
 def compatibilizar(r: dict) -> dict:

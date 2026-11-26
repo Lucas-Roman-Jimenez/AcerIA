@@ -34,7 +34,9 @@ function filtrosConsulta(campo, texto, esp) {
   return filtros
 }
 
-const nuevoId = () => `c-${Date.now().toString(36)}`
+// ID aleatorio (128 bits): con Date.now() se podía adivinar y escribir en la conversación de otro.
+// getRandomValues funciona también fuera de HTTPS (randomUUID no).
+const nuevoId = () => `c-${Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')}`
 const plural = (n, palabra) => `${n} ${palabra}${n === 1 ? '' : 's'}`
 
 function cuando(fecha) {

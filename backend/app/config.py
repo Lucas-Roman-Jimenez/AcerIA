@@ -1,4 +1,5 @@
 """Parámetros de negocio. Todo lo que hay que confirmar con el mentor está aquí, no en la lógica."""
+import os
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
@@ -7,6 +8,15 @@ DATA = BASE / "data"
 INVENTARIO = DATA / "inventario.xlsx"
 ESTADOS_DEMO = DATA / "estados_demo.csv"   # opcional: id;estado para simular reservados/bloqueados
 DB_PATH = DATA / "aceria.db"
+
+
+# Orígenes que pueden llamar a la API desde el navegador (CORS). arrancar.py pasa el del frontend;
+# para otro despliegue: ACERIA_CORS_ORIGENES="https://mi-frontend,https://otro".
+CORS_ORIGENES = [o.strip() for o in os.environ.get(
+    "ACERIA_CORS_ORIGENES", "http://127.0.0.1:5173,http://localhost:5173").split(",") if o.strip()]
+
+# Longitud máxima de un mensaje de chat: cada uno va al LLM de pago junto con el historial.
+MAX_LONGITUD_MENSAJE = 2000
 
 # Sin largo -> bobina o fleje. Por debajo de este ancho se considera fleje. POR CONFIRMAR.
 UMBRAL_FLEJE_MM = 600

@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 RAIZ = Path(__file__).resolve().parents[2]          # raíz del repo: llm/ y reglas/ viven ahí
 if str(RAIZ) not in sys.path:
@@ -52,7 +53,7 @@ def _respuesta(conv_id: str, estado: str, texto: str, especificacion: dict, **ex
 
 
 def responder_chat(conv_id: str | None, mensaje: str) -> dict:
-    conv_id = conv_id or "demo-1"
+    conv_id = conv_id or f"c-{uuid4().hex}"     # sin ID, conversación nueva: nunca una compartida
     historial = conversaciones.setdefault(conv_id, [])
     historial.append({"rol": "comercial", "texto": mensaje or ""})
 
