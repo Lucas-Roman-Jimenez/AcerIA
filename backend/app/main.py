@@ -7,13 +7,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from typing import Literal
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app import config
 from app.db import crear_db, disponibles
 from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_alternativas, buscar_bultos, construir_objetivo, valores_disponibles
 from app.conversacion import cargar_env, responder_chat
 from app.ventas import BultosNoDisponibles, vender
-from app.reservas import liberar, liberar_todas, mis_reservas, reservar
+from app.reservas import DemasiadasReservas, liberar, liberar_todas, mis_reservas, reservar
 from app.reportes import reporte_diario_inventario, reporte_semanal
 from app.modelos import (MENSAJE_GENERAL, PATRON_CARRITO, CampoStock, Especificacion, Formato, ListaBultos,
                          MensajeChat, errores_legibles)
@@ -37,8 +38,26 @@ async def lifespan(app: FastAPI):
 log = logging.getLogger("aceria")
 
 app = FastAPI(title="Asistente de inventario AcerIA", lifespan=lifespan)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=config.HOSTS_PERMITIDOS)   # frena el DNS rebinding
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGENES,   # nunca "*": otra web podría vender bultos
                    allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type", "X-Carrito"])
+
+
+# Cabeceras de seguridad en todas las respuestas. frame-ancestors deja incrustar la API (el PDF de las fichas
+# en el iframe de las tarjetas) solo en el propio backend y en el frontend (los mismos orígenes que CORS).
+CABECERAS_SEGURIDAD = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": " ".join(["frame-ancestors 'self'", *config.CORS_ORIGENES]),
+}
+
+
+@app.middleware("http")
+async def cabeceras_seguridad(request: Request, call_next):
+    respuesta = await call_next(request)
+    for nombre, valor in CABECERAS_SEGURIDAD.items():
+        respuesta.headers.setdefault(nombre, valor)
+    return respuesta
 
 
 @app.exception_handler(RequestValidationError)
@@ -135,14 +154,23 @@ def _sin_titular() -> HTTPException:
 @app.post("/reservas")
 def crear_reserva(r: ListaBultos, titular: str = Depends(titular_actual)):
     """Al añadir al carrito: reserva los bultos (todos o ninguno) durante config.RESERVA_MINUTOS.
-    Si ya eran del titular, renueva la caducidad. 409 si alguno lo tiene otro o ya no está disponible."""
+    Si ya eran del titular, renueva la caducidad. 409 si alguno lo tiene otro o ya no está disponible,
+    o si el carrito pasaría de config.MAX_RESERVAS_CARRITO bultos reservados."""
     if not titular:
         raise _sin_titular()
     try:
         return {"reservas": reservar(r.bultos, titular), "minutos": config.RESERVA_MINUTOS}
     except BultosNoDisponibles as e:
-        raise HTTPException(409, {"mensaje": "Algún bulto ya está reservado o no está disponible; "
-                                             "no se ha reservado nada.", "no_disponibles": e.ids})
+        # Con un solo bulto se dice cuál (es el que se acaba de pedir). Con varios no: si no, una sola
+        # petición de 200 IDs serviría para sondear qué bultos tienen reservados los demás.
+        detalle = {"mensaje": "Algún bulto ya está reservado o no está disponible; no se ha reservado nada."}
+        if len({str(i).strip() for i in r.bultos}) == 1:
+            detalle["no_disponibles"] = e.ids
+        raise HTTPException(409, detalle)
+    except DemasiadasReservas:
+        raise HTTPException(409, {"mensaje": f"Un carrito puede tener como mucho {config.MAX_RESERVAS_CARRITO} "
+                                             "bultos reservados; no se ha reservado nada.",
+                                  "maximo": config.MAX_RESERVAS_CARRITO})
     except ValueError as e:
         log.info("Reserva rechazada: %s", e)
         raise HTTPException(422, "No hay bultos que reservar.")

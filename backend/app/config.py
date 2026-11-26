@@ -22,6 +22,12 @@ FICHAS_TIMEOUT_S = 30
 CORS_ORIGENES = [o.strip() for o in os.environ.get(
     "ACERIA_CORS_ORIGENES", "http://127.0.0.1:5173,http://localhost:5173").split(",") if o.strip()]
 
+# Nombres con los que se puede llamar a la API (cabecera Host). Frena el «DNS rebinding»: una web maliciosa
+# que hace apuntar su dominio a 127.0.0.1 llega con su propio Host y recibe 400. «testserver» es el Host del
+# TestClient de los tests (no es un dominio público). Otro despliegue: ACERIA_HOSTS="mi-dominio,otro".
+HOSTS_PERMITIDOS = [h.strip() for h in os.environ.get(
+    "ACERIA_HOSTS", "127.0.0.1,localhost,testserver").split(",") if h.strip()]
+
 # Longitud máxima de un mensaje de chat: cada uno va al LLM de pago junto con el historial.
 MAX_LONGITUD_MENSAJE = 2000
 
@@ -54,6 +60,7 @@ MAX_ESPESOR_MM = 100
 MAX_ANCHO_MM = 5000
 MAX_LARGO_MM = 20000
 MAX_BULTOS_CARRITO = 200      # IDs por reserva o venta (también evita pasar el límite de variables de SQLite)
+MAX_RESERVAS_CARRITO = 50     # bultos reservados a la vez por un carrito: nadie bloquea todo el stock
 MAX_LONGITUD_ID = 50          # ID de bulto (los del inventario tienen hasta 4 caracteres)
 MAX_LONGITUD_VALOR = 50       # grado, acabado y cada opción (el acabado más largo tiene 17)
 MAX_OPCIONES = 10             # valores por campo en «opciones» (p. ej. brillante -> BA o 2R)

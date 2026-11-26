@@ -215,11 +215,15 @@ Al quitarlo del carrito, o cuando caduca la reserva, vuelve a estar disponible. 
 
 | Llamada | Cuándo | Respuesta |
 | --- | --- | --- |
-| `POST /reservas` con `{"bultos": ["334"]}` | Al añadir al carrito | 200 `{"reservas": [{"bulto_id": "334", "expira_en": "2026-11-26T10:15:00+01:00"}], "minutos": 15}`. Se reservan todos o ninguno. Si un bulto ya era tuyo, se renueva su caducidad. 409 `{"detail": {"mensaje": ..., "no_disponibles": ["334"]}}` si alguno lo tiene otro o no está disponible. |
+| `POST /reservas` con `{"bultos": ["334"]}` | Al añadir al carrito | 200 `{"reservas": [{"bulto_id": "334", "expira_en": "2026-11-26T10:15:00+01:00"}], "minutos": 15}`. Se reservan todos o ninguno. Si un bulto ya era tuyo, se renueva su caducidad. 409 `{"detail": {"mensaje": ..., "no_disponibles": ["334"]}}` si alguno lo tiene otro o no está disponible. `no_disponibles` solo viene cuando se pide **un** bulto; con varios, el 409 lleva solo `mensaje`, para que no sirva para sondear qué tienen reservado los demás. |
 | `DELETE /reservas/{bulto_id}` | Al quitar un bulto del carrito | 204. Si no está en tu carrito, 404. |
 | `DELETE /reservas` | Al vaciar el carrito | 200 `{"liberadas": 2}`. Solo libera las tuyas. |
 | `GET /reservas` | Al recargar la página | 200 `{"reservas": [...], "minutos": 15}`: tus reservas vigentes, en el orden en que se añadieron. |
 | `POST /compras` con `{"bultos": [...]}` | Al confirmar la venta | **Cambia:** solo vende los bultos con reserva vigente **tuya**. Si no, 409 con `no_disponibles` y no se vende nada. Al vender se borran esas reservas. |
+
+**Límite por carrito:** un carrito puede tener como mucho `config.MAX_RESERVAS_CARRITO` (50) bultos reservados a la vez; renovar los propios no suma. Si `POST /reservas` lo pasaría, responde 409 `{"detail": {"mensaje": "Un carrito puede tener como mucho 50 bultos reservados; no se ha reservado nada.", "maximo": 50}}` (sin `no_disponibles`) y no reserva nada.
+
+**Host:** la API solo responde a los nombres de `config.HOSTS_PERMITIDOS` (`127.0.0.1` y `localhost`; otro despliegue: `ACERIA_HOSTS`). Con otro `Host` responde 400. Frena el «DNS rebinding».
 
 Sin la cabecera `X-Carrito`, todas responden 422 con `"Falta la cabecera X-Carrito."`. En `/compras`, el texto es `"El carrito está vacío o no es válido."`. Una lista de bultos vacía, de más de 200 o con IDs de más de 50 caracteres da el 422 de la sección 9.
 

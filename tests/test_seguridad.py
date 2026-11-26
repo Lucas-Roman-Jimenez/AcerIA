@@ -122,3 +122,18 @@ def test_compras_vacia_devuelve_un_mensaje_fijo(cliente):
     assert r.status_code == 422
     assert r.json() == {"detail": "Datos no válidos.",                 # tarea 6: formato común de los 422
                         "errores": [{"campo": "bultos", "mensaje": "no puede estar vacío"}]}
+
+
+def test_respuestas_con_cabeceras_de_seguridad(cliente):
+    r = cliente.get("/health")
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["referrer-policy"] == "no-referrer"
+    politica = r.headers["content-security-policy"]
+    assert politica.startswith("frame-ancestors 'self'")
+    assert FRONTEND in politica                          # el iframe de las fichas sigue funcionando
+    assert "*" not in politica
+
+
+def test_los_errores_tambien_llevan_las_cabeceras(cliente):
+    r = cliente.post("/compras", json={"bultos": []}, headers={"X-Carrito": "a"})
+    assert r.status_code == 422 and r.headers["x-content-type-options"] == "nosniff"

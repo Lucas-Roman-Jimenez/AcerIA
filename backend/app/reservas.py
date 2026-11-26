@@ -22,6 +22,10 @@ from app.reportes import ZONA_REPORTE
 from app.ventas import BultosNoDisponibles
 
 
+class DemasiadasReservas(Exception):
+    """El carrito pasaría de config.MAX_RESERVAS_CARRITO bultos reservados: no se reserva nada."""
+
+
 def _ms(momento: datetime) -> int:
     return int(momento.timestamp() * 1000)
 
@@ -45,7 +49,8 @@ def reservar(bulto_ids: list[str], titular: str, *, ahora: datetime | None = Non
     """Reserva los bultos para el titular: o todos o ninguno.
 
     Si un bulto ya es del titular, renueva la caducidad. Lanza BultosNoDisponibles con los que no
-    existen, no están disponibles o tienen una reserva vigente de otro titular.
+    existen, no están disponibles o tienen una reserva vigente de otro titular, y DemasiadasReservas si el
+    carrito pasaría de config.MAX_RESERVAS_CARRITO bultos reservados.
     """
     titular = _comprobar_titular(titular)
     ids = _limpiar_ids(bulto_ids)
@@ -65,6 +70,10 @@ def reservar(bulto_ids: list[str], titular: str, *, ahora: datetime | None = Non
             no_disponibles = [i for i in ids if estados.get(i) != "disponible" or i in de_otros]
             if no_disponibles:
                 raise BultosNoDisponibles(no_disponibles)
+            # Límite por carrito: las que ya tiene más las nuevas (renovar las propias no suma).
+            mias = {f[0] for f in conn.execute("SELECT bulto_id FROM reservas WHERE titular = ?", (titular,))}
+            if len(mias | set(ids)) > config.MAX_RESERVAS_CARRITO:
+                raise DemasiadasReservas()
 
             conn.executemany(
                 "INSERT INTO reservas (bulto_id, titular, creada_en_ms, expira_en_ms) VALUES (?, ?, ?, ?) "
