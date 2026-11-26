@@ -89,7 +89,8 @@ def test_pregunta_antes_de_buscar(api, llm_falso):
     assert r["especificacion"]["faltan"] == ["espesor_mm"]
 
 
-@pytest.mark.parametrize("acabado,opciones", [(None, {"acabado": ["BA", "2R"]}), ("2R", {}), ("2B", {})])
+# «brillante» = BA sale del glosario (BA y 2R) y de normalizar(), no de reglas en el código.
+@pytest.mark.parametrize("acabado,opciones", [(None, {"acabado": ["BA", "2R"]}), ("2R", {})])
 def test_cl08_interpreta_brillante_como_ba_y_comunica_sin_stock(api, llm_falso, monkeypatch, acabado, opciones):
     from evaluar_api import CASOS, evaluar
 
@@ -113,6 +114,14 @@ def test_cl08_interpreta_brillante_como_ba_y_comunica_sin_stock(api, llm_falso, 
     informe = evaluar([caso], enviar)
     assert informe["interpretacion"]["aciertos"] == 1
     assert informe["resultados"]["aciertos"] == 1
+
+
+def test_una_negacion_de_brillante_no_se_convierte_en_ba(api, llm_falso, monkeypatch):
+    cliente, _ = api
+    llm_falso(extraccion(grado="304", formato="chapa", espesor_mm=2))       # el LLM no pone acabado
+    monkeypatch.setattr(interprete, "_catalogo", Catalogo.cargar())
+    r = chat(cliente, "chapa 304 de 2 mm que no sea brillante", conv="negacion")
+    assert r["especificacion"]["acabado"] is None
 
 
 def test_el_historial_se_guarda_por_conversacion(api, llm_falso):
