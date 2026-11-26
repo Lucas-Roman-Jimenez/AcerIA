@@ -157,7 +157,7 @@ def test_redaccion_llm_falla_y_usa_plantilla():
 def test_redaccion_llm_rechazada_si_pierde_una_opcion():
     cli = ClienteFalso([extraccion(espesor_mm=2), "¿Qué grado necesitas, 304 o 316?"])
     r = interpretar(H, cliente=cli, catalogo=CAT, redactar_con_llm=True)
-    assert r.pregunta == "¿Qué grado necesitas? Por ejemplo: 304, 304L y 316."
+    assert r.pregunta == "¿Qué grado necesitas? Por ejemplo: 304, 316L y 430."   # los habituales (GRADOS_EJEMPLO)
 
 
 def test_redaccion_llm_rechazada_si_saluda():

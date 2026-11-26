@@ -84,6 +84,34 @@ def test_la_respuesta_dice_que_el_uso_no_esta_en_el_catalogo():
     assert aviso in texto and "«X»" not in texto
 
 
+# ---------- nombres de grado para el comercial: AISI y pocos ----------
+
+def test_ejemplos_de_grado_habituales_y_no_los_primeros_del_catalogo():
+    r = interpretar([{"rol": "comercial", "texto": "algo de 2 mm"}],
+                    cliente=ClienteFalso([extraccion(espesor_mm=2)]), catalogo=CATALOGO_REAL)
+    assert r.pregunta == "¿Qué grado necesitas? Por ejemplo: 304, 316L y 430."
+
+
+def test_grado_que_no_existe_sin_parecidos_sugiere_los_habituales():
+    for valor in ("titanio", "999X"):
+        r = interpretar([{"rol": "comercial", "texto": f"{valor} de 2 mm"}],
+                        cliente=ClienteFalso([extraccion(grado=valor, espesor_mm=2)]), catalogo=CATALOGO_REAL)
+        assert r.pregunta.endswith("¿Te refieres a alguno de estos: 304, 316L, 430 y 304L?"), r.pregunta
+    r = interpretar([{"rol": "comercial", "texto": "340 de 2 mm"}],
+                    cliente=ClienteFalso([extraccion(grado="340", espesor_mm=2)]), catalogo=CATALOGO_REAL)
+    assert "430" in r.pregunta and "1.4016" not in r.pregunta                 # parecidos de verdad
+
+
+def test_opciones_de_grado_en_aisi_y_como_mucho_cuatro():
+    en = ["1.4310", "1.4362", "1.4401", "1.4404", "1.4432", "1.4435", "1.4482", "1.4539", "1.4571"]
+    esp = Especificacion(espesor_mm=1, opciones={"grado": en})
+    p = pregunta_tras_busqueda(esp, [{"id": "1", "acabado": "2B"}, {"id": "2", "acabado": "BA"}],
+                               catalogo=CATALOGO_REAL)
+    # 1.4404, 1.4432 y 1.4435 son los tres 316L: quedan 7 nombres distintos
+    assert p == "Tengo 301, 1.4362, 316, 316L u otros 3 de 1 mm en 2B y en BA. ¿Cuál prefieres?"
+    assert esp.opciones["grado"] == en                     # la búsqueda sigue con los valores del catálogo
+
+
 # ---------- control del texto del LLM con IDs numéricos ----------
 
 def test_ids_numericos_como_palabra_completa():
