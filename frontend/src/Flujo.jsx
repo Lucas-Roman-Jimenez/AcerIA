@@ -15,7 +15,14 @@ const num = v => String(v).replace('.', ',')
 const etiqueta = k => CAMPOS.find(c => c[0] === k)?.[1] ?? k
 const unidad = k => CAMPOS.find(c => c[0] === k)?.[2]
 const conUnidad = (k, v) => `${num(v)}${unidad(k) ? ' ' + unidad(k) : ''}`
-export const fraseCambio = (k, v) => `El ${etiqueta(k).toLowerCase()} es ${conUnidad(k, v)}`
+// El inventario trae grados dobles («304L/304») que el intérprete no reconoce: se envía una de sus partes
+// (la preferida si está, si no la primera). El buscador acepta cualquier bulto que tenga esa designación.
+export function gradoParaBackend(valor, preferido) {
+  const partes = String(valor).split('/').map(p => p.trim()).filter(Boolean)
+  if (partes.length < 2) return valor
+  return partes.find(p => p.toUpperCase() === String(preferido ?? '').toUpperCase()) ?? partes[0]
+}
+export const fraseCambio = (k, v) => `El ${etiqueta(k).toLowerCase()} es ${k === 'grado' ? gradoParaBackend(v) : conUnidad(k, v)}`
 
 const hayStock = async filtros => (await consultarValores('grado', filtros)).total_bultos > 0
 
@@ -159,7 +166,6 @@ export function Flujo({ analisis: a, activo, onEnviar, onCancelar, carrito, onCa
       {activo && (
         <div className="flujo-acciones">
           <span className="tenue">También puedes escribir más datos o la petición entera abajo.</span>
-          <button type="button" className="demo-salir" onClick={onCancelar}>Cancelar y volver al inicio</button>
         </div>
       )}
     </div>

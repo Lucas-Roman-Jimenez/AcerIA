@@ -342,3 +342,19 @@ button:disabled { cursor: default; opacity: .5; }
 .casilla-opciones-titulo { font-size: 12px; color: var(--oro); }
 .casilla-opciones .editor-lista { max-height: 220px; }
 .chip-stock.elegido { background: #fff; color: #000; }
+
+.casilla-quitar { position: absolute; top: 4px; right: 6px; background: none; border: none; color: #555; font-size: 12px;
+  line-height: 1; padding: 2px 4px; border-radius: 999px; cursor: pointer; }
+.casilla-quitar:hover:not(:disabled) { background: #000; color: #fff; }
+.casilla.llena { padding-right: 22px; }
+
+/* Barra de la consulta en curso: siempre arriba del chat, con la salida a mano */
+.barra-consulta { position: sticky; top: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 14px 10px 18px; margin-bottom: 4px; background: rgba(17, 17, 17, .92); backdrop-filter: blur(8px);
+  border: 1px solid var(--borde); border-radius: 16px; }
+.barra-consulta-texto { display: flex; flex-direction: column; min-width: 0; }
+.barra-consulta-etiqueta { font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 600; color: var(--tenue); }
+.barra-consulta-titulo { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.salir-flujo { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; background: none; color: #fff; border: 1px solid #fff;
+  border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background var(--suave), color var(--suave); }
+.salir-flujo:hover { background: #fff; color: #000; }

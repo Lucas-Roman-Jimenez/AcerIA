@@ -1,4 +1,5 @@
 import { buscarFicha } from './Acero.jsx'
+import { gradoParaBackend } from './Flujo.jsx'
 
 const NOMBRES = {
   espesor_mm: 'grosores', ancho_mm: 'anchos', acabado: 'acabados', formato: 'formatos', grado: 'tipos de acero',
@@ -31,7 +32,7 @@ export function textoConsulta({ campo, filtros, valores }, avisos = []) {
 
 // Lo que se añade a la caja de texto al pulsar un valor: lo ya filtrado más el valor elegido.
 export function fragmentoPeticion(campo, filtros, valor) {
-  const d = { ...filtros, [campo]: valor }
+  const d = { ...filtros, [campo]: campo === 'grado' ? gradoParaBackend(valor) : valor }
   const producto = [d.formato, d.grado, d.acabado, d.espesor_mm != null && `de ${num(d.espesor_mm)} mm`].filter(Boolean).join(' ')
   return [producto, d.ancho_mm != null && `${num(d.ancho_mm)} de ancho`].filter(Boolean).join(', ')
 }
