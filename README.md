@@ -40,18 +40,6 @@ Las fichas PDF solo se sirven si están instaladas en `backend/data/fichas/`. El
 
 Para volver a las reglas locales, detén la aplicación con `Ctrl+C` y ejecuta `python arrancar.py`.
 
-## Probar el chat con una IA personal en local
-
-> [!NOTE]
-> El modelo es opcional. Con Ollama, tu ordenador interpreta las peticiones en lenguaje natural. AcerIA sigue comprobando el stock y las transformaciones contra el inventario de ejemplo. Esta configuración usa un modelo descargado y funciona sin claves de API ni cargos por tokens.
-
-1. Instala [Ollama](https://ollama.com/download) y abre la aplicación. Si usas la terminal y el servicio aún no está en marcha, ejecuta `ollama serve` y déjalo abierto.
-2. Descarga un modelo local con `ollama pull qwen2.5:7b`. Puedes elegir otro modelo instalado que admita salidas JSON estructuradas. Comprueba su nombre con `ollama list`. [Ficha del modelo](https://ollama.com/library/qwen2.5:7b)
-3. Con las dependencias del apartado anterior instaladas, detén AcerIA si ya está en marcha. Desde la raíz del proyecto, ejecuta `python arrancar.py --ollama qwen2.5:7b`.
-4. En el chat, escribe «Busco una chapa 304 con acabado BA, de 2 mm de espesor y 1250 mm de ancho». Las respuestas procesadas por el backend incluyen el aviso «Consulta interpretada con un modelo de IA local».
-
-Si el chat muestra un error, prueba `ollama run qwen2.5:7b "Responde hola"` para comprobar que el modelo está disponible. AcerIA se conecta a `127.0.0.1:11434`. Para volver al modo de reglas, detén AcerIA con `Ctrl+C` y arranca con `python arrancar.py`.
-
 ## Código y pruebas
 
 - `frontend/` contiene la interfaz React.
