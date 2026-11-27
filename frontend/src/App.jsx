@@ -22,6 +22,7 @@ const DEMO = [
   { texto: '1250', nota: 'Todo sale del inventario: ID, medidas y peso. Abre una tarjeta: «Por qué se propone» y «De dónde sale cada dato».' },
   { texto: '¿qué acero recomiendas para ambiente marino?', nueva: true, nota: 'Recomienda solo lo que respaldan las fichas de AcerIA (límite de cloruros) y comprueba qué hay en stock.' },
   { texto: '¿qué grosores hay de 316L?', nota: 'Para quien no conoce la nomenclatura: pregunta qué hay y elige con un clic, sin saber los códigos.' },
+  { telegram: 'https://web.telegram.org/k/#@AcerIAIAbot', nota: 'El mismo pedido, desde el móvil: el bot de Telegram @AcerIAIAbot usa este mismo backend, enseña los bultos como botones para reservarlos y confirma el pedido con /carrito.' },
 ]
 const espera = ms => new Promise(r => setTimeout(r, ms))
 
@@ -300,7 +301,9 @@ export default function App() {
 
   async function pasoDemo(i) {
     const paso = DEMO[i]
-    if (!paso) { setDemo(null); return }
+    if (!paso) { setDemo(null); salir(); return }   // al terminar la demo se vuelve a una consulta nueva
+    // Paso de Telegram: no se escribe nada en el chat, solo se explica y se ofrece abrir el bot.
+    if (paso.telegram) { setDemo({ paso: i, nota: paso.nota, enlace: paso.telegram }); return }
     setDemo({ paso: i, nota: null })
     let conv = actualRef.current
     if (paso.nueva || i === 0) {
@@ -351,6 +354,10 @@ export default function App() {
             onClick={() => { cancelarDictado(); setVistaReporte('inventario') }}>
             <Icono nombre="reporte" /> Reportes
           </button>
+          <a className="lateral-item" href="https://web.telegram.org/k/#@AcerIAIAbot" target="_blank" rel="noopener noreferrer"
+            title="Haz el pedido desde Telegram con el bot de acerIA">
+            <Icono nombre="telegram" /> Pedir por Telegram
+          </a>
           {!vacio && (
             <button type="button" className="lateral-item salir-flujo" onClick={salir}
               title="Salir de esta consulta y volver al inicio. El carrito se conserva.">
@@ -477,12 +484,14 @@ export default function App() {
             <div className="demo-barra" role="status">
               <span className="demo-paso">Demo · paso {demo.paso + 1} de {DEMO.length}</span>
               <span className="demo-nota">{demo.nota ?? 'Escribiendo…'}</span>
-              {demo.nota && (
-                <button className="demo-siguiente" onClick={() => pasoDemo(demo.paso + 1)} disabled={pensando}>
-                  {demo.paso + 1 < DEMO.length ? 'Siguiente ▶' : 'Terminar'}
-                </button>
+              {demo.enlace && (
+                <a className="demo-siguiente demo-enlace" href={demo.enlace} target="_blank" rel="noopener noreferrer">Abrir el bot ↗</a>
               )}
-              <button className="demo-salir" onClick={() => setDemo(null)}>Salir</button>
+              {demo.nota && demo.paso + 1 < DEMO.length && (
+                <button className="demo-siguiente" onClick={() => pasoDemo(demo.paso + 1)} disabled={pensando}>Siguiente ▶</button>
+              )}
+              {/* Un solo botón para acabar: en cualquier paso cierra la demo y vuelve a una consulta nueva */}
+              <button className="demo-salir" onClick={salir}>Terminar</button>
             </div>
           )}
           {comparar.length > 0 && (
@@ -553,6 +562,7 @@ const ICONOS = {
   nueva: <><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" /><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.5.7.7-3.5Z" /></>,
   demo: <><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M10 8.8v6.4l5.2-3.2Z" /></>,
   carrito: <><circle cx="9.5" cy="19.5" r="1.2" /><circle cx="17.5" cy="19.5" r="1.2" /><path d="M3 4h2.2l2.3 10.6a1.6 1.6 0 0 0 1.6 1.3h7.8a1.6 1.6 0 0 0 1.6-1.2L20 8H6" /></>,
+  telegram: <><path d="M21 4 3 11l6 2.2M21 4l-3.5 15.5L9 13.2M21 4 9 13.2m0 0V19l3-3.2" /></>,
   reporte: <><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M8.5 16v-4" /><path d="M12 16V8" /><path d="M15.5 16v-2.5" /></>,
   salir: <><path d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14" /><path d="M10 16l-4-4 4-4" /><path d="M6 12h9" /></>,
 }

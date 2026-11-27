@@ -1831,3 +1831,5 @@ select, .tend-controles select { field-sizing: content; width: auto; min-width: 
 }
 .reportes-vista { animation-delay: .05s; }
 @media (prefers-reduced-motion: reduce) { .principal > .inicio, .principal > .conversacion, .reportes, .reportes-vista { animation: none; } }
+a.lateral-item { text-decoration: none; }
+a.demo-enlace { text-decoration: none; display: inline-flex; align-items: center; }
