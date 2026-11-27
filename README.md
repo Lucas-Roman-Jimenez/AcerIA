@@ -8,10 +8,10 @@ La propiedad del proyecto AcerIA corresponde a los cuatro integrantes del equipo
 
 | Integrante | Aportaciones |
 | --- | --- |
-| Lucas Román Jiménez (`@Lucas-Roman-Jimenez`) | Catálogo y glosario, motor de reglas de transformación, normalización de voz, escenarios de evaluación y reportes de inventario. |
 | Ignacio de Diego Valera (`@Ignacioddv`) | Interpretación de consultas, validación y preguntas de aclaración, plantillas de respuesta, fichas técnicas, documentación de arquitectura e integración de Telegram. |
 | Alonso (`@alonsoo-cmd`) | Backend en FastAPI y SQLite, búsqueda y clasificación de alternativas, integración del motor de transformación, reservas, ventas, reposición y seguridad de la API. |
 | Stanis (`@stann15`) | Interfaz en React, chat, tarjetas de materiales, panel de interpretación, navegación, reproducción por voz e interfaz de demostración. |
+| Lucas Román Jiménez (`@Lucas-Roman-Jimenez`) | Catálogo y glosario, motor de reglas de transformación, normalización de voz, escenarios de evaluación y reportes de inventario. |
 
 ## Arranque local sin claves de IA
 
