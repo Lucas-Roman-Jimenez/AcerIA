@@ -424,6 +424,15 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     grado_pedido = bruto.get("grado") or (isinstance(opciones, dict) and opciones.get("grado"))
     if orientacion and (intencion == "consulta_tecnica" or (intencion == "pedido" and not grado_pedido)):
         return _responder_orientacion_obra(catalogo, orientacion, minimos, esp)
+    nota_uso = ""
+    if intencion == "consulta_tecnica" and (esp.uso or problemas["uso_desconocido"]):
+        # «¿Qué acero me recomiendas para ambiente marino?»: ya ha dicho para qué es. En vez de pedirle el
+        # uso otra vez, se cita lo que indica el catálogo (o que no indica nada) y se sigue como un pedido.
+        intencion = problemas["intencion"] = "pedido"
+        uso = catalogo.uso(esp.uso)
+        if uso and uso.get("grados"):
+            fuente = f" (fuente: {esp.fuente_uso})" if esp.fuente_uso else ""
+            nota_uso = f"Para {uso['uso']}, el catálogo indica {lista_y(uso['grados'])}{fuente}."
     if problemas["intencion"] != "pedido":
         _calcular_faltan(esp, minimos)
         return ResultadoInterpretacion("pregunta", esp, _respuesta_intencion(esp, problemas["intencion"], catalogo))
@@ -431,6 +440,8 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     if plantilla is None:
         return ResultadoInterpretacion("especificacion", esp)
     pregunta = _redactar(plantilla, cliente if redactar_con_llm else None, catalogo)
+    if nota_uso:                                  # la cita del catálogo nunca pasa por el LLM
+        pregunta = f"{nota_uso} {pregunta}"
     return ResultadoInterpretacion("pregunta", esp, pregunta)
 
 

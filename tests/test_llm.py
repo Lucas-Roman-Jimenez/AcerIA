@@ -355,6 +355,29 @@ def test_consulta_tecnica_solo_cita_usos_del_catalogo():
     assert "(por ejemplo, industria alimentaria o ambiente marino)" in r.pregunta   # preferidos primero
 
 
+def test_consulta_tecnica_con_uso_del_catalogo_cita_los_grados():
+    # «¿Qué acero me recomiendas para ambiente marino?»: no se le vuelve a pedir el uso.
+    r, cli = interp(extraccion(intencion="consulta_tecnica", uso="ambiente marino"))
+    assert r.tipo == "pregunta"
+    assert r.pregunta.startswith("Para ambiente marino, el catálogo indica 316 y 316L (fuente: ")
+    assert "No puedo comparar" not in r.pregunta and "Si me dices para qué es" not in r.pregunta
+    assert r.pregunta.endswith("¿Qué espesor necesitas, en milímetros?")
+    assert r.especificacion.opciones["grado"] == ["316", "316L"] and r.especificacion.uso == "ambiente marino"
+    assert len(cli.llamadas) == 1                 # solo la extracción
+
+
+def test_consulta_tecnica_con_uso_y_espesor_busca():
+    r, _ = interp(extraccion(intencion="consulta_tecnica", uso="ambiente marino", espesor_mm=2))
+    assert r.tipo == "especificacion" and r.especificacion.espesor_mm == 2.0
+
+
+def test_consulta_tecnica_con_uso_desconocido_lo_dice():
+    r, _ = interp(extraccion(intencion="consulta_tecnica", uso="terreno montañoso"))
+    assert r.tipo == "pregunta"
+    assert r.pregunta.startswith("El catálogo no indica qué grado es adecuado para «terreno montañoso»")
+    assert "Si me dices para qué es" not in r.pregunta
+
+
 def test_intencion_desconocida_se_trata_como_pedido():
     r, _ = interp(extraccion(intencion="inventada", grado="304", espesor_mm=2))
     assert r.tipo == "especificacion"
