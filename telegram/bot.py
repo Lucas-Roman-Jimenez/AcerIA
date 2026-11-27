@@ -9,8 +9,11 @@ Solo usa la biblioteca estándar (sin dependencias nuevas). Se arranca con:
     python telegram/bot.py
 y necesita TELEGRAM_TOKEN en el .env de la raíz (el token que da @BotFather). Ver telegram/README.md.
 """
+import hashlib
+import hmac
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -39,6 +42,9 @@ cargar_env()
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "").strip()
 BACKEND = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 API = f"https://api.telegram.org/bot{TOKEN}"
+# Clave para que el carrito y la conversación de cada chat no se puedan deducir de su ID (que no es secreto):
+# el token del bot, o una aleatoria si no hay (sin token el bot no arranca; sirve para pruebas).
+CLAVE_IDS = (TOKEN or os.urandom(32).hex()).encode("utf-8")
 
 AVISO_INICIO = ("Estás hablando con un asistente de inteligencia artificial. Interpreta tu petición y busca en el "
                 "inventario real de AcerIA, pero puede equivocarse: revisa los bultos antes de confirmar.")
@@ -79,8 +85,19 @@ def telegram(metodo: str, **params):
 
 
 def backend(metodo: str, ruta: str, cuerpo=None, carrito: str | None = None):
+    """(estado, cuerpo). Si el backend no responde (caído, sin red), estado 0: así cada acción avisa al comercial
+    en vez de quedarse callada. A Telegram no se le aplica: ahí el bucle principal reintenta."""
     cab = {"X-Carrito": carrito} if carrito else {}
-    return _peticion(metodo, f"{BACKEND}{ruta}", cuerpo, cab)
+    try:
+        return _peticion(metodo, f"{BACKEND}{ruta}", cuerpo, cab)
+    except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
+        print("Sin conexión con el backend:", e)
+        return 0, None
+
+
+SIN_BACKEND = "No he podido consultar el inventario ahora mismo. Inténtalo de nuevo en un momento."
+# El texto del backend está pensado para la web, donde cada bulto tiene su tarjeta. Aquí solo hay botones.
+_VER_TARJETAS = re.compile(r"\(ver las tarjetas\)")
 
 
 # ---------- Formato ----------
@@ -93,7 +110,11 @@ def num(v) -> str:
 
 
 def carrito_de(chat_id: int) -> str:
-    return f"tg{chat_id}".replace("-", "n")          # cumple el patrón de X-Carrito (letras, números, _ y -)
+    """ID del carrito del chat (cabecera X-Carrito). Antes era «tg<id del chat>»: el ID de un chat de Telegram no es
+    secreto, así que cualquiera con acceso al backend podía ver, soltar o vender las reservas de otro comercial.
+    Ahora es un HMAC del ID con el token del bot (128 bits, como el ID aleatorio de la web)."""
+    firma = hmac.new(CLAVE_IDS, str(chat_id).encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    return f"tg-{firma}"                               # cumple el patrón de X-Carrito (letras, números, _ y -)
 
 
 def conversacion_de(chat_id: int) -> str:
@@ -123,12 +144,14 @@ def responder_mensaje(chat_id: int, texto: str) -> None:
     telegram("sendChatAction", chat_id=chat_id, action="typing")
     estado, r = backend("POST", "/chat", {"conversacion_id": conversacion_de(chat_id), "texto": texto})
     if estado != 200 or not r:
-        telegram("sendMessage", chat_id=chat_id, text="No he podido consultar el inventario ahora mismo. Inténtalo de nuevo en un momento.")
+        telegram("sendMessage", chat_id=chat_id, text=SIN_BACKEND)
         return
     if r.get("tipo") == "error":
         telegram("sendMessage", chat_id=chat_id, text=r.get("error") or "No he podido entender la petición. ¿Puedes reformularla?")
         return
     cuerpo = r.get("pregunta") or r.get("texto") or ""
+    cuerpo = _VER_TARJETAS.sub("(con los botones puedes reservar los primeros; dime el acabado, el ancho u otro dato "
+                               "para acotar)", cuerpo)
     aviso = (r.get("aviso_ia") or {}).get("texto")
     if aviso:
         cuerpo += f"\n\nℹ️ {aviso}"
@@ -141,6 +164,8 @@ def responder_mensaje(chat_id: int, texto: str) -> None:
 
 def reservar(chat_id: int, bulto_id: str) -> str:
     estado, r = backend("POST", "/reservas", {"bultos": [bulto_id]}, carrito_de(chat_id))
+    if estado == 0:
+        return f"⚠️ {SIN_BACKEND}"
     if estado == 200:
         return f"✅ Bulto {bulto_id} reservado durante {r.get('minutos', 15)} minutos. Míralo con /carrito."
     detalle = (r or {}).get("detail")
@@ -149,7 +174,10 @@ def reservar(chat_id: int, bulto_id: str) -> str:
 
 def enviar_carrito(chat_id: int) -> None:
     estado, r = backend("GET", "/reservas", carrito=carrito_de(chat_id))
-    reservas = (r or {}).get("reservas") or [] if estado == 200 else []
+    if estado != 200:                                  # no es lo mismo «vacío» que «no lo sé»
+        telegram("sendMessage", chat_id=chat_id, text=SIN_BACKEND)
+        return
+    reservas = (r or {}).get("reservas") or []
     if not reservas:
         telegram("sendMessage", chat_id=chat_id, text="Tu carrito está vacío. Pídeme un material y reserva un bulto.")
         return
@@ -165,10 +193,14 @@ def enviar_carrito(chat_id: int) -> None:
 
 def comprar(chat_id: int) -> str:
     estado, r = backend("GET", "/reservas", carrito=carrito_de(chat_id))
-    ids = [str(x.get("bulto_id") or x.get("id") or x) for x in ((r or {}).get("reservas") or [])] if estado == 200 else []
+    if estado != 200:
+        return f"⚠️ {SIN_BACKEND}"
+    ids = [str(x.get("bulto_id") or x.get("id") or x) for x in ((r or {}).get("reservas") or [])]
     if not ids:
         return "No hay nada reservado que confirmar."
     estado, r = backend("POST", "/compras", {"bultos": ids}, carrito_de(chat_id))
+    if estado == 0:
+        return f"⚠️ {SIN_BACKEND}"
     if estado == 200:
         return f"🎉 Pedido confirmado: {', '.join(ids)}. Aparecerá en el reporte semanal de compras."
     detalle = (r or {}).get("detail")
@@ -184,7 +216,8 @@ def atender(u: dict) -> None:
             texto = reservar(chat_id, dato[4:])
         elif dato.startswith("quitar:"):
             estado, _ = backend("DELETE", f"/reservas/{dato[7:]}", carrito=carrito_de(chat_id))
-            texto = f"Bulto {dato[7:]} quitado del carrito." if estado == 204 else "Ese bulto ya no estaba en tu carrito."
+            texto = (f"Bulto {dato[7:]} quitado del carrito." if estado == 204 else
+                     f"⚠️ {SIN_BACKEND}" if estado == 0 else "Ese bulto ya no estaba en tu carrito.")
         elif dato == "comprar":
             texto = comprar(chat_id)
         else:

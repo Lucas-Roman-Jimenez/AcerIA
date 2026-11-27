@@ -74,6 +74,9 @@ export default function App() {
   const finRef = useRef(null)
   const entradaRef = useRef(null)
   const dictadoRef = useRef(null)
+  // Cada demo (y cada salida) cambia este número: un paso que sigue escribiendo o esperando de una demo ya
+  // terminada lo ve y se para, en vez de enviar el mensaje y volver a mostrar la barra de la demo.
+  const demoVivaRef = useRef(0)
 
   useEffect(() => { resumenStock().then(setStock).catch(() => setStock([])) }, [])
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [actual.mensajes, pensando, verReporte])
@@ -263,6 +266,7 @@ export default function App() {
 
   // Salir: desde cualquier punto del flujo se vuelve a la pantalla de inicio limpia. El carrito se conserva.
   function salir() {
+    demoVivaRef.current++
     setDemo(null)
     setVerCarrito(false)
     setVerComparacion(false)
@@ -311,6 +315,9 @@ export default function App() {
   const anadirATexto = f => enviar(f)
 
   async function pasoDemo(i) {
+    if (i === 0) demoVivaRef.current++               // empieza una demo nueva
+    const viva = demoVivaRef.current
+    const sigue = () => demoVivaRef.current === viva
     const paso = DEMO[i]
     if (!paso) { setDemo(null); salir(); return }   // al terminar la demo se vuelve a una consulta nueva
     // Paso de Telegram: no se escribe nada en el chat, solo se explica y se ofrece abrir el bot.
@@ -324,12 +331,14 @@ export default function App() {
       setComparar([])
     }
     for (let n = 1; n <= paso.texto.length; n++) {
+      if (!sigue()) return
       setTexto(paso.texto.slice(0, n))
       await espera(35)
     }
     await espera(400)
+    if (!sigue()) return
     await enviar(paso.texto, conv)
-    setDemo({ paso: i, nota: paso.nota })
+    if (sigue()) setDemo({ paso: i, nota: paso.nota })
   }
 
   const esp = actual.ultima?.especificacion
