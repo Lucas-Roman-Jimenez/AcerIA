@@ -643,11 +643,7 @@ button:disabled { cursor: default; opacity: .5; }
 .app.portada .cabecera { height: clamp(220px, 32vh, 360px); }
 
 @media (max-width: 640px) {
-  .app.en-reportes { flex-direction: column; }
-  .en-reportes .lateral { width: 100%; border-right: 0; border-bottom: 1px solid var(--borde); }
-  .en-reportes .lateral-menu { flex-direction: row; flex-wrap: wrap; padding-bottom: 0; border-bottom: 0; }
-  .en-reportes .lateral-item { width: auto; }
-  .en-reportes :is(.lateral-titulo, .lateral-lista) { display: none; }
+  /* La barra lateral en móvil está al final del archivo, para todas las vistas */
   .en-reportes .cabecera { padding-inline: 16px; }
   .en-reportes .ticker { margin-inline: 16px; }
   .en-reportes .utilidades { gap: 10px; }
@@ -1833,3 +1829,30 @@ select, .tend-controles select { field-sizing: content; width: auto; min-width: 
 @media (prefers-reduced-motion: reduce) { .principal > .inicio, .principal > .conversacion, .reportes, .reportes-vista { animation: none; } }
 a.lateral-item { text-decoration: none; }
 a.demo-enlace { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* ===== Móvil (≤ 640 px): la barra lateral pasa a ser una franja arriba y el chat ocupa el resto =====
+   Antes la barra lateral se quedaba fija a 210 px y el chat se comprimía en unos 100 px. */
+@media (max-width: 640px) {
+  .app { flex-direction: column; }
+  .lateral {
+    width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 6px;
+    padding: 8px 10px 6px; border-right: 0; border-bottom: 1px solid var(--borde);
+  }
+  .lateral .marca { padding: 2px 6px 2px 2px; gap: 8px; }
+  .lateral .logo-aceria { width: 30px; height: 30px; }
+  .lateral .logo-texto { font-size: 24px; }
+  /* Una sola fila que se desliza de lado: el menú no se come la pantalla */
+  .lateral-menu { flex: 1 1 100%; order: 3; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; gap: 2px;
+    padding-bottom: 0; border-bottom: 0; margin-inline: -10px; padding-inline: 10px; }
+  .lateral-item { width: auto; flex: none; white-space: nowrap; padding: 8px 10px; font-size: 14px; gap: 8px; }
+  /* Casillas (Grado, Espesor, Acabado…): en dos filas en vez de solaparse; sin la regla de rayitas */
+  .casillas { flex-wrap: wrap; padding-top: 0; row-gap: 4px; }
+  .casillas .regla { display: none; }
+  .casilla-bloque { flex: 1 1 30%; }
+  .lateral :is(.lateral-titulo, .lateral-lista) { display: none; }
+  .lateral-pie { margin-left: auto; padding: 0; border: 0; }
+  .lateral-pie .interruptor { font-size: 13px; gap: 8px; }
+  .contenido { flex: 1; min-height: 0; }
+  .cabecera { padding-inline: 16px; }
+  .ticker { margin-inline: 16px; }
+}

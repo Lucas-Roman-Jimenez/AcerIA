@@ -5,7 +5,10 @@ const API = import.meta.env.VITE_API_URL
 
 // PDF de la ficha técnica de AcerIA («MAT 120»). Lo sirve el backend (lo trae de Databricks y lo guarda
 // en caché); sin backend no hay fichas.
-export const urlFicha = mat => (API ? `${API}/fichas/${encodeURIComponent(mat)}` : null)
+// Igual que MAX_LONGITUD_MENSAJE del backend (backend/app/config.py): más largo, /chat responde 422.
+export const MAX_MENSAJE = 2000
+
+export const urlFicha =mat => (API ? `${API}/fichas/${encodeURIComponent(mat)}` : null)
 
 export async function enviarMensaje(conversacionId, texto) {
   if (!API) return chatFalso(conversacionId, texto)

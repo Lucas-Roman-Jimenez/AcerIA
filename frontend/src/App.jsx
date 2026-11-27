@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { enviarMensaje, resumenStock, consultarValores, venderCarrito, reservarBultos, liberarBulto, vaciarReservas } from './api.js'
+import { enviarMensaje, resumenStock, consultarValores, venderCarrito, reservarBultos, liberarBulto, vaciarReservas, MAX_MENSAJE } from './api.js'
 import { escuchar, leerEnAlto } from './voz.js'
 import { Tarjeta, Detalle, Comparador } from './Tarjetas.jsx'
 import { Acero } from './Acero.jsx'
@@ -138,6 +138,17 @@ export default function App() {
   async function enviar(msg, conv = actual, { sinCorregir = false, mostrado } = {}) {
     const limpio = msg.trim()
     if (!limpio || pensando) return
+    if (limpio.length > MAX_MENSAJE) {
+      // El backend lo rechazaría (422) y «Reintentar» volvería a fallar: se avisa sin enviarlo.
+      // Un dictado largo llega aquí sin pasar por el maxLength de la caja.
+      const aviso = `El mensaje es demasiado largo: tiene ${limpio.length} caracteres y el máximo es ${MAX_MENSAJE}. `
+        + 'Acórtalo y vuelve a enviarlo.'
+      cancelarDictado()
+      setTexto(msg)                                   // se queda en la caja para recortarlo
+      if (conv.mensajes.length === 0) setAvisoInicio(aviso)
+      else guardar({ ...conv, mensajes: [...conv.mensajes, { rol: 'asistente', texto: aviso }] })
+      return
+    }
     cancelarDictado()
     setTexto('')
     setAvisoInicio(null)
@@ -513,7 +524,7 @@ export default function App() {
           <form className="entrada" onSubmit={e => { e.preventDefault(); enviar(texto) }}>
             <input ref={entradaRef} value={texto} onChange={e => setTexto(e.target.value)}
               placeholder="Escribe o dicta: grado, espesor, formato…"
-              aria-label="Escribe tu petición" disabled={pensando} />
+              aria-label="Escribe tu petición" disabled={pensando} maxLength={MAX_MENSAJE} />
             <button type="button" className={`microfono ${estadoDictado ? 'escuchando' : ''}`}
               title={estadoDictado ? 'Detener dictado' : 'Dictar la petición'}
               aria-pressed={Boolean(estadoDictado)} disabled={pensando || estadoDictado === 'procesando'}
