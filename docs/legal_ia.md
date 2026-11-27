@@ -1,5 +1,7 @@
 # Uso de IA: transparencia, normativa europea y datos
 
+> Documento del prototipo original. La rama principal actual usa el intérprete local y el inventario sintético. Consulta el README para arrancar la versión actual.
+
 Responsable: Nacho (P2). Describe cómo usa la IA el asistente comercial y qué obligaciones legales le afectan. **No es asesoramiento jurídico:** antes de llevarlo a producción, lo tiene que revisar el equipo legal de AcerIA.
 
 ---

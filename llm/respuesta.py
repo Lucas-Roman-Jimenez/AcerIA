@@ -237,6 +237,8 @@ def responder(resultado: dict[str, Any], especificacion: Especificacion | dict |
     catalogo = catalogo or _catalogo_defecto()
     try:
         cliente = cliente or _cliente_defecto()
+        if cliente is None:
+            return _con_nota(texto_plantilla, *notas)
         esp = especificacion.a_dict() if isinstance(especificacion, Especificacion) else (especificacion or {})
         usuario = prompts.USUARIO_RESPUESTA.format(
             especificacion=json.dumps(esp, ensure_ascii=False),

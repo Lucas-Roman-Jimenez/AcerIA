@@ -1,5 +1,7 @@
 # Guion de la demo · aportación original (RF-07)
 
+> Documento del prototipo original. La rama principal actual usa el intérprete local y el inventario sintético. Consulta el README para arrancar la versión actual.
+
 Responsable: Nacho (P2). Respuestas **reales** de la aplicación completa: LLM del hackathon (`system.ai.claude-sonnet-5-5` por el gateway de Databricks), catálogo y glosario reales (`datos/`), buscador de Alonso con el motor de reglas de Lucas y los **2411 bultos del inventario de AcerIA**. Comprobado el 26/11/2026 con `tests/bateria_llm.py` (48 escenarios, 0 fallos), con la recomendación «me da igual», la validación con Pydantic y la nomenclatura EN de Lucas.
 
 Si cambian los datos o el código, repetir `python tests/bateria_llm.py` y actualizar este guion.

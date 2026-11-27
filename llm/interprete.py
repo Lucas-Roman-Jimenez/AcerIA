@@ -17,7 +17,8 @@ from .catalogo import Catalogo
 from .contrato import CAMPOS_NUMERO, CAMPOS_TEXTO, Cantidad, Especificacion, ResultadoInterpretacion
 from .control import conserva_datos, fmt_num, lista_o, lista_y, no_inventa
 from .modelos import Extraccion
-from .proveedores import ClienteLLM, ErrorLLM, crear_cliente
+from .extraccion_local import extraer_local
+from .proveedores import ClienteLLM, ErrorLLM
 
 # Datos mínimos para poder buscar. PENDIENTE DE CONFIRMAR CON EL MENTOR.
 CAMPOS_MINIMOS: tuple[str, ...] = ("grado", "espesor_mm")
@@ -29,9 +30,7 @@ _cliente: Optional[ClienteLLM] = None
 _catalogo: Optional[Catalogo] = None
 
 
-def _cliente_defecto() -> ClienteLLM:
-    global _cliente
-    _cliente = _cliente or crear_cliente()
+def _cliente_defecto() -> Optional[ClienteLLM]:
     return _cliente
 
 
@@ -403,18 +402,18 @@ def interpretar(historial: Sequence[dict[str, str]], *, cliente: Optional[Client
     Lanza ErrorLLM si el proveedor falla; el backend debe capturarlo y mostrar
     un error con opción de reintentar (RNF-14).
 
-    Hace una sola llamada al LLM (la extracción). Las preguntas salen de plantillas;
-    con redactar_con_llm=True el LLM las reescribe (una llamada más, ~1-4 s, RNF-05).
+    Usa reglas locales por defecto. Los tests pueden inyectar un cliente simulado.
     """
     # Los mensajes vacíos del comercial no aportan nada; si no queda ninguno, no se llama al LLM.
     historial = [m for m in historial if m.get("rol") != "comercial" or str(m.get("texto") or "").strip()]
     ultimo = next((m["texto"] for m in reversed(historial) if m.get("rol") == "comercial"), None)
     if ultimo is None:
         return ResultadoInterpretacion("pregunta", Especificacion(faltan=list(minimos)), "¿Qué material necesitas?")
-    cliente = cliente or _cliente_defecto()
+    cliente = cliente if cliente is not None else _cliente_defecto()
     catalogo = catalogo or _catalogo_defecto()
     orientacion = catalogo.orientacion_obra(ultimo)
-    bruto = _extraer(historial, cliente, catalogo, minimos, consulta_obra=orientacion is not None)
+    bruto = (extraer_local(historial, catalogo) if cliente is None
+             else _extraer(historial, cliente, catalogo, minimos, consulta_obra=orientacion is not None))
     if isinstance(bruto.get("uso"), str):
         # Conserva los condicionantes de exposición reconocidos al interpretar la conversación.
         orientacion = catalogo.orientacion_obra(f"{ultimo} {bruto['uso']}")

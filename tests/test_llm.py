@@ -535,35 +535,12 @@ def test_contradiccion_con_valores_en_texto():
     assert "2 mm y 3 mm" in r.pregunta
 
 
-class _RespuestaFalsa:
-    def __init__(self, stop_reason, texto=""):
-        from types import SimpleNamespace
-        self.stop_reason = stop_reason
-        self.content = [SimpleNamespace(type="text", text=texto)]
-
-
-def _anthropic_falso(respuesta):
-    from types import SimpleNamespace
-    from llm.proveedores import ClienteAnthropic
-    llamadas = []
-    cli = ClienteAnthropic.__new__(ClienteAnthropic)
-    cli.modelo = "modelo-de-prueba"
-    cli._cli = SimpleNamespace(messages=SimpleNamespace(create=lambda **kw: llamadas.append(kw) or respuesta))
-    return cli, llamadas
-
-
-def test_anthropic_envia_el_esquema_con_esfuerzo_bajo():
-    cli, llamadas = _anthropic_falso(_RespuestaFalsa("end_turn", "{}"))
-    assert cli.completar("s", "u", json=True, esquema={"type": "object"}) == "{}"
-    assert llamadas[0]["output_config"] == {"format": {"type": "json_schema", "schema": {"type": "object"}},
-                                            "effort": "low"}
-
-
-@pytest.mark.parametrize("motivo", ["refusal", "max_tokens"])
-def test_anthropic_respuesta_incompleta_lanza_error(motivo):
-    cli, _ = _anthropic_falso(_RespuestaFalsa(motivo, "{"))
-    with pytest.raises(ErrorLLM):
-        cli.completar("s", "u", esquema={"type": "object"})
+def test_interpretacion_local_ignora_credenciales_y_proveedor(monkeypatch):
+    monkeypatch.setenv("LLM_PROVEEDOR", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "credencial-ficticia")
+    r = interpretar([{"rol": "comercial", "texto": "chapa 304 BA de 2 x 1250 x 2000 mm"}])
+    assert r.tipo == "especificacion"
+    assert (r.especificacion.espesor_mm, r.especificacion.ancho_mm, r.especificacion.largo_mm) == (2, 1250, 2000)
 
 
 def test_solo_medidas_se_describe_como_material():

@@ -1,25 +1,7 @@
-"""Batería de escenarios del asistente contra el LLM REAL y los DATOS REALES (Nacho).
-
-Cada mensaje pasa por el mismo camino que POST /chat (backend/app/conversacion.py): el módulo LLM, el
-buscador de Alonso con el motor de reglas de Lucas, el catálogo y glosario reales (datos/) y la base de
-datos con los 2411 bultos del inventario.
-
-No es un test de pytest (no empieza por test_): llama al LLM de verdad, necesita el .env del gateway y
-gasta tokens. Sirve para comprobar a mano que el asistente responde con sentido en todos los escenarios
-y en menos de 5 s (RNF-05). No sustituye al conjunto de evaluación de Lucas (tests/evaluar_api.py).
-
-Uso, desde la raíz del repo:
-
-    python tests/bateria_llm.py            # todos los escenarios
-    python tests/bateria_llm.py V F        # solo los que empiezan por V o F
-
-En Windows, si los acentos salen mal: `chcp 65001` antes, o PYTHONIOENCODING=utf-8.
-No vende nada: la base de datos no cambia.
-"""
+"""Batería manual de escenarios de chat con el intérprete local."""
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 import statistics
 import sys
@@ -31,7 +13,7 @@ sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "backend"))
 
 from app import config  # noqa: E402
-from app.conversacion import cargar_env, responder_chat  # noqa: E402
+from app.conversacion import responder_chat  # noqa: E402
 from app.db import crear_db  # noqa: E402
 
 LIMITE_S = 5.0  # RNF-05
@@ -118,10 +100,8 @@ def _resumen(espec: dict) -> str:
 
 
 def main(prefijos: list[str]) -> int:
-    cargar_env()
     if not _base_al_dia():                   # primera vez, o base anterior a las reservas: se carga como al arrancar
         crear_db()
-    token = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("ANTHROPIC_API_KEY") or ""
     escenarios = [e for e in ESCENARIOS if not prefijos or e[0].startswith(tuple(prefijos))]
     tiempos: list[tuple[float, str]] = []
     fallos: list[str] = []
@@ -157,8 +137,6 @@ def main(prefijos: list[str]) -> int:
             print(f"  ⚠️ {t:.1f} s en {donde}")
     for f in fallos:
         print(f"  ❌ {f}")
-    if token and any(token in f for f in fallos):
-        print("(se ha ocultado el token)")
     print("Revisa a mano que cada respuesta tenga sentido: el script solo detecta errores y tiempos.")
     return 1 if fallos else 0
 

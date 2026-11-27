@@ -1,14 +1,12 @@
-"""Orquestación de /chat: módulo LLM de Nacho + buscador de Alonso + motor de reglas de Lucas.
+"""Orquestación de /chat con el intérprete local, el buscador y el motor de reglas.
 
 Flujo por mensaje (docs/contrato.md §1):
     interpretar() -> (pregunta) | buscar_bultos() -> pregunta_tras_busqueda() | responder()
 
-El LLM solo interpreta y redacta; qué bultos hay y qué transformaciones son posibles lo decide
-el código (RNF-02). Devuelve el mismo formato que la respuesta de prueba de main.py.
+El buscador determina qué bultos hay y qué transformaciones son posibles.
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from uuid import uuid4
@@ -27,16 +25,6 @@ MAX_MENSAJES = 40                                            # historial por con
 conversaciones: dict[str, list[dict[str, str]]] = {}
 
 
-def cargar_env(ruta: Path = RAIZ / ".env") -> None:
-    """Carga el .env de la raíz (clave y modelo del gateway). No pisa variables ya definidas."""
-    if not ruta.exists():
-        return
-    for linea in ruta.read_text(encoding="utf-8").splitlines():
-        if "=" in linea and not linea.strip().startswith("#"):
-            clave, valor = linea.split("=", 1)
-            os.environ.setdefault(clave.strip(), valor.strip())
-
-
 def _respuesta(conv_id: str, estado: str, texto: str, especificacion: dict, **extra) -> dict:
     return {
         "conversacion_id": conv_id,
@@ -49,7 +37,7 @@ def _respuesta(conv_id: str, estado: str, texto: str, especificacion: dict, **ex
         "opciones": [],                           # botones: formato pendiente de acordar
         "texto": texto,
         "criterio_orden": CRITERIO_ORDEN,
-        # AI Act art. 50: marca y textos del aviso (docs/legal_ia.md). En un error no hay texto generado.
+        # Conserva el campo del contrato para indicar el origen de la respuesta.
         "aviso_ia": None if estado == "error" else aviso_ia(),
     }
 

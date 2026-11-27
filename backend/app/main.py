@@ -12,7 +12,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app import config
 from app.db import crear_db, disponibles
 from app.buscador import CAMPOS_VALORES, CRITERIO_ORDEN, buscar_alternativas, buscar_bultos, construir_objetivo, valores_disponibles
-from app.conversacion import cargar_env, responder_chat
+from app.conversacion import responder_chat
 from app.ventas import BultosNoDisponibles, vender
 from app.reservas import DemasiadasReservas, liberar, liberar_todas, mis_reservas, reservar
 from app.reportes import reporte_diario_inventario, reporte_semanal
@@ -31,7 +31,6 @@ async def lifespan(app: FastAPI):
     # Ventas simuladas para los reportes; python arrancar.py --sin-ventas-demo pone ACERIA_VENTAS_DEMO=0.
     if creadas := preparar_ventas_demo(os.getenv("ACERIA_VENTAS_DEMO", "1") != "0"):
         print(f"✔ {creadas} ventas simuladas (demo-*) para los reportes")
-    cargar_env()        # clave y modelo del LLM desde el .env de la raíz (RNF-13)
     yield
 
 
@@ -88,7 +87,7 @@ def health():
 @app.get("/fichas/{mat}")
 def ficha_pdf(mat: str = Path(min_length=3, max_length=20, pattern=r"^[A-Za-z0-9 _-]+$")):
     """PDF de la ficha técnica de AcerIA («MAT 120»), para el panel lateral de las tarjetas.
-    Solo las fichas del catálogo; se descarga de Databricks la primera vez y después sale de la caché."""
+    Solo las fichas del catálogo; el archivo debe estar instalado localmente."""
     try:
         ruta = obtener_pdf(mat)
     except FichaNoEncontrada:

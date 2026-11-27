@@ -1,5 +1,7 @@
 # Arquitectura, seguridad y despliegue de AcerIA
 
+> Documento del prototipo original. La rama principal actual usa el intérprete local y el inventario sintético. Consulta el README para arrancar la versión actual.
+
 Asistente comercial de inventario de acero inoxidable para el reto de AcerIA (IndesIAHack 2026). Este documento explica cómo está construido, qué medidas de seguridad tiene, cómo se pone en marcha y qué haría falta para llevarlo a producción. Lo legal está resumido aquí y desarrollado en [`legal_ia.md`](legal_ia.md).
 
 **Principio de diseño: el LLM traduce, el código decide.** El modelo de lenguaje solo convierte lo que dice el comercial en una especificación estructurada. Qué grados existen, qué bultos hay en stock, qué transformaciones son posibles y qué se responde lo decide código que se puede probar (RNF-01, RNF-02).
