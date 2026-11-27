@@ -53,6 +53,7 @@ def parar(*procesos: subprocess.Popen) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--ollama", metavar="MODELO", help="interpretar el chat con un modelo de Ollama instalado en este equipo")
     parser.add_argument("--puerto-backend", type=int, default=8000)
     parser.add_argument("--puerto-frontend", type=int, default=5173)
     parser.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador")
@@ -81,7 +82,8 @@ def main() -> int:
         backend = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
              "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ,
-            env={**os.environ, "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0",
+            env={**os.environ, "ACERIA_OLLAMA_MODELO": args.ollama or "",
+                 "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0",
                  # Una base propia (ACERIA_DB_PATH, p. ej. python -m demo_reportes) trae ya sus compras.
                  "ACERIA_VENTAS_DEMO": "0" if args.sin_ventas_demo or os.environ.get("ACERIA_DB_PATH") else "1",
                  "ACERIA_CORS_ORIGENES": web})

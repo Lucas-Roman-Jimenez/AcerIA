@@ -8,6 +8,7 @@ Reparto de responsabilidades:
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import replace
 from typing import Any, Optional, Sequence
@@ -18,7 +19,7 @@ from .contrato import CAMPOS_NUMERO, CAMPOS_TEXTO, Cantidad, Especificacion, Res
 from .control import conserva_datos, fmt_num, lista_o, lista_y, no_inventa
 from .modelos import Extraccion
 from .extraccion_local import extraer_local
-from .proveedores import ClienteLLM, ErrorLLM
+from .proveedores import ClienteLLM, ClienteOllama, ErrorLLM
 
 # Datos mínimos para poder buscar. PENDIENTE DE CONFIRMAR CON EL MENTOR.
 CAMPOS_MINIMOS: tuple[str, ...] = ("grado", "espesor_mm")
@@ -31,7 +32,10 @@ _catalogo: Optional[Catalogo] = None
 
 
 def _cliente_defecto() -> Optional[ClienteLLM]:
-    return _cliente
+    if _cliente is not None:
+        return _cliente
+    modelo = os.environ.get("ACERIA_OLLAMA_MODELO")
+    return ClienteOllama(modelo) if modelo else None
 
 
 def _catalogo_defecto() -> Catalogo:

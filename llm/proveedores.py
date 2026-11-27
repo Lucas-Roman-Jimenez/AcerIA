@@ -1,6 +1,9 @@
 """Contrato del cliente inyectable y respuestas simuladas para pruebas."""
 from __future__ import annotations
 
+from http.client import HTTPConnection, HTTPException
+import json as jsonlib
+
 from typing import Callable, Protocol, Sequence
 
 
@@ -11,6 +14,35 @@ class ErrorLLM(RuntimeError):
 class ClienteLLM(Protocol):
     def completar(self, sistema: str, usuario: str, *, json: bool = False, max_tokens: int = 800,
                   esquema: dict | None = None) -> str: ...
+
+
+class ClienteOllama:
+    def __init__(self, modelo: str):
+        self.modelo = modelo
+
+    def completar(self, sistema, usuario, *, json=False, max_tokens=800, esquema=None):
+        solicitud = {
+            "model": self.modelo,
+            "messages": [{"role": "system", "content": sistema}, {"role": "user", "content": usuario}],
+            "stream": False,
+            "options": {"temperature": 0, "num_predict": max_tokens},
+        }
+        if esquema or json:
+            solicitud["format"] = esquema or "json"
+        conexion = HTTPConnection("127.0.0.1", 11434, timeout=120)
+        try:
+            conexion.request("POST", "/api/chat", jsonlib.dumps(solicitud), {"Content-Type": "application/json"})
+            respuesta = conexion.getresponse()
+            if respuesta.status != 200:
+                raise ErrorLLM(f"Ollama respondió con estado {respuesta.status}.")
+            contenido = jsonlib.loads(respuesta.read())["message"]["content"]
+            if not isinstance(contenido, str) or not contenido.strip():
+                raise ErrorLLM("Ollama devolvió una respuesta vacía.")
+            return contenido
+        except (OSError, HTTPException, ValueError, KeyError, TypeError) as error:
+            raise ErrorLLM("No se pudo obtener una respuesta de Ollama local.") from error
+        finally:
+            conexion.close()
 
 
 class ClienteFalso:
