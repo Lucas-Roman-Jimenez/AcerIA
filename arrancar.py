@@ -8,11 +8,12 @@ Levanta el backend (FastAPI, desde la raíz para que encuentre llm/ y reglas/) y
 el frontend (Vite) conectado a él. Usa 127.0.0.1 y no «localhost»: en algunas redes (p. ej. la
 de la URJC) «localhost» acaba en el proxy. Ctrl+C para los dos.
 
-Requisitos: pip install -r requirements.txt -r backend/requirements.txt, Node.js y el .env en la raíz.
+Requisitos: pip install -r requirements.txt -r backend/requirements.txt, Node.js.
 """
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
 import shutil
 import subprocess
@@ -53,7 +54,9 @@ def parar(*procesos: subprocess.Popen) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--ollama", metavar="MODELO", help="interpretar el chat con un modelo de Ollama instalado en este equipo")
+    modos = parser.add_mutually_exclusive_group()
+    modos.add_argument("--claude", action="store_true", help="usar la API de Claude Sonnet 5.5 con una clave personal")
+    modos.add_argument("--ollama", metavar="MODELO", help="interpretar el chat con un modelo de Ollama instalado en este equipo")
     parser.add_argument("--puerto-backend", type=int, default=8000)
     parser.add_argument("--puerto-frontend", type=int, default=5173)
     parser.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador")
@@ -63,8 +66,13 @@ def main() -> int:
                         help="no crear las ventas simuladas (demo-*) de las últimas 4 semanas que usan los reportes")
     args = parser.parse_args()
 
-    if not (RAIZ / ".env").exists():
-        print("Aviso: no hay .env en la raíz. El chat no podrá llamar al LLM (ver README, «Configuración del LLM»).")
+    clave_claude = ""
+    if args.claude:
+        if not sys.stdin.isatty():
+            parser.error("--claude necesita una terminal interactiva para introducir la clave personal.")
+        clave_claude = getpass.getpass("Clave personal de Anthropic (las consultas se facturan a su cuenta): ").strip()
+        if not clave_claude:
+            parser.error("Introduce una clave personal para activar Claude.")
     npm = shutil.which("npm")
     if not npm:
         print("Falta Node.js (npm) para el frontend: https://nodejs.org")
@@ -83,6 +91,7 @@ def main() -> int:
             [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
              "--host", HOST, "--port", str(args.puerto_backend)], cwd=RAIZ,
             env={**os.environ, "ACERIA_OLLAMA_MODELO": args.ollama or "",
+                 "ACERIA_CLAUDE_KEY": clave_claude,
                  "ACERIA_REINICIAR_DEMO": "1" if args.reiniciar_demo else "0",
                  # Una base propia (ACERIA_DB_PATH, p. ej. python -m demo_reportes) trae ya sus compras.
                  "ACERIA_VENTAS_DEMO": "0" if args.sin_ventas_demo or os.environ.get("ACERIA_DB_PATH") else "1",

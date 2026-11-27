@@ -19,7 +19,7 @@ from .contrato import CAMPOS_NUMERO, CAMPOS_TEXTO, Cantidad, Especificacion, Res
 from .control import conserva_datos, fmt_num, lista_o, lista_y, no_inventa
 from .modelos import Extraccion
 from .extraccion_local import extraer_local
-from .proveedores import ClienteLLM, ClienteOllama, ErrorLLM
+from .proveedores import ClienteClaude, ClienteLLM, ClienteOllama, ErrorLLM
 
 # Datos mínimos para poder buscar. PENDIENTE DE CONFIRMAR CON EL MENTOR.
 CAMPOS_MINIMOS: tuple[str, ...] = ("grado", "espesor_mm")
@@ -34,6 +34,9 @@ _catalogo: Optional[Catalogo] = None
 def _cliente_defecto() -> Optional[ClienteLLM]:
     if _cliente is not None:
         return _cliente
+    clave = os.environ.get("ACERIA_CLAUDE_KEY")
+    if clave:
+        return ClienteClaude(clave)
     modelo = os.environ.get("ACERIA_OLLAMA_MODELO")
     return ClienteOllama(modelo) if modelo else None
 

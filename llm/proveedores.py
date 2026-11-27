@@ -1,7 +1,7 @@
 """Contrato del cliente inyectable y respuestas simuladas para pruebas."""
 from __future__ import annotations
 
-from http.client import HTTPConnection, HTTPException
+from http.client import HTTPConnection, HTTPSConnection, HTTPException
 import json as jsonlib
 
 from typing import Callable, Protocol, Sequence
@@ -14,6 +14,41 @@ class ErrorLLM(RuntimeError):
 class ClienteLLM(Protocol):
     def completar(self, sistema: str, usuario: str, *, json: bool = False, max_tokens: int = 800,
                   esquema: dict | None = None) -> str: ...
+
+
+class ClienteClaude:
+    def __init__(self, clave: str):
+        self.clave = clave
+
+    def completar(self, sistema, usuario, *, json=False, max_tokens=800, esquema=None):
+        solicitud = {
+            "model": "claude-sonnet-5-5",
+            "system": sistema,
+            "messages": [{"role": "user", "content": usuario}],
+            "max_tokens": max_tokens,
+            "output_config": {"effort": "low"},
+        }
+        if esquema:
+            solicitud["output_config"]["format"] = {"type": "json_schema", "schema": esquema}
+        elif json:
+            solicitud["system"] += "\nDevuelve solo JSON."
+        cabeceras = {"content-type": "application/json", "anthropic-version": "2023-06-01",
+                     "x-api-key": self.clave}
+        conexion = HTTPSConnection("api.anthropic.com", timeout=120)
+        try:
+            conexion.request("POST", "/v1/messages", jsonlib.dumps(solicitud), cabeceras)
+            respuesta = conexion.getresponse()
+            if respuesta.status != 200:
+                raise ErrorLLM(f"Anthropic respondió con estado {respuesta.status}.")
+            datos = jsonlib.loads(respuesta.read())
+            texto = "".join(b["text"] for b in datos["content"] if b["type"] == "text")
+            if not texto.strip() or datos.get("stop_reason") in ("max_tokens", "refusal"):
+                raise ErrorLLM("Claude no devolvió una respuesta completa.")
+            return texto
+        except (OSError, HTTPException, ValueError, KeyError, TypeError) as error:
+            raise ErrorLLM("No se pudo consultar Claude.") from error
+        finally:
+            conexion.close()
 
 
 class ClienteOllama:

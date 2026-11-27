@@ -28,6 +28,18 @@ Por defecto, AcerIA interpreta el chat con reglas locales, consulta el catálogo
 
 Las fichas PDF solo se sirven si están instaladas en `backend/data/fichas/`. El bot opcional de Telegram usa `TELEGRAM_BOT_TOKEN` desde el entorno o desde un `.env` local ignorado por Git. La interpretación de sus consultas pasa por el mismo backend local.
 
+## Probar el chat con Claude Sonnet 5.5
+
+> [!IMPORTANT]
+> AcerIA se ejecuta en tu ordenador. Al activar Claude, el backend envía a Anthropic los mensajes de la conversación y el contexto del catálogo para interpretar la consulta. Anthropic factura los tokens a la cuenta asociada a la clave que introduzcas. El arranque habitual con `python arrancar.py` usa reglas locales.
+
+1. Obtén una clave personal de la API de Anthropic con acceso a `claude-sonnet-5-5` y facturación habilitada. [Modelo y precios](https://platform.claude.com/docs/en/models/sonnet-5-5/overview)
+2. Instala las dependencias del apartado de arranque. Si AcerIA ya está abierto, detenlo con `Ctrl+C`. Desde la raíz del proyecto, ejecuta `python arrancar.py --claude`.
+3. Introduce la clave cuando la terminal la pida. La entrada está oculta y AcerIA la usa durante esa sesión. Evita pegarla en el chat, en el README o en un commit.
+4. Prueba «Busco chapa 304 BA de 2 mm de espesor y 1250 mm de ancho». El aviso «Consulta interpretada con Claude Sonnet 5.5 de Anthropic» identifica las respuestas del backend que usan esta conexión.
+
+Para volver a las reglas locales, detén la aplicación con `Ctrl+C` y ejecuta `python arrancar.py`.
+
 ## Probar el chat con una IA personal en local
 
 > [!NOTE]

@@ -10,6 +10,9 @@ AVISO_RESPUESTA = "Respuesta del asistente local basada en el inventario y las r
 
 
 def aviso_ia() -> dict:
+    if os.environ.get("ACERIA_CLAUDE_KEY"):
+        aviso = "Consulta interpretada con Claude Sonnet 5.5 de Anthropic."
+        return {"generado_por_ia": True, "texto": aviso, "texto_voz": aviso, "inicio": aviso}
     if os.environ.get("ACERIA_OLLAMA_MODELO"):
         aviso = "Consulta interpretada con un modelo de IA local."
         return {"generado_por_ia": True, "texto": aviso, "texto_voz": aviso, "inicio": aviso}
