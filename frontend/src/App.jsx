@@ -22,7 +22,6 @@ const DEMO = [
   { texto: '1250', nota: 'Todo sale del inventario: ID, medidas y peso. Abre una tarjeta: «Por qué se propone» y «De dónde sale cada dato».' },
   { texto: '¿qué acero recomiendas para ambiente marino?', nueva: true, nota: 'Recomienda solo lo que respaldan las fichas de AcerIA (límite de cloruros) y comprueba qué hay en stock.' },
   { texto: '¿qué grosores hay de 316L?', nota: 'Para quien no conoce la nomenclatura: pregunta qué hay y elige con un clic, sin saber los códigos.' },
-  { telegram: 'https://web.telegram.org/k/#@AcerIAIAbot', nota: 'El mismo pedido, desde el móvil: el bot de Telegram @AcerIAIAbot usa este mismo backend, enseña los bultos como botones para reservarlos y confirma el pedido con /carrito.' },
 ]
 const espera = ms => new Promise(r => setTimeout(r, ms))
 
@@ -352,7 +351,6 @@ export default function App() {
     <div className={`app ${verReporte ? 'en-reportes' : vacio ? 'portada' : ''}`}>
       <aside className="lateral">
         <button type="button" className="marca" onClick={salir} title="Volver al inicio">
-          <img className="logo-aceria" src="/logo-aceria.svg" alt="AcerIA" width="46" height="46" />
           <span className="logo-texto" aria-label="acerIA">ACER<span className="logo-ia">IA</span></span>
         </button>
 
@@ -374,10 +372,6 @@ export default function App() {
             onClick={() => { cancelarDictado(); setVistaReporte('inventario') }}>
             <Icono nombre="reporte" /> Reportes
           </button>
-          <a className="lateral-item" href="https://web.telegram.org/k/#@AcerIAIAbot" target="_blank" rel="noopener noreferrer"
-            title="Haz el pedido desde Telegram con el bot de acerIA">
-            <Icono nombre="telegram" /> Pedir por Telegram
-          </a>
           {!vacio && (
             <button type="button" className="lateral-item salir-flujo" onClick={salir}
               title="Salir de esta consulta y volver al inicio. El carrito se conserva.">

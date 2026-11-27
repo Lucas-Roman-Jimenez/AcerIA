@@ -5,14 +5,14 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 DATA = BASE / "data"
 
-INVENTARIO = DATA / "inventario.xlsx"
+INVENTARIO = Path(os.environ.get("ACERIA_INVENTARIO") or BASE.parent / "datos_ejemplo" / "inventario.json")
 ESTADOS_DEMO = DATA / "estados_demo.csv"   # opcional: id;estado para simular reservados/bloqueados
 DB_PATH = Path(os.environ.get("ACERIA_DB_PATH") or (DATA / "aceria.db"))
 
 # Fichas técnicas en PDF (app/fichas.py): catálogo de Lucas, carpeta del workspace de Databricks donde
 # están los PDF y caché local (los PDF no se suben a git: **/*.pdf en .gitignore).
 CATALOGO = BASE.parent / "datos" / "catalogo.json"
-DATABRICKS_FICHAS = os.environ.get("DATABRICKS_FICHAS") or "/Shared/Dataset-aceria"
+DATABRICKS_FICHAS = os.environ.get("DATABRICKS_FICHAS") or ""
 FICHAS_DIR = DATA / "fichas"
 FICHAS_TIMEOUT_S = 30
 

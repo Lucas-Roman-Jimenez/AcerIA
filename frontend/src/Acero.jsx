@@ -5,15 +5,8 @@ export function buscarFicha(grado) {
   return candidatas.length === 1 && candidatas[0].descripcion ? candidatas[0] : null
 }
 
-// Renders de estudio en public/materiales/<formato>-<acabado>.webp.
-const FORMATOS = ['bobina', 'chapa', 'fleje']
-const ACABADOS = ['2B', 'BA', '2R', '2D', '4']
-
 export function Dibujo({ formato, acabado }) {
-  const f = FORMATOS.includes(formato) ? formato : 'bobina'
-  const a = String(acabado ?? '').toUpperCase().replace(/^N[º°O.]*\s*/, '')
-  const ac = ACABADOS.includes(a) ? a : '2B'
-  return <img src={`/materiales/${f}-${ac}.webp`} alt={`${f} ${ac}`} className={`acero-svg material-${f}`} />
+  return <span className="acero-svg">{[formato, acabado].filter(Boolean).join(' · ')}</span>
 }
 
 // «Sistemas de escape, Tubos» → «Sistemas de escape y tubos.»: las aplicaciones de la ficha como un párrafo.

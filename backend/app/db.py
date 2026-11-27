@@ -2,6 +2,7 @@
 
 Uso manual (desde backend/):  python -m app.db
 """
+import json
 import re
 import sqlite3
 import time
@@ -82,6 +83,11 @@ def deducir_formato(largo_mm, ancho_mm) -> str:
 
 
 def leer_inventario(ruta: Path) -> pd.DataFrame:
+    if ruta.suffix.lower() == ".json":
+        bultos = json.loads(ruta.read_text(encoding="utf-8"))["bultos"]
+        datos = pd.DataFrame(bultos).rename(columns={"grado": "aisi"})
+        datos["largo_mm"] = datos["largo_mm"] if "largo_mm" in datos else 2000
+        return datos.reindex(columns=list(MAPEO.values()))
     # dtype=str: pandas no reinterpreta nada; convertimos nosotros
     df = pd.read_excel(ruta, dtype=str)
     sin_mapear = [c for c in df.columns if c not in MAPEO]
@@ -142,6 +148,7 @@ def crear_db(ruta_inventario: Path = config.INVENTARIO, reiniciar_ventas: bool =
     (python arrancar.py --reiniciar-demo) los vacía y el inventario vuelve a estar completo."""
     df = normalizar(leer_inventario(ruta_inventario))
     df = df.astype(object).where(df.notna(), None)                  # NaN/NA -> NULL
+    config.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(config.DB_PATH) as conn:
         conn.executescript(SCHEMA.read_text(encoding="utf-8"))
         conn.executemany(
